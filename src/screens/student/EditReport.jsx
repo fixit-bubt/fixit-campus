@@ -8,7 +8,7 @@ import { ReportForm } from "./ReportForm.jsx";
 
 // Reachable only while a report's status is still "Open".
 export default function EditReport({ id }) {
-  const { currentUser, reports, setReports } = useApp();
+  const { currentUser, reports, updateReport } = useApp();
   const toast = useToast();
   const report = reports.find((r) => r.id === id);
 
@@ -24,21 +24,12 @@ export default function EditReport({ id }) {
 
   if (!report || report.studentId !== currentUser.id || report.status !== "Open") return null;
 
-  function handleSubmit(form) {
-    setReports((rs) =>
-      rs.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              category: form.category,
-              description: form.description.trim(),
-              building: form.building.trim(),
-              room: form.room.trim(),
-              photo: form.photo || null,
-            }
-          : r
-      )
-    );
+  async function handleSubmit(form) {
+    const res = await updateReport(id, form);
+    if (!res.ok) {
+      toast({ type: "error", title: "Couldn't save report", message: res.error });
+      return;
+    }
     toast({ type: "success", title: "Report updated", message: `${id} has been saved.` });
     navigate(`/reports/${id}`);
   }

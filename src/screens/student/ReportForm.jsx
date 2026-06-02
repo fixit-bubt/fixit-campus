@@ -21,13 +21,14 @@ export function ReportForm({ initial, mode = "create", onSubmit, onCancel }) {
     return er;
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const er = validate();
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    setTimeout(() => onSubmit(form), 450);
+    await onSubmit(form);
+    setSaving(false);
   }
 
   return (

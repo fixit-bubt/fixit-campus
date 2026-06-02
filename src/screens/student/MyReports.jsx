@@ -43,7 +43,7 @@ function MyReportCard({ report, onView, onEdit, onDelete }) {
 }
 
 export default function MyReports() {
-  const { currentUser, reports, setReports } = useApp();
+  const { currentUser, reports, deleteReport } = useApp();
   const toast = useToast();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
@@ -70,9 +70,10 @@ export default function MyReports() {
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  function confirmDelete() {
-    setReports((rs) => rs.filter((r) => r.id !== toDelete.id));
-    toast({ type: "success", title: "Report deleted", message: `${toDelete.id} was removed.` });
+  async function confirmDelete() {
+    const res = await deleteReport(toDelete.id);
+    if (res.ok) toast({ type: "success", title: "Report deleted", message: `${toDelete.id} was removed.` });
+    else toast({ type: "error", title: "Couldn't delete", message: res.error });
     setToDelete(null);
   }
 

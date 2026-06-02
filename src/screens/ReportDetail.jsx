@@ -61,7 +61,7 @@ function DetailField({ label, children }) {
 // Role-aware: Student owner (read-only + edit/delete while Open) /
 // Staff assigned (advance status) / Admin (assign + reject/close).
 export default function ReportDetail({ id }) {
-  const { currentUser, reports, setReports, userById, staffList } = useApp();
+  const { currentUser, reports, setReportStatus, assignReport, deleteReport, userById, staffList } = useApp();
   const toast = useToast();
   const report = reports.find((r) => r.id === id);
   const [assignTo, setAssignTo] = useState("");
@@ -88,37 +88,28 @@ export default function ReportDetail({ id }) {
   const backPath = role === "Admin" ? "/admin/reports" : role === "Staff" ? "/staff/assigned" : "/reports";
   const CatIcon = CATEGORY_ICON[report.category] || CircleHelp;
 
-  const pushTimeline = (status) => [...report.timeline, { status, date: todayISO() }];
-  function setStatus(status) {
-    setReports((rs) => rs.map((r) => (r.id === id ? { ...r, status, timeline: pushTimeline(status) } : r)));
-    toast({ type: "success", title: `Marked ${status}`, message: `${id} updated.` });
+  async function setStatus(status) {
+    const res = await setReportStatus(id, status);
+    if (res.ok) toast({ type: "success", title: `Marked ${status}`, message: `${id} updated.` });
+    else toast({ type: "error", title: "Couldn't update status", message: res.error });
   }
-  function assign() {
+  async function assign() {
     if (!assignTo) return;
     const staffName = staffList.find((s) => s.id === assignTo)?.name;
     const wasAssigned = !!report.assignedStaffId;
-    setReports((rs) =>
-      rs.map((r) => {
-        if (r.id !== id) return r;
-        const next = { ...r, assignedStaffId: assignTo };
-        if (r.status === "Open") {
-          next.status = "In Progress";
-          next.timeline = [...r.timeline, { status: "In Progress", date: todayISO() }];
-        }
-        return next;
-      })
-    );
-    toast({ type: "success", title: wasAssigned ? "Report reassigned" : "Report assigned", message: `Assigned to ${staffName}.` });
+    const res = await assignReport(id, assignTo);
+    if (res.ok) toast({ type: "success", title: wasAssigned ? "Report reassigned" : "Report assigned", message: `Assigned to ${staffName}.` });
+    else toast({ type: "error", title: "Couldn't assign", message: res.error });
   }
-  function doConfirm() {
+  async function doConfirm() {
     if (confirm === "delete") {
-      setReports((rs) => rs.filter((r) => r.id !== id));
-      toast({ type: "success", title: "Report deleted" });
-      navigate(backPath);
+      const res = await deleteReport(id);
+      if (res.ok) { toast({ type: "success", title: "Report deleted" }); navigate(backPath); }
+      else toast({ type: "error", title: "Couldn't delete", message: res.error });
     } else if (confirm === "reject") {
-      setStatus("Rejected");
+      await setStatus("Rejected");
     } else if (confirm === "close") {
-      setStatus("Closed");
+      await setStatus("Closed");
     }
     setConfirm(null);
   }

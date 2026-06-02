@@ -14,10 +14,14 @@ export function AssignModal({ report, onClose }) {
   }, [report]);
   if (!report) return null;
 
-  function doAssign() {
+  async function doAssign() {
     const name = staffList.find((s) => s.id === staffId)?.name;
     const was = !!report.assignedStaffId;
-    assignReport(report.id, staffId);
+    const res = await assignReport(report.id, staffId);
+    if (res && res.ok === false) {
+      toast({ type: "error", title: "Couldn't assign", message: res.error });
+      return;
+    }
     toast({ type: "success", title: was ? "Report reassigned" : "Report assigned", message: `${report.id} → ${name}.` });
     onClose();
   }

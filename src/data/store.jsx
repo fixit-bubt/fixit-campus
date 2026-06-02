@@ -5,9 +5,8 @@ import { navigate } from "../lib/router.jsx";
 
 // ============================================================================
 // App data store.
-//   AUTH + PROFILES  -> real Supabase (this file, chunk #2).
-//   reports / items / claims -> still local for now (chunks #3–#4 wire these
-//   to Supabase). They start EMPTY so the app reflects a fresh real account.
+//   AUTH + PROFILES + REPORTS  -> real Supabase.
+//   lost & found items / claims -> still local for now (chunk #4 wires these).
 // Every screen reads/writes through useApp(); the value shape is unchanged.
 // ============================================================================
 
@@ -16,8 +15,8 @@ const AppContext = createContext(null);
 // DB stores role lowercase ('student'); the UI uses 'Student'/'Staff'/'Admin'.
 const cap = (r) => (r ? r.charAt(0).toUpperCase() + r.slice(1) : "Student");
 const lower = (r) => (r ? r.toLowerCase() : "student");
+const day = (ts) => (ts ? String(ts).slice(0, 10) : "");
 
-// Map a profiles/public_profiles row -> the object shape the screens expect.
 function toUser(p) {
   if (!p) return null;
   return {
@@ -26,7 +25,29 @@ function toUser(p) {
     email: p.email ?? "",
     role: cap(p.role),
     dept: p.department ?? undefined,
-    joined: p.created_at ? p.created_at.slice(0, 10) : "",
+    joined: day(p.created_at),
+  };
+}
+
+// DB report row -> the shape the screens expect.
+// `id` is the human code (used for routing + display); `uuid` is the real PK.
+function toReport(r, timeline) {
+  return {
+    id: r.code,
+    uuid: r.id,
+    category: r.category,
+    description: r.description,
+    building: r.building,
+    room: r.room || "",
+    photo: r.photo_url || null,
+    status: r.status,
+    studentId: r.reporter_id,
+    assignedStaffId: r.assigned_staff_id,
+    createdAt: day(r.created_at),
+    timeline:
+      timeline && timeline.length
+        ? timeline
+        : [{ status: r.status, date: day(r.created_at) }],
   };
 }
 
@@ -43,15 +64,15 @@ export function AppProvider({ children }) {
   // ---- auth / profiles (real Supabase) ----
   const [sessionUserId, setSessionUserId] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [users, setUsers] = useState([]); // directory of profiles (for names, staff list, admin)
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ---- reports / items / claims (local for now, empty start) ----
-  const [reports, setReports] = useState(() => loadPersisted("fixit_reports", []));
+  // ---- reports (real Supabase) ----
+  const [reports, setReports] = useState([]);
+
+  // ---- items / claims (local for now, empty start) ----
   const [items, setItems] = useState(() => loadPersisted("fixit_items", []));
   const [claims, setClaims] = useState(() => loadPersisted("fixit_claims", []));
-
-  useEffect(() => { localStorage.setItem("fixit_reports", JSON.stringify(reports)); }, [reports]);
   useEffect(() => { localStorage.setItem("fixit_items", JSON.stringify(items)); }, [items]);
   useEffect(() => { localStorage.setItem("fixit_claims", JSON.stringify(claims)); }, [claims]);
 
@@ -63,68 +84,64 @@ export function AppProvider({ children }) {
       setSessionUserId(data.session?.user?.id ?? null);
       setLoading(false);
     });
-    // NOTE: keep this callback synchronous (no awaits) to avoid Supabase deadlocks.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setSessionUserId(session?.user?.id ?? null);
     });
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, []);
 
-  // When the signed-in user changes, load their profile.
   useEffect(() => {
     let active = true;
     if (!sessionUserId) { setCurrentUser(null); return; }
     supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", sessionUserId)
-      .single()
+      .from("profiles").select("*").eq("id", sessionUserId).single()
       .then(({ data }) => { if (active) setCurrentUser(toUser(data)); });
     return () => { active = false; };
   }, [sessionUserId]);
 
-  // Load the user directory (names for everyone; full rows incl. email for admins).
   const refreshUsers = useCallback(async () => {
     if (!currentUser) { setUsers([]); return; }
-    if (currentUser.role === "Admin") {
-      const { data } = await supabase.from("profiles").select("*").order("full_name");
-      setUsers((data || []).map(toUser));
-    } else {
-      const { data } = await supabase.from("public_profiles").select("*").order("full_name");
-      setUsers((data || []).map(toUser));
-    }
+    const src = currentUser.role === "Admin" ? "profiles" : "public_profiles";
+    const { data } = await supabase.from(src).select("*").order("full_name");
+    setUsers((data || []).map(toUser));
   }, [currentUser]);
 
-  useEffect(() => { refreshUsers(); }, [refreshUsers]);
+  // ---- reports: load (RLS returns only rows this user may see) ----
+  const loadReports = useCallback(async () => {
+    if (!currentUser) { setReports([]); return; }
+    const { data: rows } = await supabase
+      .from("reports").select("*").order("created_at", { ascending: false });
+    const ids = (rows || []).map((r) => r.id);
+    const byReport = {};
+    if (ids.length) {
+      const { data: evs } = await supabase
+        .from("report_events").select("*").in("report_id", ids)
+        .order("created_at", { ascending: true });
+      (evs || []).forEach((e) => {
+        (byReport[e.report_id] ||= []).push({ status: e.status, date: day(e.created_at) });
+      });
+    }
+    setReports((rows || []).map((r) => toReport(r, byReport[r.id])));
+  }, [currentUser]);
+
+  useEffect(() => { refreshUsers(); loadReports(); }, [refreshUsers, loadReports]);
 
   // ---- auth actions ----
   async function login(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return { ok: false, error: "Incorrect email or password. Try again." };
     const { data: p } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
     return { ok: true, user: toUser(p) || { name: email.split("@")[0], role: "Student" } };
   }
 
-  // Public signup -> always a Student (role enforced by DB trigger).
   async function register({ name, email, password }) {
     const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { data: { full_name: name.trim() } },
+      email: email.trim(), password, options: { data: { full_name: name.trim() } },
     });
     if (error) {
-      const msg = /already/i.test(error.message)
-        ? "An account with this email already exists."
-        : error.message;
-      return { ok: false, error: msg };
+      return { ok: false, error: /already/i.test(error.message) ? "An account with this email already exists." : error.message };
     }
-    if (!data.session) {
-      // Happens only if email confirmation is ON.
-      return { ok: false, error: "Check your email to confirm your account, then log in." };
-    }
+    if (!data.session) return { ok: false, error: "Check your email to confirm your account, then log in." };
     return { ok: true, user: { name: name.trim(), role: "Student" } };
   }
 
@@ -134,8 +151,6 @@ export function AppProvider({ children }) {
     navigate("/");
   }
 
-  // Admin-only: create a Staff or Admin account without disturbing the admin's
-  // own session (uses a throwaway client), then set the role/department.
   async function createUser({ name, email, password, role, dept }) {
     const tmp = createClient(
       import.meta.env.VITE_SUPABASE_URL,
@@ -143,22 +158,14 @@ export function AppProvider({ children }) {
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
     const { data, error } = await tmp.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { data: { full_name: name.trim() } },
+      email: email.trim(), password, options: { data: { full_name: name.trim() } },
     });
     if (error) {
-      const msg = /already/i.test(error.message)
-        ? "An account with this email already exists."
-        : error.message;
-      return { ok: false, error: msg };
+      return { ok: false, error: /already/i.test(error.message) ? "An account with this email already exists." : error.message };
     }
-    const newId = data.user?.id;
-    // The profile row is created by the signup trigger (as 'student'); promote it.
     const { error: e2 } = await supabase
-      .from("profiles")
-      .update({ role: lower(role), department: dept?.trim() || null })
-      .eq("id", newId);
+      .from("profiles").update({ role: lower(role), department: dept?.trim() || null })
+      .eq("id", data.user?.id);
     await tmp.auth.signOut();
     if (e2) return { ok: false, error: e2.message };
     await refreshUsers();
@@ -173,7 +180,6 @@ export function AppProvider({ children }) {
     .filter((u) => u.role === "Staff")
     .map((u) => ({ id: u.id, name: u.name, dept: u.dept || "Staff" }));
 
-  // ---- profile / role mutations (real) ----
   async function setRole(userId, role) {
     const { error } = await supabase.from("profiles").update({ role: lower(role) }).eq("id", userId);
     if (error) return { ok: false, error: error.message };
@@ -182,20 +188,67 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // ---- reports / items / claims (LOCAL for now — wired to Supabase in #3–#4) ----
-  function assignReport(id, staffId) {
-    setReports((rs) =>
-      rs.map((r) => {
-        if (r.id !== id) return r;
-        const next = { ...r, assignedStaffId: staffId };
-        if (r.status === "Open") {
-          next.status = "In Progress";
-          next.timeline = [...r.timeline, { status: "In Progress", date: new Date().toISOString().slice(0, 10) }];
-        }
-        return next;
+  // ---- report mutations (real) ----
+  async function createReport({ category, description, building, room, photo }) {
+    const { data, error } = await supabase
+      .from("reports")
+      .insert({
+        category,
+        description: description.trim(),
+        building: building.trim(),
+        room: room?.trim() || null,
+        photo_url: photo || null,
+        reporter_id: currentUser.id,
       })
-    );
+      .select("code")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    await loadReports();
+    return { ok: true, id: data.code };
   }
+
+  async function updateReport(id, { category, description, building, room, photo }) {
+    const { error } = await supabase
+      .from("reports")
+      .update({
+        category,
+        description: description.trim(),
+        building: building.trim(),
+        room: room?.trim() || null,
+        photo_url: photo || null,
+      })
+      .eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadReports();
+    return { ok: true };
+  }
+
+  async function setReportStatus(id, status) {
+    const { error } = await supabase.from("reports").update({ status }).eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadReports();
+    return { ok: true };
+  }
+
+  async function assignReport(id, staffId) {
+    const r = reports.find((x) => x.id === id);
+    const patch = { assigned_staff_id: staffId || null };
+    if (r && r.status === "Open" && staffId) patch.status = "In Progress";
+    const { error } = await supabase.from("reports").update(patch).eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadReports();
+    return { ok: true };
+  }
+
+  async function deleteReport(id) {
+    const { error } = await supabase
+      .from("reports").update({ deleted_at: new Date().toISOString() }).eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadReports();
+    return { ok: true };
+  }
+
+  // ---- lost & found / claims (LOCAL for now — wired to Supabase in #4) ----
   function addItem(data) {
     const id = "I-" + (302 + items.length);
     const item = { id, ...data, photo: data.photo || null };
@@ -224,7 +277,8 @@ export function AppProvider({ children }) {
     currentUser, setCurrentUser, loading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
-    assignReport, setRole, addItem, updateItem, deleteItem, addClaim, setClaimStatus,
+    createReport, updateReport, setReportStatus, assignReport, deleteReport,
+    setRole, addItem, updateItem, deleteItem, addClaim, setClaimStatus,
   };
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
