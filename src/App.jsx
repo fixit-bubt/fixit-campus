@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useHashRoute, navigate } from "./lib/router.jsx";
+import { useHashRoute, matchRoute, navigate } from "./lib/router.jsx";
 import { useApp } from "./data/store.jsx";
 
 import Landing from "./screens/public/Landing.jsx";
@@ -7,6 +7,10 @@ import Login from "./screens/public/Login.jsx";
 import Register from "./screens/public/Register.jsx";
 
 import StudentDashboard from "./screens/student/StudentDashboard.jsx";
+import MyReports from "./screens/student/MyReports.jsx";
+import ReportIssue from "./screens/student/ReportIssue.jsx";
+import EditReport from "./screens/student/EditReport.jsx";
+import ReportDetail from "./screens/ReportDetail.jsx";
 
 import NotFound from "./screens/NotFound.jsx";
 
@@ -38,6 +42,11 @@ export default function App() {
 
   // ---- Student routes ----
   if (path === "/dashboard") return <RequireAuth><StudentDashboard /></RequireAuth>;
+  if (path === "/reports") return <RequireAuth><MyReports /></RequireAuth>;
+  if (path === "/reports/new") return <RequireAuth><ReportIssue /></RequireAuth>;
+  let m;
+  if ((m = matchRoute("/reports/:id/edit", path))) return <RequireAuth><EditReport id={m.id} /></RequireAuth>;
+  if ((m = matchRoute("/reports/:id", path))) return <RequireAuth><ReportDetail id={m.id} /></RequireAuth>;
 
   // ---- 404 ----
   return <NotFound />;
