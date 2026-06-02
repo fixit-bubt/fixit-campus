@@ -19,6 +19,11 @@ import AdminDashboard from "./screens/admin/AdminDashboard.jsx";
 import AllReports from "./screens/admin/AllReports.jsx";
 import ManageUsers from "./screens/admin/ManageUsers.jsx";
 
+import LostFoundBrowse from "./screens/lostfound/LostFoundBrowse.jsx";
+import PostItem from "./screens/lostfound/PostItem.jsx";
+import EditItem from "./screens/lostfound/EditItem.jsx";
+import ItemDetail from "./screens/lostfound/ItemDetail.jsx";
+
 import NotFound from "./screens/NotFound.jsx";
 
 // Redirect to /login if there's no signed-in user.
@@ -63,6 +68,12 @@ export default function App() {
   if (path === "/admin") return <RequireAuth><AdminDashboard /></RequireAuth>;
   if (path === "/admin/reports") return <RequireAuth><AllReports /></RequireAuth>;
   if (path === "/admin/users") return <RequireAuth><ManageUsers /></RequireAuth>;
+
+  // ---- Lost & Found (shared) ----
+  if (path === "/lost-found") return <RequireAuth><LostFoundBrowse /></RequireAuth>;
+  if (path === "/lost-found/new") return <RequireAuth><PostItem /></RequireAuth>;
+  if ((m = matchRoute("/lost-found/:id/edit", path))) return <RequireAuth><EditItem id={m.id} /></RequireAuth>;
+  if ((m = matchRoute("/lost-found/:id", path))) return <RequireAuth><ItemDetail id={m.id} /></RequireAuth>;
 
   // ---- 404 ----
   return <NotFound />;
