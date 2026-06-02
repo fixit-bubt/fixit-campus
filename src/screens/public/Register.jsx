@@ -25,22 +25,20 @@ export default function Register() {
     return er;
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const er = validate();
     setErrors(er);
     if (Object.keys(er).length) return;
     setLoading(true);
-    setTimeout(() => {
-      const res = register({ name: form.name, email: form.email });
-      setLoading(false);
-      if (!res.ok) {
-        setErrors({ email: res.error });
-        return;
-      }
-      toast({ type: "success", title: "Account created", message: "You're signed in as a Student." });
-      navigate(dashboardPath(res.user.role));
-    }, 500);
+    const res = await register({ name: form.name, email: form.email, password: form.password });
+    setLoading(false);
+    if (!res.ok) {
+      setErrors({ email: res.error });
+      return;
+    }
+    toast({ type: "success", title: "Account created", message: "You're signed in as a Student." });
+    navigate(dashboardPath(res.user.role));
   }
 
   return (
@@ -69,7 +67,7 @@ export default function Register() {
         </Field>
         <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
           <Info size={14} className="shrink-0 text-slate-400" />
-          New accounts start with the <span className="font-medium text-slate-600">Student</span> role.
+          New accounts start with the <span className="font-medium text-slate-600">Student</span> role. Staff &amp; Admin accounts are created by an administrator.
         </div>
         <Button type="submit" full disabled={loading}>
           {loading ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Create Account"}

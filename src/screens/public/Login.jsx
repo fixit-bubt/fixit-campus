@@ -6,14 +6,14 @@ import { Button, Field, Input, Spinner, useToast } from "../../components/ui.jsx
 import { AuthShell } from "./AuthShell.jsx";
 
 export default function Login() {
-  const { login, dashboardPath, demoPassword } = useApp();
+  const { login, dashboardPath } = useApp();
   const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     setError("");
     if (!email || !password) {
@@ -21,23 +21,15 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      const res = login(email, password);
-      setLoading(false);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      toast({ type: "success", title: `Welcome back, ${res.user.name.split(" ")[0]}` });
-      navigate(dashboardPath(res.user.role));
-    }, 450);
+    const res = await login(email, password);
+    setLoading(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    toast({ type: "success", title: `Welcome back, ${(res.user.name || "").split(" ")[0]}` });
+    navigate(dashboardPath(res.user.role));
   }
-
-  const demos = [
-    { label: "Student", email: "tahmid@bubt.edu.bd" },
-    { label: "Staff", email: "rahim@bubt.edu.bd" },
-    { label: "Admin", email: "admin@bubt.edu.bd" },
-  ];
 
   return (
     <AuthShell
@@ -67,25 +59,6 @@ export default function Login() {
           {loading ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Log In"}
         </Button>
       </form>
-
-      {/* Demo helper — remove when real auth is wired in */}
-      <div className="mt-5 border-t border-slate-100 pt-4">
-        <p className="text-center text-xs text-slate-400">
-          Demo accounts · password <span className="font-mono text-slate-500">{demoPassword}</span>
-        </p>
-        <div className="mt-2.5 flex justify-center gap-2">
-          {demos.map((d) => (
-            <button
-              key={d.label}
-              type="button"
-              onClick={() => { setEmail(d.email); setPassword(demoPassword); setError(""); }}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
     </AuthShell>
   );
 }

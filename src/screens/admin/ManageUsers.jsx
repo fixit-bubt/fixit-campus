@@ -1,17 +1,26 @@
 import React, { useState } from "react";
-import { Search, ShieldCheck, TriangleAlert, UserX } from "lucide-react";
+import { Search, ShieldCheck, TriangleAlert, UserX, UserPlus } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
-import { Card, Button, Select, Modal, Badge, Avatar, EmptyState, useToast } from "../../components/ui.jsx";
+import { Card, Button, Select, Modal, Badge, Avatar, Field, Input, EmptyState, Spinner, useToast } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import { fmtDate } from "../../lib/helpers.js";
 
+const EMPTY_NEW = { name: "", email: "", password: "", role: "Staff", dept: "" };
+
 export default function ManageUsers() {
-  const { users, currentUser, setRole } = useApp();
+  const { users, currentUser, setRole, createUser } = useApp();
   const toast = useToast();
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [pending, setPending] = useState(null); // { user, newRole }
+
+  // Create-account modal state
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_NEW);
+  const [formErr, setFormErr] = useState({});
+  const [saving, setSaving] = useState(false);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const roles = ["All", "Student", "Staff", "Admin"];
   const filtered = users
@@ -23,15 +32,55 @@ export default function ManageUsers() {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  function applyChange() {
-    setRole(pending.user.id, pending.newRole);
-    toast({ type: "success", title: "Role updated", message: `${pending.user.name} is now ${pending.newRole}.` });
+  async function applyChange() {
+    const res = await setRole(pending.user.id, pending.newRole);
+    if (res && res.ok === false) {
+      toast({ type: "error", title: "Couldn't update role", message: res.error });
+    } else {
+      toast({ type: "success", title: "Role updated", message: `${pending.user.name} is now ${pending.newRole}.` });
+    }
     setPending(null);
+  }
+
+  function openAdd() {
+    setForm(EMPTY_NEW);
+    setFormErr({});
+    setAddOpen(true);
+  }
+
+  async function submitAdd() {
+    const er = {};
+    if (!form.name.trim()) er.name = "Enter a full name.";
+    if (!form.email.trim()) er.email = "Enter an email.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) er.email = "Enter a valid email address.";
+    if (!form.password || form.password.length < 8) er.password = "Password must be at least 8 characters.";
+    setFormErr(er);
+    if (Object.keys(er).length) return;
+
+    setSaving(true);
+    const res = await createUser({
+      name: form.name,
+      email: form.email,
+      password: form.password,
+      role: form.role,
+      dept: form.role === "Staff" ? form.dept : "",
+    });
+    setSaving(false);
+    if (!res.ok) {
+      setFormErr({ email: res.error });
+      return;
+    }
+    toast({ type: "success", title: `${form.role} account created`, message: `${form.name.trim()} can now log in with the password you set.` });
+    setAddOpen(false);
   }
 
   return (
     <AppShell activeKey="users" title="Manage Users">
-      <PageHeader title="Manage Users" subtitle={`${users.length} people in the FixIt directory.`} />
+      <PageHeader
+        title="Manage Users"
+        subtitle={`${users.length} people in the FixIt directory.`}
+        action={<Button icon={UserPlus} onClick={openAdd}>Add account</Button>}
+      />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
@@ -98,6 +147,7 @@ export default function ManageUsers() {
         )}
       </Card>
 
+      {/* Change role confirmation */}
       <Modal
         open={!!pending}
         onClose={() => setPending(null)}
@@ -118,6 +168,49 @@ export default function ManageUsers() {
             <span>You're changing your own role — you'll lose admin access immediately.</span>
           </div>
         )}
+      </Modal>
+
+      {/* Create Staff / Admin account */}
+      <Modal
+        open={addOpen}
+        onClose={() => !saving && setAddOpen(false)}
+        icon={UserPlus}
+        tone="blue"
+        title="Create an account"
+        description="Add a Staff or Admin account. Share the password with them — they can change it after logging in."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setAddOpen(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={submitAdd} disabled={saving}>
+              {saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Create account"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Field label="Full name" htmlFor="nu-name" required error={formErr.name}>
+            <Input id="nu-name" placeholder="e.g. Rahim Uddin" value={form.name} error={!!formErr.name} onChange={set("name")} />
+          </Field>
+          <Field label="Email" htmlFor="nu-email" required error={formErr.email}>
+            <Input id="nu-email" type="email" placeholder="name@bubt.edu.bd" value={form.email} error={!!formErr.email} onChange={set("email")} />
+          </Field>
+          <Field label="Temporary password" htmlFor="nu-pw" required error={formErr.password} hint="At least 8 characters.">
+            <Input id="nu-pw" type="text" placeholder="Set an initial password" value={form.password} error={!!formErr.password} onChange={set("password")} />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Role" htmlFor="nu-role">
+              <Select id="nu-role" value={form.role} onChange={set("role")}>
+                <option value="Staff">Staff</option>
+                <option value="Admin">Admin</option>
+              </Select>
+            </Field>
+            {form.role === "Staff" && (
+              <Field label="Department" htmlFor="nu-dept" hint="Optional">
+                <Input id="nu-dept" placeholder="e.g. Electrical & IT" value={form.dept} onChange={set("dept")} />
+              </Field>
+            )}
+          </div>
+        </div>
       </Modal>
     </AppShell>
   );

@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useHashRoute, matchRoute, navigate } from "./lib/router.jsx";
 import { useApp } from "./data/store.jsx";
+import { Spinner } from "./components/ui.jsx";
 
 import Landing from "./screens/public/Landing.jsx";
 import Login from "./screens/public/Login.jsx";
@@ -39,7 +40,17 @@ function RequireAuth({ children }) {
 
 export default function App() {
   const path = useHashRoute();
-  const { currentUser, dashboardPath } = useApp();
+  const { currentUser, dashboardPath, loading } = useApp();
+
+  // While we check for an existing session, hold off routing (avoids a flash
+  // of the login page on refresh when the user is actually signed in).
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Spinner size={28} />
+      </div>
+    );
+  }
 
   // ---- Public routes ----
   if (path === "/" || path === "") return <Landing />;
