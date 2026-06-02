@@ -25,6 +25,10 @@ function toUser(p) {
     email: p.email ?? "",
     role: cap(p.role),
     dept: p.department ?? undefined,
+    whatsapp: p.whatsapp ?? "",
+    intake: p.intake ?? "",
+    section: p.section ?? "",
+    avatar: p.avatar_url ?? null,
     joined: day(p.created_at),
   };
 }
@@ -241,6 +245,32 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
+  // Update the signed-in user's own profile (name, WhatsApp, photo; intake &
+  // section for students). Email and role are not editable here.
+  async function updateProfile(form) {
+    let avatar_url;
+    try {
+      avatar_url = await resolvePhoto({ photo: form.avatar, photoFile: form.avatarFile }, "avatars");
+    } catch (e) {
+      return { ok: false, error: "Photo upload failed: " + e.message };
+    }
+    const patch = {
+      full_name: form.name.trim(),
+      whatsapp: form.whatsapp?.trim() || null,
+      avatar_url,
+    };
+    if (currentUser.role === "Student") {
+      patch.intake = form.intake?.trim() || null;
+      patch.section = form.section?.trim() || null;
+    }
+    const { error } = await supabase.from("profiles").update(patch).eq("id", currentUser.id);
+    if (error) return { ok: false, error: error.message };
+    const { data } = await supabase.from("profiles").select("*").eq("id", currentUser.id).single();
+    setCurrentUser(toUser(data));
+    await refreshUsers();
+    return { ok: true };
+  }
+
   // ---- photo upload (Supabase Storage) ----
   async function uploadPhoto(file, folder) {
     const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
@@ -426,8 +456,8 @@ export function AppProvider({ children }) {
   async function getContact(userId) {
     if (!userId) return null;
     const { data } = await supabase
-      .from("profiles").select("full_name, email").eq("id", userId).single();
-    return data ? { name: data.full_name, email: data.email } : null;
+      .from("profiles").select("full_name, email, whatsapp").eq("id", userId).single();
+    return data ? { name: data.full_name, email: data.email, whatsapp: data.whatsapp } : null;
   }
 
   const value = {
@@ -436,7 +466,7 @@ export function AppProvider({ children }) {
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
-    setRole, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact,
+    setRole, updateProfile, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact,
   };
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

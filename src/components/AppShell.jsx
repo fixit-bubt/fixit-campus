@@ -5,8 +5,8 @@ import {
   CirclePlus,
   PackageSearch,
   ClipboardCheck,
-  ShieldCheck,
   Users,
+  CircleUser,
   LogOut,
   Menu,
   X,
@@ -27,15 +27,18 @@ const NAV_BY_ROLE = {
     { key: "reports", label: "My Reports", Icon: FileText, path: "/reports" },
     { key: "report-new", label: "Report an Issue", Icon: CirclePlus, path: "/reports/new" },
     { key: "lost-found", label: "Lost & Found", Icon: PackageSearch, path: "/lost-found" },
+    { key: "profile", label: "My Profile", Icon: CircleUser, path: "/profile" },
   ],
   Staff: [
     { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard, path: "/staff" },
     { key: "assigned", label: "Assigned to Me", Icon: ClipboardCheck, path: "/staff/assigned" },
+    { key: "profile", label: "My Profile", Icon: CircleUser, path: "/profile" },
   ],
   Admin: [
     { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard, path: "/admin" },
     { key: "all-reports", label: "All Reports", Icon: FileText, path: "/admin/reports" },
     { key: "users", label: "Manage Users", Icon: Users, path: "/admin/users" },
+    { key: "profile", label: "My Profile", Icon: CircleUser, path: "/profile" },
   ],
 };
 
@@ -129,14 +132,20 @@ export function AppShell({ activeKey, title, actions, children }) {
 
           <div className="flex items-center gap-2 sm:gap-3">
             {actions}
-            <div className="hidden items-center gap-2.5 sm:flex">
+            <button
+              onClick={() => navigate("/profile")}
+              title="My profile"
+              className="hidden items-center gap-2.5 rounded-lg p-1 pr-1.5 hover:bg-slate-100 sm:flex"
+            >
               <div className="text-right">
                 <p className="text-sm font-medium leading-tight text-slate-900">{currentUser.name}</p>
                 <p className="text-xs leading-tight text-slate-400">{currentUser.email}</p>
               </div>
-              <Avatar name={currentUser.name} />
-            </div>
-            <span className="sm:hidden"><Avatar name={currentUser.name} size={32} /></span>
+              <Avatar name={currentUser.name} src={currentUser.avatar} />
+            </button>
+            <button onClick={() => navigate("/profile")} title="My profile" className="sm:hidden">
+              <Avatar name={currentUser.name} src={currentUser.avatar} size={32} />
+            </button>
             <Badge tone={ROLE_TONE[currentUser.role]} className="hidden sm:inline-flex">{currentUser.role}</Badge>
             <button
               onClick={logout}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, Trash2, Lock, CircleCheck, CircleX,
-  Clock, Hand, PackageCheck, PackageX, Send, Check, X, Inbox,
+  Clock, Hand, PackageCheck, PackageX, Send, Check, X, Inbox, Mail, MessageCircle,
 } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
@@ -114,18 +114,31 @@ function ClaimModal({ open, item, onClose, onSubmitted }) {
 }
 
 function ContactCard({ user, label }) {
+  const wa = user.whatsapp ? user.whatsapp.replace(/[^0-9]/g, "") : "";
   return (
     <Card className="p-5">
       <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
         <CircleCheck size={16} /> Contact unlocked
       </div>
       <p className="mt-1 text-xs text-slate-500">{label}</p>
-      <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <Avatar name={user.name} />
-        <div className="min-w-0">
+      <div className="mt-3 space-y-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div className="flex items-center gap-3">
+          <Avatar name={user.name} src={user.avatar} />
           <p className="truncate text-sm font-medium text-slate-900">{user.name}</p>
-          <a href={`mailto:${user.email}`} className="truncate text-xs text-blue-600 hover:text-blue-700">{user.email}</a>
         </div>
+        <a href={`mailto:${user.email}`} className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700">
+          <Mail size={13} /> {user.email}
+        </a>
+        {user.whatsapp && (
+          <a
+            href={`https://wa.me/${wa}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700"
+          >
+            <MessageCircle size={13} /> {user.whatsapp}
+          </a>
+        )}
       </div>
     </Card>
   );

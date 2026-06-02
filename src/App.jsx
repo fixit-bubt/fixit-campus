@@ -25,6 +25,7 @@ import PostItem from "./screens/lostfound/PostItem.jsx";
 import EditItem from "./screens/lostfound/EditItem.jsx";
 import ItemDetail from "./screens/lostfound/ItemDetail.jsx";
 
+import Profile from "./screens/Profile.jsx";
 import NotFound from "./screens/NotFound.jsx";
 
 // Redirect to /login if there's no signed-in user.
@@ -89,6 +90,9 @@ export default function App() {
   if (path === "/admin") return <RequireAuth><AdminDashboard /></RequireAuth>;
   if (path === "/admin/reports") return <RequireAuth><AllReports /></RequireAuth>;
   if (path === "/admin/users") return <RequireAuth><ManageUsers /></RequireAuth>;
+
+  // ---- Profile (any signed-in user) ----
+  if (path === "/profile") return <RequireAuth><Profile /></RequireAuth>;
 
   // ---- Lost & Found (students only) ----
   if (path === "/lost-found") return <RequireStudent><LostFoundBrowse /></RequireStudent>;
