@@ -15,6 +15,10 @@ import ReportDetail from "./screens/ReportDetail.jsx";
 import StaffDashboard from "./screens/staff/StaffDashboard.jsx";
 import AssignedToMe from "./screens/staff/AssignedToMe.jsx";
 
+import AdminDashboard from "./screens/admin/AdminDashboard.jsx";
+import AllReports from "./screens/admin/AllReports.jsx";
+import ManageUsers from "./screens/admin/ManageUsers.jsx";
+
 import NotFound from "./screens/NotFound.jsx";
 
 // Redirect to /login if there's no signed-in user.
@@ -54,6 +58,11 @@ export default function App() {
   // ---- Staff routes ----
   if (path === "/staff") return <RequireAuth><StaffDashboard /></RequireAuth>;
   if (path === "/staff/assigned") return <RequireAuth><AssignedToMe /></RequireAuth>;
+
+  // ---- Admin routes ----
+  if (path === "/admin") return <RequireAuth><AdminDashboard /></RequireAuth>;
+  if (path === "/admin/reports") return <RequireAuth><AllReports /></RequireAuth>;
+  if (path === "/admin/users") return <RequireAuth><ManageUsers /></RequireAuth>;
 
   // ---- 404 ----
   return <NotFound />;
