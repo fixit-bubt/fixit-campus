@@ -31,12 +31,10 @@ const NAV_BY_ROLE = {
   Staff: [
     { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard, path: "/staff" },
     { key: "assigned", label: "Assigned to Me", Icon: ClipboardCheck, path: "/staff/assigned" },
-    { key: "lost-found", label: "Lost & Found", Icon: PackageSearch, path: "/lost-found" },
   ],
   Admin: [
     { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard, path: "/admin" },
     { key: "all-reports", label: "All Reports", Icon: FileText, path: "/admin/reports" },
-    { key: "claims", label: "Lost & Found Claims", Icon: ShieldCheck, path: "/admin/claims" },
     { key: "users", label: "Manage Users", Icon: Users, path: "/admin/users" },
   ],
 };

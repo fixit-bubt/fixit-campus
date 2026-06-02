@@ -51,6 +51,40 @@ function toReport(r, timeline) {
   };
 }
 
+// DB lost & found row -> screen shape. `id` is the code (routing/matching).
+function toItem(r) {
+  return {
+    id: r.code,
+    uuid: r.id,
+    type: r.type,
+    title: r.title,
+    category: r.category,
+    description: r.description,
+    location: r.location,
+    date: r.item_date,
+    photo: r.photo_url || null,
+    status: r.status,
+    posterId: r.poster_id,
+    createdAt: day(r.created_at),
+  };
+}
+
+// DB claim row -> screen shape. itemId is the item's CODE (via join) so it
+// matches item.id everywhere in the UI.
+function toClaim(r) {
+  return {
+    id: r.code,
+    uuid: r.id,
+    itemId: r.item?.code || null,
+    claimantId: r.claimant_id,
+    kind: r.kind,
+    message: r.message,
+    proof: r.proof_url || null,
+    status: r.status,
+    createdAt: day(r.created_at),
+  };
+}
+
 function loadPersisted(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -70,11 +104,9 @@ export function AppProvider({ children }) {
   // ---- reports (real Supabase) ----
   const [reports, setReports] = useState([]);
 
-  // ---- items / claims (local for now, empty start) ----
-  const [items, setItems] = useState(() => loadPersisted("fixit_items", []));
-  const [claims, setClaims] = useState(() => loadPersisted("fixit_claims", []));
-  useEffect(() => { localStorage.setItem("fixit_items", JSON.stringify(items)); }, [items]);
-  useEffect(() => { localStorage.setItem("fixit_claims", JSON.stringify(claims)); }, [claims]);
+  // ---- items / claims (real Supabase) ----
+  const [items, setItems] = useState([]);
+  const [claims, setClaims] = useState([]);
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -124,7 +156,28 @@ export function AppProvider({ children }) {
     setReports((rows || []).map((r) => toReport(r, byReport[r.id])));
   }, [currentUser]);
 
-  useEffect(() => { refreshUsers(); loadReports(); }, [refreshUsers, loadReports]);
+  const loadItems = useCallback(async () => {
+    if (!currentUser) { setItems([]); return; }
+    const { data } = await supabase
+      .from("lost_found_items").select("*").order("item_date", { ascending: false });
+    setItems((data || []).map(toItem));
+  }, [currentUser]);
+
+  const loadClaims = useCallback(async () => {
+    if (!currentUser) { setClaims([]); return; }
+    const { data } = await supabase
+      .from("claims")
+      .select("*, item:lost_found_items(code)")
+      .order("created_at", { ascending: false });
+    setClaims((data || []).map(toClaim));
+  }, [currentUser]);
+
+  useEffect(() => {
+    refreshUsers();
+    loadReports();
+    loadItems();
+    loadClaims();
+  }, [refreshUsers, loadReports, loadItems, loadClaims]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -279,28 +332,102 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // ---- lost & found / claims (LOCAL for now — wired to Supabase in #4) ----
-  function addItem(data) {
-    const id = "I-" + (302 + items.length);
-    const item = { id, ...data, photo: data.photo || null };
-    setItems((it) => [item, ...it]);
-    return item;
+  // ---- lost & found mutations (real) ----
+  async function addItem(form) {
+    let photo_url;
+    try {
+      photo_url = await resolvePhoto(form, "items");
+    } catch (e) {
+      return { ok: false, error: "Photo upload failed: " + e.message };
+    }
+    const { data, error } = await supabase
+      .from("lost_found_items")
+      .insert({
+        type: form.type,
+        title: form.title.trim(),
+        category: form.category,
+        description: form.description.trim(),
+        location: form.location.trim(),
+        item_date: form.date,
+        photo_url,
+        poster_id: currentUser.id,
+      })
+      .select("code")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    await loadItems();
+    return { ok: true, id: data.code };
   }
-  function updateItem(id, data) {
-    setItems((it) => it.map((x) => (x.id === id ? { ...x, ...data } : x)));
+
+  async function updateItem(id, form) {
+    let photo_url;
+    try {
+      photo_url = await resolvePhoto(form, "items");
+    } catch (e) {
+      return { ok: false, error: "Photo upload failed: " + e.message };
+    }
+    const { error } = await supabase
+      .from("lost_found_items")
+      .update({
+        type: form.type,
+        title: form.title.trim(),
+        category: form.category,
+        description: form.description.trim(),
+        location: form.location.trim(),
+        item_date: form.date,
+        photo_url,
+      })
+      .eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadItems();
+    return { ok: true };
   }
-  function deleteItem(id) {
-    setItems((it) => it.filter((x) => x.id !== id));
-    setClaims((cs) => cs.filter((c) => c.itemId !== id));
+
+  async function deleteItem(id) {
+    const { error } = await supabase
+      .from("lost_found_items").update({ deleted_at: new Date().toISOString() }).eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadItems();
+    await loadClaims();
+    return { ok: true };
   }
-  function addClaim({ itemId, claimantId, kind, message, proof }) {
-    const id = "C-" + (52 + claims.length);
-    const claim = { id, itemId, claimantId, kind, message, proof: proof || null, status: "Pending", createdAt: new Date().toISOString().slice(0, 10) };
-    setClaims((cs) => [claim, ...cs]);
-    return claim;
+
+  // itemUuid is the item's real id; proofFile is an optional File to upload.
+  async function addClaim({ itemUuid, kind, message, proof, proofFile }) {
+    let proof_url;
+    try {
+      proof_url = await resolvePhoto({ photo: proof, photoFile: proofFile }, "proofs");
+    } catch (e) {
+      return { ok: false, error: "Photo upload failed: " + e.message };
+    }
+    const { error } = await supabase.from("claims").insert({
+      item_id: itemUuid,
+      claimant_id: currentUser.id,
+      kind,
+      message: message.trim(),
+      proof_url,
+    });
+    if (error) return { ok: false, error: error.message };
+    await loadClaims();
+    return { ok: true };
   }
-  function setClaimStatus(id, status) {
-    setClaims((cs) => cs.map((c) => (c.id === id ? { ...c, status } : c)));
+
+  async function setClaimStatus(id, status) {
+    const { error } = await supabase.from("claims").update({ status }).eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadClaims();
+    await loadItems();
+    return { ok: true };
+  }
+
+  // Contact reveal: read a counterpart's name + email straight from profiles.
+  // RLS only returns it if you're allowed (self, admin, or the matched party
+  // of an approved claim) — so this is safe to call.
+  async function getContact(userId) {
+    if (!userId) return null;
+    const { data } = await supabase
+      .from("profiles").select("full_name, email").eq("id", userId).single();
+    return data ? { name: data.full_name, email: data.email } : null;
   }
 
   const value = {
@@ -309,7 +436,7 @@ export function AppProvider({ children }) {
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
-    setRole, addItem, updateItem, deleteItem, addClaim, setClaimStatus,
+    setRole, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact,
   };
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

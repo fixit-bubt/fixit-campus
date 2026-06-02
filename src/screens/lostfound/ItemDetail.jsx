@@ -1,27 +1,31 @@
 import React, { useState, useEffect } from "react";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, Trash2, Lock, CircleCheck, CircleX,
-  Clock, Hand, PackageCheck, PackageX, Send,
+  Clock, Hand, PackageCheck, PackageX, Send, Check, X, Inbox,
 } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
-import { Card, Button, Field, Textarea, FileUpload, Modal, Avatar, Badge, EmptyState, useToast } from "../../components/ui.jsx";
+import { Card, Button, Field, Textarea, FileUpload, Modal, Avatar, Badge, EmptyState, StatusBadge, Spinner, useToast } from "../../components/ui.jsx";
 import { AppShell } from "../../components/AppShell.jsx";
 import { ItemPhoto, ItemTypeBadge } from "../../components/ItemBits.jsx";
 import { ITEM_CATEGORY_ICON, fmtDate } from "../../lib/helpers.js";
 
 function ClaimModal({ open, item, onClose, onSubmitted }) {
-  const { currentUser, addClaim } = useApp();
+  const { addClaim } = useApp();
   const [message, setMessage] = useState("");
   const [proof, setProof] = useState(null);
+  const [proofFile, setProofFile] = useState(null);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState("form"); // form | done
 
   useEffect(() => {
     if (open) {
       setMessage("");
       setProof(null);
+      setProofFile(null);
       setError("");
+      setSubmitting(false);
       setStep("form");
     }
   }, [open]);
@@ -30,12 +34,18 @@ function ClaimModal({ open, item, onClose, onSubmitted }) {
   const isFound = item.type === "Found";
   const kind = isFound ? "claim" : "notify";
 
-  function submit() {
+  async function submit() {
     if (message.trim().length < 10) {
-      setError("Add a few details so the admin can verify your claim.");
+      setError("Add a few details so the poster can confirm it's yours.");
       return;
     }
-    addClaim({ itemId: item.id, claimantId: currentUser.id, kind, message: message.trim(), proof });
+    setSubmitting(true);
+    const res = await addClaim({ itemUuid: item.uuid, kind, message, proof, proofFile });
+    setSubmitting(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
     setStep("done");
     onSubmitted && onSubmitted();
   }
@@ -47,8 +57,8 @@ function ClaimModal({ open, item, onClose, onSubmitted }) {
         onClose={onClose}
         icon={CircleCheck}
         tone="emerald"
-        title="Submitted — pending verification"
-        description="An admin will review your submission. If it's approved, contact details will be shared between you and the other party."
+        title="Submitted — waiting for the poster"
+        description="The person who posted this item will review your request. If they approve it, you'll both see each other's contact details."
         footer={<Button onClick={onClose}>Done</Button>}
       />
     );
@@ -64,13 +74,15 @@ function ClaimModal({ open, item, onClose, onSubmitted }) {
       title={isFound ? "Claim this item" : "Notify the owner"}
       description={
         isFound
-          ? "Tell us why this item is yours. The more specific your proof, the faster an admin can verify it."
+          ? "Tell the poster why this item is yours. The more specific your proof, the easier it is for them to confirm."
           : "Let the owner know you've found their item. Add anything that confirms it's the same one."
       }
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button icon={Send} onClick={submit}>{isFound ? "Submit claim" : "Notify owner"}</Button>
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button icon={Send} onClick={submit} disabled={submitting}>
+            {submitting ? <Spinner size={16} className="border-white/40 border-t-white" /> : isFound ? "Submit claim" : "Notify owner"}
+          </Button>
         </>
       }
     >
@@ -89,8 +101,12 @@ function ClaimModal({ open, item, onClose, onSubmitted }) {
             onChange={(e) => { setMessage(e.target.value); setError(""); }}
           />
         </Field>
-        <Field label="Photo proof" htmlFor="claim-proof" hint="Optional — a photo can speed up verification.">
-          <FileUpload id="claim-proof" value={proof} onChange={(url) => setProof(url)} />
+        <Field label="Photo proof" htmlFor="claim-proof" hint="Optional — a photo can help the poster confirm.">
+          <FileUpload
+            id="claim-proof"
+            value={proof}
+            onChange={(url, file) => { setProof(url); setProofFile(file); }}
+          />
         </Field>
       </div>
     </Modal>
@@ -115,14 +131,56 @@ function ContactCard({ user, label }) {
   );
 }
 
-// Shared item detail. Poster sees Edit/Delete; others see Claim/Notify.
-// Contact is locked until an admin approves a claim.
+// One incoming claim, shown to the poster with Approve / Reject.
+function PosterClaimRow({ claim, claimant, onDecide }) {
+  return (
+    <div className="border-t border-slate-100 pt-4 first:border-t-0 first:pt-0">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Avatar name={claimant?.name || "?"} size={26} />
+          <div>
+            <p className="text-sm font-medium text-slate-900">{claimant?.name || "Unknown"}</p>
+            <p className="text-xs text-slate-400">{fmtDate(claim.createdAt)}</p>
+          </div>
+        </div>
+        {claim.status !== "Pending" && <StatusBadge status={claim.status} />}
+      </div>
+      <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">{claim.message}</p>
+      {claim.proof && <img src={claim.proof} alt="proof" className="mt-3 max-h-40 rounded-lg border border-slate-200 object-cover" />}
+      {claim.status === "Pending" && (
+        <div className="mt-3 flex justify-end gap-2">
+          <Button size="sm" variant="secondary" icon={X} className="text-red-600" onClick={() => onDecide(claim, "Rejected")}>Reject</Button>
+          <Button size="sm" icon={Check} onClick={() => onDecide(claim, "Approved")}>Approve</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Lost & Found item detail (students only). The POSTER approves/rejects claims;
+// contact between the two students unlocks once a claim is approved.
 export default function ItemDetail({ id }) {
-  const { currentUser, items, claims, userById, deleteItem } = useApp();
+  const { currentUser, items, claims, userById, deleteItem, setClaimStatus, getContact } = useApp();
   const toast = useToast();
   const item = items.find((i) => i.id === id);
   const [claimOpen, setClaimOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [contact, setContact] = useState(null);
+
+  // Reveal the counterpart's contact once a claim is approved (either side).
+  useEffect(() => {
+    let active = true;
+    if (!item) { setContact(null); return; }
+    const approvedClaim = claims.find((c) => c.itemId === item.id && c.status === "Approved");
+    let targetId = null;
+    if (approvedClaim) {
+      if (item.posterId === currentUser.id) targetId = approvedClaim.claimantId;
+      else if (approvedClaim.claimantId === currentUser.id) targetId = item.posterId;
+    }
+    if (targetId) getContact(targetId).then((c) => { if (active) setContact(c); });
+    else setContact(null);
+    return () => { active = false; };
+  }, [item?.id, claims, currentUser.id]);
 
   if (!item) {
     return (
@@ -135,31 +193,36 @@ export default function ItemDetail({ id }) {
   const poster = userById(item.posterId);
   const isPoster = item.posterId === currentUser.id;
   const myClaim = claims.find((c) => c.itemId === item.id && c.claimantId === currentUser.id);
-  const approved = claims.find((c) => c.itemId === item.id && c.status === "Approved");
+  const itemClaims = isPoster
+    ? claims.filter((c) => c.itemId === item.id).sort((a, b) => (a.status === "Pending" ? -1 : 1))
+    : [];
   const isFound = item.type === "Found";
   const CategoryIcon = ITEM_CATEGORY_ICON[item.category];
-
-  // contact reveal
-  let revealUser = null;
-  let revealLabel = "";
-  if (approved) {
-    if (isPoster) {
-      revealUser = userById(approved.claimantId);
-      revealLabel = "Shared with you after the claim was approved.";
-    } else if (approved.claimantId === currentUser.id) {
-      revealUser = poster;
-      revealLabel = "Shared with you after your claim was approved.";
-    }
-  }
+  const revealLabel = isPoster
+    ? "Shared with you after you approved the claim."
+    : "Shared with you after the poster approved your claim.";
 
   const ClaimStatusIcon = myClaim
     ? myClaim.status === "Approved" ? CircleCheck : myClaim.status === "Rejected" ? CircleX : Clock
     : Clock;
 
-  function doDelete() {
-    deleteItem(id);
-    toast({ type: "success", title: "Item removed" });
-    navigate("/lost-found");
+  async function doDelete() {
+    const res = await deleteItem(id);
+    if (res.ok) { toast({ type: "success", title: "Item removed" }); navigate("/lost-found"); }
+    else toast({ type: "error", title: "Couldn't remove", message: res.error });
+  }
+
+  async function decide(claim, status) {
+    const res = await setClaimStatus(claim.id, status);
+    if (res.ok) {
+      toast({
+        type: "success",
+        title: status === "Approved" ? "Claim approved" : "Claim rejected",
+        message: status === "Approved" ? "Contact details are now shared between you both." : "The claimant will see it wasn't approved.",
+      });
+    } else {
+      toast({ type: "error", title: "Couldn't update claim", message: res.error });
+    }
   }
 
   return (
@@ -212,7 +275,7 @@ export default function ItemDetail({ id }) {
                   <div className="text-sm">
                     <p className="font-medium text-slate-900">
                       {myClaim.status === "Pending"
-                        ? "Submitted — pending verification"
+                        ? "Submitted — waiting for the poster"
                         : myClaim.status === "Approved"
                         ? "Approved — contact shared below"
                         : "Not approved"}
@@ -229,17 +292,34 @@ export default function ItemDetail({ id }) {
 
             {/* Contact */}
             <div className="mt-5">
-              {revealUser ? (
-                <ContactCard user={revealUser} label={revealLabel} />
+              {contact ? (
+                <ContactCard user={contact} label={revealLabel} />
               ) : (
                 <div className="flex items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                   <Lock size={16} className="text-slate-400" />
-                  Contact details are hidden until an admin approves a claim.
+                  Contact details are hidden until the poster approves a claim.
                 </div>
               )}
             </div>
           </div>
         </div>
+
+        {/* Poster: incoming claims to approve / reject */}
+        {isPoster && (
+          <Card className="mt-6 p-6">
+            <h3 className="text-sm font-semibold text-slate-900">Claims on this item</h3>
+            <p className="mt-1 text-sm text-slate-500">Approve a claim to share contact details with that person.</p>
+            <div className="mt-4 space-y-4">
+              {itemClaims.length === 0 ? (
+                <EmptyState icon={Inbox} title="No claims yet" message="When someone claims this item, it'll appear here for you to review." />
+              ) : (
+                itemClaims.map((c) => (
+                  <PosterClaimRow key={c.id} claim={c} claimant={userById(c.claimantId)} onDecide={decide} />
+                ))
+              )}
+            </div>
+          </Card>
+        )}
       </div>
 
       <ClaimModal

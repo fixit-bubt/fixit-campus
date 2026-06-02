@@ -19,7 +19,6 @@ import AssignedToMe from "./screens/staff/AssignedToMe.jsx";
 import AdminDashboard from "./screens/admin/AdminDashboard.jsx";
 import AllReports from "./screens/admin/AllReports.jsx";
 import ManageUsers from "./screens/admin/ManageUsers.jsx";
-import ClaimQueue from "./screens/admin/ClaimQueue.jsx";
 
 import LostFoundBrowse from "./screens/lostfound/LostFoundBrowse.jsx";
 import PostItem from "./screens/lostfound/PostItem.jsx";
@@ -35,6 +34,17 @@ function RequireAuth({ children }) {
     if (!currentUser) navigate("/login");
   }, [currentUser]);
   if (!currentUser) return null;
+  return children;
+}
+
+// Lost & Found is students-only; send staff/admins to their own dashboard.
+function RequireStudent({ children }) {
+  const { currentUser, dashboardPath } = useApp();
+  useEffect(() => {
+    if (!currentUser) navigate("/login");
+    else if (currentUser.role !== "Student") navigate(dashboardPath(currentUser.role));
+  }, [currentUser]);
+  if (!currentUser || currentUser.role !== "Student") return null;
   return children;
 }
 
@@ -78,14 +88,13 @@ export default function App() {
   // ---- Admin routes ----
   if (path === "/admin") return <RequireAuth><AdminDashboard /></RequireAuth>;
   if (path === "/admin/reports") return <RequireAuth><AllReports /></RequireAuth>;
-  if (path === "/admin/claims") return <RequireAuth><ClaimQueue /></RequireAuth>;
   if (path === "/admin/users") return <RequireAuth><ManageUsers /></RequireAuth>;
 
-  // ---- Lost & Found (shared) ----
-  if (path === "/lost-found") return <RequireAuth><LostFoundBrowse /></RequireAuth>;
-  if (path === "/lost-found/new") return <RequireAuth><PostItem /></RequireAuth>;
-  if ((m = matchRoute("/lost-found/:id/edit", path))) return <RequireAuth><EditItem id={m.id} /></RequireAuth>;
-  if ((m = matchRoute("/lost-found/:id", path))) return <RequireAuth><ItemDetail id={m.id} /></RequireAuth>;
+  // ---- Lost & Found (students only) ----
+  if (path === "/lost-found") return <RequireStudent><LostFoundBrowse /></RequireStudent>;
+  if (path === "/lost-found/new") return <RequireStudent><PostItem /></RequireStudent>;
+  if ((m = matchRoute("/lost-found/:id/edit", path))) return <RequireStudent><EditItem id={m.id} /></RequireStudent>;
+  if ((m = matchRoute("/lost-found/:id", path))) return <RequireStudent><ItemDetail id={m.id} /></RequireStudent>;
 
   // ---- 404 ----
   return <NotFound />;

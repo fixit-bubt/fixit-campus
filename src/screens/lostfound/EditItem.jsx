@@ -21,16 +21,12 @@ export default function EditItem({ id }) {
 
   if (!item || item.posterId !== currentUser.id) return null;
 
-  function handleSubmit(form) {
-    updateItem(id, {
-      type: form.type,
-      title: form.title.trim(),
-      category: form.category,
-      description: form.description.trim(),
-      location: form.location.trim(),
-      date: form.date,
-      photo: form.photo,
-    });
+  async function handleSubmit(form) {
+    const res = await updateItem(id, form);
+    if (!res.ok) {
+      toast({ type: "error", title: "Couldn't save item", message: res.error });
+      return;
+    }
     toast({ type: "success", title: "Item updated" });
     navigate(`/lost-found/${id}`);
   }

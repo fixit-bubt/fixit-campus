@@ -27,13 +27,14 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
     return er;
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const er = validate();
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    setTimeout(() => onSubmit(form), 450);
+    await onSubmit(form);
+    setSaving(false);
   }
 
   return (
@@ -96,7 +97,11 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
         </Field>
 
         <Field label="Photo" htmlFor="if-photo" hint="Optional, but a photo makes items much easier to recognize.">
-          <FileUpload id="if-photo" value={form.photo} onChange={(url) => set("photo", url)} />
+          <FileUpload
+            id="if-photo"
+            value={form.photo}
+            onChange={(url, file) => setForm((f) => ({ ...f, photo: url, photoFile: file }))}
+          />
         </Field>
 
         <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-500">

@@ -7,22 +7,17 @@ import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ItemForm } from "./ItemForm.jsx";
 
 export default function PostItem() {
-  const { currentUser, addItem } = useApp();
+  const { addItem } = useApp();
   const toast = useToast();
 
-  function handleSubmit(form) {
-    const item = addItem({
-      type: form.type,
-      title: form.title.trim(),
-      category: form.category,
-      description: form.description.trim(),
-      location: form.location.trim(),
-      date: form.date,
-      photo: form.photo,
-      posterId: currentUser.id,
-    });
-    toast({ type: "success", title: "Item posted", message: `"${item.title}" is now on the board.` });
-    navigate(`/lost-found/${item.id}`);
+  async function handleSubmit(form) {
+    const res = await addItem(form);
+    if (!res.ok) {
+      toast({ type: "error", title: "Couldn't post item", message: res.error });
+      return;
+    }
+    toast({ type: "success", title: "Item posted", message: `"${form.title.trim()}" is now on the board.` });
+    navigate(`/lost-found/${res.id}`);
   }
 
   return (

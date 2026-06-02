@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FileText, CircleDot, Loader, CircleCheck, ShieldQuestion, CheckCheck } from "lucide-react";
+import { FileText, CircleDot, Loader, CircleCheck, CheckCheck } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
 import { EmptyState, StatCard } from "../../components/ui.jsx";
@@ -8,9 +8,8 @@ import { ReportsTable } from "../../components/ReportsTable.jsx";
 import { AssignModal } from "../../components/AssignModal.jsx";
 
 export default function AdminDashboard() {
-  const { reports, claims } = useApp();
+  const { reports } = useApp();
   const count = (s) => reports.filter((r) => r.status === s).length;
-  const pendingClaims = claims.filter((c) => c.status === "Pending").length;
   const unassigned = reports
     .filter((r) => r.status === "Open" && !r.assignedStaffId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -20,12 +19,11 @@ export default function AdminDashboard() {
     <AppShell activeKey="dashboard" title="Dashboard">
       <PageHeader title="Admin overview" subtitle="Everything happening across campus, at a glance." />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Total reports" value={reports.length} icon={FileText} tone="slate" />
         <StatCard label="Open" value={count("Open")} icon={CircleDot} tone="amber" />
         <StatCard label="In Progress" value={count("In Progress")} icon={Loader} tone="blue" />
         <StatCard label="Resolved" value={count("Resolved")} icon={CircleCheck} tone="emerald" />
-        <StatCard label="Pending Claims" value={pendingClaims} icon={ShieldQuestion} tone="red" />
       </div>
 
       <div className="mt-8">
