@@ -12,6 +12,9 @@ import ReportIssue from "./screens/student/ReportIssue.jsx";
 import EditReport from "./screens/student/EditReport.jsx";
 import ReportDetail from "./screens/ReportDetail.jsx";
 
+import StaffDashboard from "./screens/staff/StaffDashboard.jsx";
+import AssignedToMe from "./screens/staff/AssignedToMe.jsx";
+
 import NotFound from "./screens/NotFound.jsx";
 
 // Redirect to /login if there's no signed-in user.
@@ -47,6 +50,10 @@ export default function App() {
   let m;
   if ((m = matchRoute("/reports/:id/edit", path))) return <RequireAuth><EditReport id={m.id} /></RequireAuth>;
   if ((m = matchRoute("/reports/:id", path))) return <RequireAuth><ReportDetail id={m.id} /></RequireAuth>;
+
+  // ---- Staff routes ----
+  if (path === "/staff") return <RequireAuth><StaffDashboard /></RequireAuth>;
+  if (path === "/staff/assigned") return <RequireAuth><AssignedToMe /></RequireAuth>;
 
   // ---- 404 ----
   return <NotFound />;
