@@ -18,6 +18,7 @@ import AssignedToMe from "./screens/staff/AssignedToMe.jsx";
 import AdminDashboard from "./screens/admin/AdminDashboard.jsx";
 import AllReports from "./screens/admin/AllReports.jsx";
 import ManageUsers from "./screens/admin/ManageUsers.jsx";
+import ClaimQueue from "./screens/admin/ClaimQueue.jsx";
 
 import LostFoundBrowse from "./screens/lostfound/LostFoundBrowse.jsx";
 import PostItem from "./screens/lostfound/PostItem.jsx";
@@ -36,7 +37,6 @@ function RequireAuth({ children }) {
   return children;
 }
 
-// Routes are added here one feature at a time as the app grows.
 export default function App() {
   const path = useHashRoute();
   const { currentUser, dashboardPath } = useApp();
@@ -67,6 +67,7 @@ export default function App() {
   // ---- Admin routes ----
   if (path === "/admin") return <RequireAuth><AdminDashboard /></RequireAuth>;
   if (path === "/admin/reports") return <RequireAuth><AllReports /></RequireAuth>;
+  if (path === "/admin/claims") return <RequireAuth><ClaimQueue /></RequireAuth>;
   if (path === "/admin/users") return <RequireAuth><ManageUsers /></RequireAuth>;
 
   // ---- Lost & Found (shared) ----
