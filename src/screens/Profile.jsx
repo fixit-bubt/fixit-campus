@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Save, Mail, ShieldCheck } from "lucide-react";
+import { Save, Mail, Check } from "lucide-react";
 import { useApp } from "../data/store.jsx";
 import { Card, Button, Field, Input, FileUpload, Avatar, Badge, Spinner, useToast } from "../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../components/AppShell.jsx";
@@ -19,7 +19,8 @@ export default function Profile() {
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const [saved, setSaved] = useState(false);
+  const set = (k) => (e) => { setSaved(false); setForm((f) => ({ ...f, [k]: e.target.value })); };
 
   async function submit(e) {
     e.preventDefault();
@@ -35,6 +36,8 @@ export default function Profile() {
       return;
     }
     toast({ type: "success", title: "Profile saved" });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   }
 
   return (
@@ -60,7 +63,7 @@ export default function Profile() {
               <FileUpload
                 id="pf-photo"
                 value={form.avatar}
-                onChange={(url, file) => setForm((f) => ({ ...f, avatar: url, avatarFile: file }))}
+                onChange={(url, file) => { setSaved(false); setForm((f) => ({ ...f, avatar: url, avatarFile: file })); }}
               />
             </Field>
 
@@ -91,9 +94,12 @@ export default function Profile() {
             )}
           </Card>
 
-          <div className="flex justify-end">
-            <Button type="submit" icon={Save} disabled={saving}>
-              {saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Save changes"}
+          <div className="flex items-center justify-end gap-3">
+            {saved && !saving && (
+              <span className="text-sm font-medium text-emerald-600">Changes saved</span>
+            )}
+            <Button type="submit" variant={saved ? "secondary" : "primary"} icon={saved ? Check : Save} disabled={saving}>
+              {saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : saved ? "Saved" : "Save changes"}
             </Button>
           </div>
         </form>
