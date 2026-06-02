@@ -62,7 +62,11 @@ export function ReportForm({ initial, mode = "create", onSubmit, onCancel }) {
         </div>
 
         <Field label="Photo" htmlFor="rf-photo" hint="Optional — a photo helps staff find and fix it faster.">
-          <FileUpload id="rf-photo" value={form.photo} onChange={(url) => set("photo", url)} />
+          <FileUpload
+            id="rf-photo"
+            value={form.photo}
+            onChange={(url, file) => setForm((f) => ({ ...f, photo: url, photoFile: file }))}
+          />
         </Field>
       </Card>
 

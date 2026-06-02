@@ -188,16 +188,41 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
+  // ---- photo upload (Supabase Storage) ----
+  async function uploadPhoto(file, folder) {
+    const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
+    const path = `${folder}/${currentUser.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("photos")
+      .upload(path, file, { cacheControl: "3600", upsert: false });
+    if (error) throw error;
+    return supabase.storage.from("photos").getPublicUrl(path).data.publicUrl;
+  }
+
+  // A form carries `photo` (preview URL or existing saved URL) and `photoFile`
+  // (a newly chosen File). Resolve to the URL we should store.
+  async function resolvePhoto(form, folder) {
+    if (form.photoFile) return await uploadPhoto(form.photoFile, folder);
+    if (form.photo && !String(form.photo).startsWith("blob:")) return form.photo;
+    return null;
+  }
+
   // ---- report mutations (real) ----
-  async function createReport({ category, description, building, room, photo }) {
+  async function createReport(form) {
+    let photo_url;
+    try {
+      photo_url = await resolvePhoto(form, "reports");
+    } catch (e) {
+      return { ok: false, error: "Photo upload failed: " + e.message };
+    }
     const { data, error } = await supabase
       .from("reports")
       .insert({
-        category,
-        description: description.trim(),
-        building: building.trim(),
-        room: room?.trim() || null,
-        photo_url: photo || null,
+        category: form.category,
+        description: form.description.trim(),
+        building: form.building.trim(),
+        room: form.room?.trim() || null,
+        photo_url,
         reporter_id: currentUser.id,
       })
       .select("code")
@@ -207,15 +232,21 @@ export function AppProvider({ children }) {
     return { ok: true, id: data.code };
   }
 
-  async function updateReport(id, { category, description, building, room, photo }) {
+  async function updateReport(id, form) {
+    let photo_url;
+    try {
+      photo_url = await resolvePhoto(form, "reports");
+    } catch (e) {
+      return { ok: false, error: "Photo upload failed: " + e.message };
+    }
     const { error } = await supabase
       .from("reports")
       .update({
-        category,
-        description: description.trim(),
-        building: building.trim(),
-        room: room?.trim() || null,
-        photo_url: photo || null,
+        category: form.category,
+        description: form.description.trim(),
+        building: form.building.trim(),
+        room: form.room?.trim() || null,
+        photo_url,
       })
       .eq("code", id);
     if (error) return { ok: false, error: error.message };
