@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useId } from "react";
 import {
   X,
   AlertCircle,
@@ -321,6 +321,23 @@ export function Avatar({ name = "", src, size = 36, className = "" }) {
 // Modal / Dialog — icon: lucide component ; tone: blue | red | emerald | amber
 // ---------------------------------------------------------------------------
 export function Modal({ open, onClose, title, description, icon: HeadIcon, tone = "blue", children, footer, size = "md" }) {
+  const dialogRef = useRef(null);
+  const titleId = useId();
+  const descId = useId();
+
+  // Close on Escape; move focus into the dialog on open and restore it on close.
+  useEffect(() => {
+    if (!open) return;
+    const prevFocused = document.activeElement;
+    const onKey = (e) => { if (e.key === "Escape") onClose && onClose(); };
+    document.addEventListener("keydown", onKey);
+    if (dialogRef.current) dialogRef.current.focus();
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (prevFocused && typeof prevFocused.focus === "function") prevFocused.focus();
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
   const widths = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-lg" };
   const toneBg = {
@@ -332,7 +349,15 @@ export function Modal({ open, onClose, title, description, icon: HeadIcon, tone 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40" onClick={onClose} />
-      <div className={`relative flex max-h-[90vh] w-full flex-col ${widths[size]} rounded-xl border border-slate-200 bg-white shadow-xl`} role="dialog" aria-modal="true">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={description ? descId : undefined}
+        className={`relative flex max-h-[90vh] w-full flex-col ${widths[size]} rounded-xl border border-slate-200 bg-white shadow-xl focus:outline-none`}
+      >
         <div className="overflow-y-auto p-6">
           <div className="flex items-start gap-4">
             {HeadIcon && (
@@ -341,8 +366,8 @@ export function Modal({ open, onClose, title, description, icon: HeadIcon, tone 
               </span>
             )}
             <div className="flex-1 min-w-0">
-              {title && <h3 className="text-base font-semibold text-slate-900">{title}</h3>}
-              {description && <p className="mt-1 text-sm text-slate-600 leading-relaxed">{description}</p>}
+              {title && <h3 id={titleId} className="text-base font-semibold text-slate-900">{title}</h3>}
+              {description && <p id={descId} className="mt-1 text-sm text-slate-600 leading-relaxed">{description}</p>}
               {children && <div className="mt-4">{children}</div>}
             </div>
             <button
