@@ -7,7 +7,7 @@ import { useApp } from "../data/store.jsx";
 import { navigate } from "../lib/router.jsx";
 import { Card, Button, Select, Modal, Avatar, EmptyState, StatusBadge, useToast } from "../components/ui.jsx";
 import { AppShell } from "../components/AppShell.jsx";
-import { CATEGORY_ICON, fmtDate, todayISO } from "../lib/helpers.js";
+import { CATEGORY_ICON, fmtDate } from "../lib/helpers.js";
 
 function StatusTimeline({ report }) {
   const flow = ["Open", "In Progress", "Resolved"];

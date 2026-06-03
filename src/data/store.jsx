@@ -4,10 +4,9 @@ import { supabase } from "../lib/supabase.js";
 import { navigate } from "../lib/router.jsx";
 
 // ============================================================================
-// App data store.
-//   AUTH + PROFILES + REPORTS  -> real Supabase.
-//   lost & found items / claims -> still local for now (chunk #4 wires these).
-// Every screen reads/writes through useApp(); the value shape is unchanged.
+// App data store — everything (auth, profiles, reports, lost & found items,
+// claims, photos) is backed by Supabase. Every screen reads/writes through
+// useApp(); screens never touch Supabase directly.
 // ============================================================================
 
 const AppContext = createContext(null);
@@ -87,15 +86,6 @@ function toClaim(r) {
     status: r.status,
     createdAt: day(r.created_at),
   };
-}
-
-function loadPersisted(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch (e) {
-    return fallback;
-  }
 }
 
 export function AppProvider({ children }) {
@@ -489,7 +479,7 @@ export function AppProvider({ children }) {
   }
 
   const value = {
-    users, setUsers, reports, setReports, items, setItems, claims, setClaims,
+    users, reports, items, claims,
     currentUser, setCurrentUser, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
