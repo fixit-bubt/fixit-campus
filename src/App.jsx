@@ -39,13 +39,14 @@ function RequireAuth({ children }) {
 }
 
 // Lost & Found is students-only; send staff/admins to their own dashboard.
-function RequireStudent({ children }) {
+// Restrict a route to a single role; others are redirected to their own dashboard.
+function RequireRole({ role, children }) {
   const { currentUser, dashboardPath } = useApp();
   useEffect(() => {
     if (!currentUser) navigate("/login");
-    else if (currentUser.role !== "Student") navigate(dashboardPath(currentUser.role));
+    else if (currentUser.role !== role) navigate(dashboardPath(currentUser.role));
   }, [currentUser]);
-  if (!currentUser || currentUser.role !== "Student") return null;
+  if (!currentUser || currentUser.role !== role) return null;
   return children;
 }
 
@@ -75,30 +76,31 @@ export default function App() {
   }
 
   // ---- Student routes ----
-  if (path === "/dashboard") return <RequireAuth><StudentDashboard /></RequireAuth>;
-  if (path === "/reports") return <RequireAuth><MyReports /></RequireAuth>;
-  if (path === "/reports/new") return <RequireAuth><ReportIssue /></RequireAuth>;
+  if (path === "/dashboard") return <RequireRole role="Student"><StudentDashboard /></RequireRole>;
+  if (path === "/reports") return <RequireRole role="Student"><MyReports /></RequireRole>;
+  if (path === "/reports/new") return <RequireRole role="Student"><ReportIssue /></RequireRole>;
   let m;
-  if ((m = matchRoute("/reports/:id/edit", path))) return <RequireAuth><EditReport id={m.id} /></RequireAuth>;
+  if ((m = matchRoute("/reports/:id/edit", path))) return <RequireRole role="Student"><EditReport id={m.id} /></RequireRole>;
+  // Report Detail is shared by the reporter (student), the assigned staff, and admins.
   if ((m = matchRoute("/reports/:id", path))) return <RequireAuth><ReportDetail id={m.id} /></RequireAuth>;
 
   // ---- Staff routes ----
-  if (path === "/staff") return <RequireAuth><StaffDashboard /></RequireAuth>;
-  if (path === "/staff/assigned") return <RequireAuth><AssignedToMe /></RequireAuth>;
+  if (path === "/staff") return <RequireRole role="Staff"><StaffDashboard /></RequireRole>;
+  if (path === "/staff/assigned") return <RequireRole role="Staff"><AssignedToMe /></RequireRole>;
 
   // ---- Admin routes ----
-  if (path === "/admin") return <RequireAuth><AdminDashboard /></RequireAuth>;
-  if (path === "/admin/reports") return <RequireAuth><AllReports /></RequireAuth>;
-  if (path === "/admin/users") return <RequireAuth><ManageUsers /></RequireAuth>;
+  if (path === "/admin") return <RequireRole role="Admin"><AdminDashboard /></RequireRole>;
+  if (path === "/admin/reports") return <RequireRole role="Admin"><AllReports /></RequireRole>;
+  if (path === "/admin/users") return <RequireRole role="Admin"><ManageUsers /></RequireRole>;
 
   // ---- Profile (any signed-in user) ----
   if (path === "/profile") return <RequireAuth><Profile /></RequireAuth>;
 
   // ---- Lost & Found (students only) ----
-  if (path === "/lost-found") return <RequireStudent><LostFoundBrowse /></RequireStudent>;
-  if (path === "/lost-found/new") return <RequireStudent><PostItem /></RequireStudent>;
-  if ((m = matchRoute("/lost-found/:id/edit", path))) return <RequireStudent><EditItem id={m.id} /></RequireStudent>;
-  if ((m = matchRoute("/lost-found/:id", path))) return <RequireStudent><ItemDetail id={m.id} /></RequireStudent>;
+  if (path === "/lost-found") return <RequireRole role="Student"><LostFoundBrowse /></RequireRole>;
+  if (path === "/lost-found/new") return <RequireRole role="Student"><PostItem /></RequireRole>;
+  if ((m = matchRoute("/lost-found/:id/edit", path))) return <RequireRole role="Student"><EditItem id={m.id} /></RequireRole>;
+  if ((m = matchRoute("/lost-found/:id", path))) return <RequireRole role="Student"><ItemDetail id={m.id} /></RequireRole>;
 
   // ---- 404 ----
   return <NotFound />;
