@@ -162,6 +162,22 @@ const SEED_RIDES = [
   { id: "RD-286", driverId: "u-stu-2", origin: "Savar", destination: "BUBT Campus", direction: "To Campus", date: isoOffset(1), time: "07:00", seatsTotal: 3, fare: 90, vehicle: "Car", recurring: ["Sat", "Sun", "Mon", "Tue", "Wed"], notes: "Daily commute from Savar, comfortable and on time.", requesterIds: [] },
 ];
 
+// Blood donation — urgent requests + donor registry. Seed ids are demo-only.
+const SEED_BLOOD_REQUESTS = [
+  { id: "BQ-21", group: "O-", patient: "Rafiul (CSE, 3rd yr)", hospital: "Dhaka Medical College Hospital", units: 2, urgency: "Urgent", area: "Shahbagh", requesterId: "u-stu-3", createdAt: isoOffset(0), pledges: [] },
+  { id: "BQ-19", group: "B+", patient: "Patient of Sumaiya (EEE)", hospital: "Sohrawardi Hospital", units: 1, urgency: "Today", area: "Sher-e-Bangla Nagar", requesterId: "u-stu-2", createdAt: isoOffset(0), pledges: ["u-stu-1"] },
+  { id: "BQ-17", group: "A+", patient: "Father of Tanvir (BBA)", hospital: "Popular Diagnostic, Dhanmondi", units: 2, urgency: "This week", area: "Dhanmondi", requesterId: "u-stu-1", createdAt: isoOffset(-1), pledges: [] },
+  { id: "BQ-14", group: "AB+", patient: "Nusaiba (Pharmacy)", hospital: "Ibn Sina Hospital, Mirpur", units: 1, urgency: "This week", area: "Mirpur-1", requesterId: "u-stu-3", createdAt: isoOffset(-2), pledges: ["u-stu-2"] },
+];
+
+const SEED_DONORS = [
+  { id: "DN-1", userId: "u-stu-1", name: "Tahmid Rahman", group: "O+", area: "Mirpur-2", lastDonated: isoOffset(-150), phone: "" },
+  { id: "DN-2", userId: "u-stu-2", name: "Nusrat Jahan", group: "B+", area: "Mohammadpur", lastDonated: isoOffset(-40), phone: "" },
+  { id: "DN-3", userId: "u-stu-3", name: "Arefin Khan", group: "A+", area: "Uttara", lastDonated: isoOffset(-200), phone: "" },
+  { id: "DN-4", userId: "u-staff-2", name: "Shahana Akter", group: "O-", area: "Savar", lastDonated: isoOffset(-95), phone: "" },
+  { id: "DN-5", userId: "u-adm-1", name: "Farhana Islam", group: "AB+", area: "Gulshan", lastDonated: isoOffset(-365), phone: "" },
+];
+
 export function AppProvider({ children }) {
   // ---- auth / profiles (real Supabase) ----
   const [sessionUserId, setSessionUserId] = useState(null);
@@ -197,6 +213,16 @@ export function AppProvider({ children }) {
   useEffect(() => {
     try { localStorage.setItem("fixit_rides", JSON.stringify(rides)); } catch {}
   }, [rides]);
+
+  const [bloodRequests, setBloodRequests] = useState(() => loadMock("fixit_blood_requests", SEED_BLOOD_REQUESTS));
+  useEffect(() => {
+    try { localStorage.setItem("fixit_blood_requests", JSON.stringify(bloodRequests)); } catch {}
+  }, [bloodRequests]);
+
+  const [donors, setDonors] = useState(() => loadMock("fixit_donors", SEED_DONORS));
+  useEffect(() => {
+    try { localStorage.setItem("fixit_donors", JSON.stringify(donors)); } catch {}
+  }, [donors]);
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -743,12 +769,39 @@ export function AppProvider({ children }) {
     setRides((rs) => rs.filter((r) => r.id !== id));
   }
 
+  // ---- blood donation (PHASE-1 MOCK) ----
+  function addBloodRequest(data) {
+    const req = { pledges: [], ...data, id: nextMockId(bloodRequests, "BQ", 21), requesterId: currentUser?.id, createdAt: isoOffset(0) };
+    setBloodRequests((b) => [req, ...b]);
+    return req; // screen navigates / shows confirmation with the new id
+  }
+  function pledgeBlood(id) {
+    if (!currentUser) return;
+    setBloodRequests((bs) =>
+      bs.map((b) => {
+        if (b.id !== id) return b;
+        const pl = b.pledges || [];
+        if (pl.includes(currentUser.id)) return b; // idempotent — no double-pledge
+        return { ...b, pledges: [...pl, currentUser.id] };
+      })
+    );
+  }
+  function registerDonor(data) {
+    if (!currentUser) return;
+    setDonors((ds) => {
+      const existing = ds.find((d) => d.userId === currentUser.id);
+      if (existing) return ds.map((d) => (d.userId === currentUser.id ? { ...d, ...data } : d));
+      return [{ id: nextMockId(ds, "DN", 0), userId: currentUser.id, name: currentUser.name, ...data }, ...ds];
+    });
+  }
+
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
     listings, addListing, updateListing, deleteListing, markListingSold,
     events, addEvent, toggleRSVP, deleteEvent,
     rides, addRide, requestSeat, deleteRide,
+    bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
