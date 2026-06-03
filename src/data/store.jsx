@@ -252,6 +252,14 @@ export function AppProvider({ children }) {
     .map((u) => ({ id: u.id, name: u.name, dept: u.dept || "Staff" }));
 
   async function setRole(userId, role) {
+    // Don't let the last admin be demoted (DB also enforces this in 0009).
+    const target = users.find((u) => u.id === userId);
+    if (target && target.role === "Admin" && role !== "Admin") {
+      const admins = users.filter((u) => u.role === "Admin").length;
+      if (admins <= 1) {
+        return { ok: false, error: "You can't remove the last admin — promote another admin first." };
+      }
+    }
     const { error } = await supabase.from("profiles").update({ role: lower(role) }).eq("id", userId);
     if (error) return { ok: false, error: error.message };
     await refreshUsers();
