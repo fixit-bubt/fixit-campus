@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "../../components/Icon.jsx";
 import {
   Button, Card, Badge, StatusBadge, Field, Input, Textarea, Select, FileUpload,
-  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, useToast,
+  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
@@ -66,7 +66,7 @@ export function ListingCard({ listing, seller, onOpen }) {
 
 // --- Browse -----------------------------------------------------------------
 export function Marketplace() {
-  const { listings, userById } = useApp();
+  const { listings, userById, dataLoading } = useApp();
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState("All");
   const [status, setStatus] = React.useState("All");
@@ -107,7 +107,9 @@ export function Marketplace() {
         </div>
       </div>
 
-      {listings.length === 0 ? (
+      {dataLoading ? (
+        <Loading />
+      ) : listings.length === 0 ? (
         <EmptyState icon="Store" title="Nothing for sale yet" message="Be the first to list an item." action={<Button icon="Plus" onClick={() => navigate("/marketplace/new")}>Post an Item</Button>} />
       ) : filtered.length === 0 ? (
         <EmptyState icon="SearchX" title="No matching listings" message="Try a different search or filter." action={<Button variant="secondary" onClick={() => { setQuery(""); setCategory("All"); setStatus("All"); }}>Clear filters</Button>} />
@@ -117,6 +119,48 @@ export function Marketplace() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+// Seller contact — fetched on click. Shows WhatsApp only if the seller opted in
+// (the listing_contact RPC returns a null number otherwise).
+function SellerContact({ code, sellerName }) {
+  const { getListingContact } = useApp();
+  const [phase, setPhase] = React.useState("idle"); // idle | loading | done
+  const [contact, setContact] = React.useState(null);
+
+  async function reveal() {
+    setPhase("loading");
+    setContact(await getListingContact(code));
+    setPhase("done");
+  }
+
+  if (phase !== "done") {
+    return (
+      <button onClick={reveal} disabled={phase === "loading"}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-60">
+        <Icon name="MessageCircle" size={16} /> {phase === "loading" ? "Getting contact…" : "Contact on WhatsApp"}
+      </button>
+    );
+  }
+
+  const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
+  return (
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+      <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+        <Icon name="CircleCheck" size={16} /> {contact?.name || sellerName || "Seller"}
+      </div>
+      {wa ? (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
+          <p className="truncate text-sm text-slate-600">{contact.whatsapp}</p>
+          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700">
+            <Icon name="MessageCircle" size={16} /> WhatsApp
+          </a>
+        </div>
+      ) : (
+        <p className="mt-1 text-xs text-slate-500">This seller hasn't shared a WhatsApp number. They can enable it in their profile.</p>
+      )}
+    </div>
   );
 }
 
@@ -182,7 +226,7 @@ export function ListingDetail({ id }) {
                   <Icon name="BadgeCheck" size={16} className="text-slate-400" /> This item has been sold.
                 </div>
               ) : (
-                <RevealContact name={seller?.name} phone={phoneFor(seller?.id)} note="Message the seller directly on WhatsApp to arrange a deal." confirmLabel="Contact on WhatsApp" />
+                <SellerContact code={id} sellerName={seller?.name} />
               )}
             </div>
           </div>
@@ -192,12 +236,12 @@ export function ListingDetail({ id }) {
       <Modal open={confirmSold} onClose={() => setConfirmSold(false)} icon="BadgeCheck" tone="emerald"
         title="Mark as sold?" description={`"${listing.title}" will be shown as Sold and removed from active listings.`}
         footer={<><Button variant="secondary" onClick={() => setConfirmSold(false)}>Cancel</Button>
-          <Button onClick={() => { markListingSold(id); setConfirmSold(false); toast({ type: "success", title: "Marked as sold" }); }}>Mark as Sold</Button></>} />
+          <Button onClick={async () => { const r = await markListingSold(id); setConfirmSold(false); if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; } toast({ type: "success", title: "Marked as sold" }); }}>Mark as Sold</Button></>} />
 
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} icon="Trash2" tone="red"
         title="Delete this listing?" description={`"${listing.title}" will be permanently removed.`}
         footer={<><Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          <Button variant="destructive" onClick={() => { deleteListing(id); toast({ type: "success", title: "Listing deleted" }); navigate("/marketplace"); }}>Delete</Button></>} />
+          <Button variant="destructive" onClick={async () => { const r = await deleteListing(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Listing deleted" }); navigate("/marketplace"); }}>Delete</Button></>} />
     </AppShell>
   );
 }
@@ -215,8 +259,8 @@ export function ListingForm({ id }) {
 
   const [form, setForm] = React.useState(
     existing
-      ? { title: existing.title, price: String(existing.price), category: existing.category, condition: existing.condition, negotiable: existing.negotiable, description: existing.description, photo: existing.photo }
-      : { title: "", price: "", category: "", condition: "", negotiable: false, description: "", photo: null }
+      ? { title: existing.title, price: String(existing.price), category: existing.category, condition: existing.condition, negotiable: existing.negotiable, description: existing.description, photo: existing.photo, photoFile: null }
+      : { title: "", price: "", category: "", condition: "", negotiable: false, description: "", photo: null, photoFile: null }
   );
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);
@@ -232,17 +276,18 @@ export function ListingForm({ id }) {
     return er;
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const er = validate();
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    setTimeout(() => {
-      const data = { title: form.title.trim(), price: Number(form.price), category: form.category, condition: form.condition, negotiable: form.negotiable, description: form.description.trim(), photo: form.photo, sellerId: currentUser.id };
-      if (editing) { updateListing(id, data); toast({ type: "success", title: "Listing updated" }); navigate(`/marketplace/${id}`); }
-      else { const l = addListing(data); toast({ type: "success", title: "Listing posted", message: `"${l.title}" is now live.` }); navigate(`/marketplace/${l.id}`); }
-    }, 450);
+    const data = { title: form.title.trim(), price: Number(form.price), category: form.category, condition: form.condition, negotiable: form.negotiable, description: form.description.trim(), photo: form.photo, photoFile: form.photoFile };
+    const res = editing ? await updateListing(id, data) : await addListing(data);
+    setSaving(false);
+    if (!res.ok) { toast({ type: "error", title: editing ? "Couldn't update listing" : "Couldn't post listing", message: res.error }); return; }
+    if (editing) { toast({ type: "success", title: "Listing updated" }); navigate(`/marketplace/${id}`); }
+    else { toast({ type: "success", title: "Listing posted", message: "It's now live." }); navigate(`/marketplace/${res.id}`); }
   }
 
   return (
@@ -255,7 +300,7 @@ export function ListingForm({ id }) {
         <form onSubmit={submit} className="space-y-6">
           <Card className="space-y-5 p-6">
             <Field label="Photo" htmlFor="lf-photo" hint="A clear photo helps your item sell faster.">
-              <FileUpload id="lf-photo" value={form.photo} onChange={(url) => set("photo", url)} />
+              <FileUpload id="lf-photo" value={form.photo} onChange={(url, file) => setForm((f) => ({ ...f, photo: url, photoFile: file }))} />
             </Field>
             <Field label="Title" htmlFor="lf-title" required error={errors.title}>
               <Input id="lf-title" placeholder="e.g. Casio fx-991EX calculator" value={form.title} error={!!errors.title} onChange={(e) => set("title", e.target.value)} />
