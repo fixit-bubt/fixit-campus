@@ -23,6 +23,7 @@ const CAMPUS_LIFE = [
 // Shared "Community" group (grows as features ship: ride share, blood…).
 const COMMUNITY = [
   { key: "marketplace", label: "Marketplace", icon: "Store", path: "/marketplace" },
+  { key: "rideshare", label: "Ride Share", icon: "Car", path: "/rides" },
 ];
 
 const NAV_BY_ROLE = {
