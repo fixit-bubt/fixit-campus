@@ -373,6 +373,7 @@ export function Modal({ open, onClose, title, description, icon: HeadIcon, tone 
             <button
               type="button"
               onClick={onClose}
+              aria-label="Close"
               className="-mr-1 -mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
             >
               <X size={18} />

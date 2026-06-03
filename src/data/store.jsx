@@ -202,9 +202,13 @@ export function AppProvider({ children }) {
   }
 
   async function logout() {
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    navigate("/");
+    // Clear local state and navigate even if the network sign-out call fails.
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      setCurrentUser(null);
+      navigate("/");
+    }
   }
 
   async function createUser({ name, email, password, role, dept }) {
@@ -474,8 +478,10 @@ export function AppProvider({ children }) {
   async function getContact(userId) {
     if (!userId) return null;
     const { data } = await supabase
-      .from("profiles").select("full_name, email, whatsapp").eq("id", userId).single();
-    return data ? { name: data.full_name, email: data.email, whatsapp: data.whatsapp } : null;
+      .from("profiles").select("full_name, email, whatsapp, avatar_url").eq("id", userId).single();
+    return data
+      ? { name: data.full_name, email: data.email, whatsapp: data.whatsapp, avatar: data.avatar_url }
+      : null;
   }
 
   const value = {

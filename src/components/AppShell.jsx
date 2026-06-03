@@ -106,6 +106,7 @@ export function AppShell({ activeKey, title, actions, children }) {
           <div className="absolute inset-y-0 left-0 w-64 bg-white shadow-xl">
             <button
               onClick={() => setDrawerOpen(false)}
+              aria-label="Close menu"
               className="absolute right-3 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100"
             >
               <X size={18} />
@@ -121,6 +122,7 @@ export function AppShell({ activeKey, title, actions, children }) {
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
           <button
             onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
           >
             <Menu size={20} />
