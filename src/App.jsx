@@ -32,6 +32,7 @@ import NotFound from "./screens/NotFound.jsx";
 import { Announcements, AnnouncementDetail, AnnouncementForm } from "./screens/announcements/Announcements.jsx";
 import { Marketplace, ListingDetail, ListingForm, MyListings } from "./screens/marketplace/Marketplace.jsx";
 import { BusSchedule, BusDetail, BusRouteForm } from "./screens/bus/Bus.jsx";
+import { PrayerTimes } from "./screens/prayer/Prayer.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -125,6 +126,9 @@ export default function App() {
   if (path === "/bus/new") return <RequireAuth><BusRouteForm /></RequireAuth>;
   if ((m = matchRoute("/bus/:id/edit", path))) return <RequireAuth><BusRouteForm id={m.id} /></RequireAuth>;
   if ((m = matchRoute("/bus/:id", path))) return <RequireAuth><BusDetail id={m.id} /></RequireAuth>;
+
+  // ---- Campus Life: Prayer Times (any signed-in user) ----
+  if (path === "/prayer") return <RequireAuth><PrayerTimes /></RequireAuth>;
 
   // ---- Community: Marketplace (any signed-in user) ----
   if (path === "/marketplace") return <RequireAuth><Marketplace /></RequireAuth>;
