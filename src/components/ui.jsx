@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { resolveIcon } from "./Icon.jsx";
 
 // ============================================================================
 // FixIt — shared UI component library (presentational only, no data).
@@ -25,14 +26,17 @@ export function Button({
   variant = "primary",
   size = "md",
   type = "button",
-  icon: LeadIcon,
-  iconRight: TrailIcon,
+  icon,
+  iconRight,
   full = false,
   disabled = false,
   className = "",
   children,
   ...rest
 }) {
+  // icon props accept either a lucide component or a name string (see Icon.jsx).
+  const LeadIcon = resolveIcon(icon);
+  const TrailIcon = resolveIcon(iconRight);
   const base =
     "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap";
   const sizes = { sm: "h-9 px-3 text-sm", md: "h-10 px-4 text-sm" };
@@ -237,7 +241,8 @@ export function FileUpload({ value, onChange, error, label = "Upload photo", id 
 // ---------------------------------------------------------------------------
 // Badge — tone: neutral | blue | amber | emerald | red ; icon: lucide component
 // ---------------------------------------------------------------------------
-export function Badge({ tone = "neutral", icon: BadgeIcon, className = "", children }) {
+export function Badge({ tone = "neutral", icon, className = "", children }) {
+  const BadgeIcon = resolveIcon(icon);
   const tones = {
     neutral: "bg-slate-100 text-slate-600",
     blue: "bg-blue-100 text-blue-700",
@@ -327,7 +332,8 @@ export function Avatar({ name = "", src, size = 36, className = "" }) {
 // ---------------------------------------------------------------------------
 // Modal / Dialog — icon: lucide component ; tone: blue | red | emerald | amber
 // ---------------------------------------------------------------------------
-export function Modal({ open, onClose, title, description, icon: HeadIcon, tone = "blue", children, footer, size = "md" }) {
+export function Modal({ open, onClose, title, description, icon, tone = "blue", children, footer, size = "md" }) {
+  const HeadIcon = resolveIcon(icon);
   const dialogRef = useRef(null);
   const titleId = useId();
   const descId = useId();
@@ -453,7 +459,8 @@ export function useToast() {
 // ---------------------------------------------------------------------------
 // EmptyState — icon: lucide component (defaults to Inbox)
 // ---------------------------------------------------------------------------
-export function EmptyState({ icon: EmptyIcon = Inbox, title, message, action, className = "" }) {
+export function EmptyState({ icon, title, message, action, className = "" }) {
+  const EmptyIcon = resolveIcon(icon) || Inbox;
   return (
     <div className={`flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50/50 px-6 py-14 text-center ${className}`}>
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
@@ -494,7 +501,8 @@ export function Loading({ className = "" }) {
 // ---------------------------------------------------------------------------
 // StatCard — dashboard metric tile. icon: lucide component
 // ---------------------------------------------------------------------------
-export function StatCard({ label, value, icon: StatIcon, tone = "blue" }) {
+export function StatCard({ label, value, icon, tone = "blue" }) {
+  const StatIcon = resolveIcon(icon);
   const toneBg = {
     blue: "bg-blue-100 text-blue-700",
     amber: "bg-amber-100 text-amber-700",

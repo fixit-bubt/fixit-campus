@@ -29,6 +29,8 @@ import ItemDetail from "./screens/lostfound/ItemDetail.jsx";
 import Profile from "./screens/Profile.jsx";
 import NotFound from "./screens/NotFound.jsx";
 
+import { Announcements, AnnouncementDetail, AnnouncementForm } from "./screens/announcements/Announcements.jsx";
+
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
   useEffect(() => { navigate(to); }, [to]);
@@ -110,6 +112,11 @@ export default function App() {
   if (path === "/lost-found/new") return <RequireRole role="Student"><PostItem /></RequireRole>;
   if ((m = matchRoute("/lost-found/:id/edit", path))) return <RequireRole role="Student"><EditItem id={m.id} /></RequireRole>;
   if ((m = matchRoute("/lost-found/:id", path))) return <RequireRole role="Student"><ItemDetail id={m.id} /></RequireRole>;
+
+  // ---- Campus Life: Announcements (any signed-in user; compose is admin/staff) ----
+  if (path === "/announcements") return <RequireAuth><Announcements /></RequireAuth>;
+  if (path === "/announcements/new") return <RequireAuth><AnnouncementForm /></RequireAuth>;
+  if ((m = matchRoute("/announcements/:id", path))) return <RequireAuth><AnnouncementDetail id={m.id} /></RequireAuth>;
 
   // ---- 404 ----
   return <NotFound />;
