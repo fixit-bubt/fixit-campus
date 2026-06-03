@@ -17,6 +17,7 @@ import { Logo } from "./Brand.jsx";
 const CAMPUS_LIFE = [
   { key: "bus", label: "Bus Schedule", icon: "Bus", path: "/bus" },
   { key: "prayer", label: "Prayer Times", icon: "Moon", path: "/prayer" },
+  { key: "events", label: "Events", icon: "CalendarDays", path: "/events" },
   { key: "announcements", label: "Announcements", icon: "Megaphone", path: "/announcements" },
 ];
 // Shared "Community" group (grows as features ship: ride share, blood…).

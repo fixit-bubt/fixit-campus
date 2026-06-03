@@ -142,6 +142,16 @@ const SEED_LISTINGS = [
   { id: "L-204", title: "Drafting & geometry set", price: 450, condition: "New", negotiable: false, category: "Other", description: "Unused drafting set, still in box. Bought an extra by mistake.", sellerId: "u-stu-2", status: "Sold", photo: null, createdAt: isoOffset(-10) },
 ];
 
+// Events. Seed attendee ids are demo-only; real RSVPs add the real user id.
+const SEED_EVENTS = [
+  { id: "EV-41", title: "Intra-University Hackathon 2026", category: "Club", organizer: "BUBT Computer Club", date: isoOffset(3), time: "09:00", endTime: "18:00", venue: "Auditorium, Main Building", description: "A 9-hour build sprint where teams ship a working prototype solving a real campus problem. Mentors from the industry, free lunch, and ৳50,000 in prizes. Open to all departments — form a team of up to 4.", attendees: ["u-stu-2", "u-stu-3"], capacity: 120 },
+  { id: "EV-39", title: "Career Fair: Tech & Beyond", category: "Career", organizer: "Career Services Office", date: isoOffset(6), time: "10:00", endTime: "16:00", venue: "Ground Floor Concourse", description: "Meet 30+ recruiters from leading software, telecom, and banking firms. Bring printed CVs. On-spot interviews for final-year students.", attendees: ["u-stu-1"], capacity: 400 },
+  { id: "EV-37", title: "Spring Cultural Night", category: "Cultural", organizer: "Cultural Club", date: isoOffset(1), time: "17:00", endTime: "21:00", venue: "Open Stage, Field", description: "An evening of music, dance, and drama performances by students. Food stalls open from 5 PM.", attendees: ["u-stu-1", "u-stu-2", "u-stu-3"], capacity: 600 },
+  { id: "EV-35", title: "Inter-Department Football Final", category: "Sports", organizer: "Sports Office", date: isoOffset(0), time: "15:30", endTime: "17:30", venue: "BUBT Playground", description: "CSE vs EEE in the championship final. Come support your department!", attendees: ["u-stu-3"], capacity: 300 },
+  { id: "EV-33", title: "Guest Lecture: AI in Bangladesh", category: "Academic", organizer: "Dept. of CSE", date: isoOffset(4), time: "11:00", endTime: "13:00", venue: "Seminar Hall, 5th Floor", description: "A talk on the state of AI research and industry in Bangladesh, followed by Q&A. Certificates for attendees.", attendees: ["u-stu-1", "u-stu-2"], capacity: 150 },
+  { id: "EV-28", title: "Orientation: Summer 2026 Intake", category: "Academic", organizer: "Registrar's Office", date: isoOffset(-7), time: "10:00", endTime: "12:00", venue: "Auditorium, Main Building", description: "Welcome session for new students with an overview of academics, clubs, and campus services.", attendees: ["u-stu-2"], capacity: 500 },
+];
+
 export function AppProvider({ children }) {
   // ---- auth / profiles (real Supabase) ----
   const [sessionUserId, setSessionUserId] = useState(null);
@@ -167,6 +177,11 @@ export function AppProvider({ children }) {
   useEffect(() => {
     try { localStorage.setItem("fixit_listings", JSON.stringify(listings)); } catch {}
   }, [listings]);
+
+  const [events, setEvents] = useState(() => loadMock("fixit_events", SEED_EVENTS));
+  useEffect(() => {
+    try { localStorage.setItem("fixit_events", JSON.stringify(events)); } catch {}
+  }, [events]);
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -671,10 +686,32 @@ export function AppProvider({ children }) {
     setListings((l) => l.map((x) => (x.id === id ? { ...x, status: "Sold" } : x)));
   }
 
+  // ---- events (PHASE-1 MOCK) ----
+  function addEvent(data) {
+    const ev = { attendees: [], ...data, id: nextMockId(events, "EV", 41), organizer: data.organizer || currentUser?.name };
+    setEvents((e) => [ev, ...e]);
+    return ev; // screen navigates to /events/:id immediately
+  }
+  function toggleRSVP(id) {
+    if (!currentUser) return;
+    setEvents((es) =>
+      es.map((e) => {
+        if (e.id !== id) return e;
+        const att = e.attendees || [];
+        const going = att.includes(currentUser.id);
+        return { ...e, attendees: going ? att.filter((u) => u !== currentUser.id) : [...att, currentUser.id] };
+      })
+    );
+  }
+  function deleteEvent(id) {
+    setEvents((es) => es.filter((e) => e.id !== id));
+  }
+
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
     listings, addListing, updateListing, deleteListing, markListingSold,
+    events, addEvent, toggleRSVP, deleteEvent,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,

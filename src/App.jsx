@@ -33,6 +33,7 @@ import { Announcements, AnnouncementDetail, AnnouncementForm } from "./screens/a
 import { Marketplace, ListingDetail, ListingForm, MyListings } from "./screens/marketplace/Marketplace.jsx";
 import { BusSchedule, BusDetail, BusRouteForm } from "./screens/bus/Bus.jsx";
 import { PrayerTimes } from "./screens/prayer/Prayer.jsx";
+import { Events, EventDetail, EventForm } from "./screens/events/Events.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -129,6 +130,11 @@ export default function App() {
 
   // ---- Campus Life: Prayer Times (any signed-in user) ----
   if (path === "/prayer") return <RequireAuth><PrayerTimes /></RequireAuth>;
+
+  // ---- Campus Life: Events (any signed-in user) ----
+  if (path === "/events") return <RequireAuth><Events /></RequireAuth>;
+  if (path === "/events/new") return <RequireAuth><EventForm /></RequireAuth>;
+  if ((m = matchRoute("/events/:id", path))) return <RequireAuth><EventDetail id={m.id} /></RequireAuth>;
 
   // ---- Community: Marketplace (any signed-in user) ----
   if (path === "/marketplace") return <RequireAuth><Marketplace /></RequireAuth>;
