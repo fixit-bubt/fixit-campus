@@ -528,14 +528,15 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // Accept or reject an incoming request from `requesterId`.
+  // Respond to an incoming request from `requesterId`.
+  // Accept -> mark accepted (contact unlocks). Decline -> delete the request,
+  // so it leaves no trace and either student can start fresh later.
   async function respondConnection(requesterId, accept) {
-    const { error } = await supabase
-      .from("connections")
-      .update({ status: accept ? "accepted" : "rejected", decided_at: new Date().toISOString() })
-      .eq("requester_id", requesterId)
-      .eq("addressee_id", currentUser.id)
-      .eq("status", "pending");
+    const match = (q) =>
+      q.eq("requester_id", requesterId).eq("addressee_id", currentUser.id).eq("status", "pending");
+    const { error } = accept
+      ? await match(supabase.from("connections").update({ status: "accepted", decided_at: new Date().toISOString() }))
+      : await match(supabase.from("connections").delete());
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   }
