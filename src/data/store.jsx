@@ -109,6 +109,24 @@ function toAnnouncement(r, readByMe, userId) {
   };
 }
 
+// DB listing row -> screen shape (id = code for routing; uuid = real PK).
+function toListing(r) {
+  return {
+    id: r.code,
+    uuid: r.id,
+    title: r.title,
+    price: r.price,
+    condition: r.condition,
+    negotiable: r.negotiable,
+    category: r.category,
+    description: r.description,
+    photo: r.photo_url || null,
+    status: r.status,
+    sellerId: r.seller_id,
+    createdAt: day(r.created_at),
+  };
+}
+
 // ============================================================================
 // ⚠️ PHASE-1 MOCK — campus-feature slices (localStorage, not Supabase).
 // These ship the new UI on seed data while the screens are built one by one.
@@ -138,17 +156,6 @@ function nextMockId(list, prefix, floor) {
   }, floor);
   return `${prefix}-${max + 1}`;
 }
-
-// Marketplace — listings. Seed sellerIds are demo-only and won't match real
-// user ids, so seeded sellers show as "Unknown" until a real user posts — fine.
-const SEED_LISTINGS = [
-  { id: "L-205", title: "Lenovo IdeaPad 3 (i3, 8GB, 256 SSD)", price: 28000, condition: "Used", negotiable: true, category: "Electronics", description: "Reliable everyday laptop, used for two semesters. Battery backup ~4 hrs, no dents. Comes with charger and a sleeve.", sellerId: "u-stu-1", status: "Available", photo: null, createdAt: isoOffset(-1) },
-  { id: "L-203", title: "Study table + chair set", price: 3500, condition: "Used", negotiable: true, category: "Furniture", description: "Wooden study table with drawer and a cushioned chair. Selling because I'm moving hostels. Pickup from Mirpur-2.", sellerId: "u-stu-3", status: "Available", photo: null, createdAt: isoOffset(-2) },
-  { id: "L-202", title: "Casio fx-991EX calculator", price: 1200, condition: "Like New", negotiable: false, category: "Electronics", description: "Barely used scientific calculator, all functions working. Great for engineering courses.", sellerId: "u-stu-2", status: "Available", photo: null, createdAt: isoOffset(-3) },
-  { id: "L-201", title: "HSC Physics + Chemistry book bundle", price: 800, condition: "Used", negotiable: true, category: "Books", description: "Complete set, minimal highlighting. Selling the whole bundle together only.", sellerId: "u-stu-2", status: "Available", photo: null, createdAt: isoOffset(-4) },
-  { id: "L-206", title: "CSE 3rd semester handwritten notes", price: 300, condition: "Like New", negotiable: false, category: "Notes", description: "Full DSA + DLD notes, neat and complete. Soft copy also available after purchase.", sellerId: "u-stu-3", status: "Available", photo: null, createdAt: isoOffset(-6) },
-  { id: "L-204", title: "Drafting & geometry set", price: 450, condition: "New", negotiable: false, category: "Other", description: "Unused drafting set, still in box. Bought an extra by mistake.", sellerId: "u-stu-2", status: "Sold", photo: null, createdAt: isoOffset(-10) },
-];
 
 // Events. Seed attendee ids are demo-only; real RSVPs add the real user id.
 const SEED_EVENTS = [
@@ -215,12 +222,10 @@ export function AppProvider({ children }) {
   // ---- announcements (LIVE Supabase) ----
   const [announcements, setAnnouncements] = useState([]);
 
-  // ---- campus features still on PHASE-1 MOCK (localStorage) ----
-  const [listings, setListings] = useState(() => loadMock("fixit_listings", SEED_LISTINGS));
-  useEffect(() => {
-    try { localStorage.setItem("fixit_listings", JSON.stringify(listings)); } catch {}
-  }, [listings]);
+  // ---- marketplace listings (LIVE Supabase) ----
+  const [listings, setListings] = useState([]);
 
+  // ---- campus features still on PHASE-1 MOCK (localStorage) ----
   const [events, setEvents] = useState(() => loadMock("fixit_events", SEED_EVENTS));
   useEffect(() => {
     try { localStorage.setItem("fixit_events", JSON.stringify(events)); } catch {}
@@ -327,14 +332,21 @@ export function AppProvider({ children }) {
     setAnnouncements((rows || []).map((r) => toAnnouncement(r, readSet.has(r.id), currentUser.id)));
   }, [currentUser]);
 
+  const loadListings = useCallback(async () => {
+    if (!currentUser) { setListings([]); return; }
+    const { data } = await supabase
+      .from("listings").select("*").order("created_at", { ascending: false });
+    setListings((data || []).map(toListing));
+  }, [currentUser]);
+
   useEffect(() => {
     let active = true;
     if (currentUser) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements]);
+  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -796,20 +808,60 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // ---- marketplace listings (PHASE-1 MOCK) ----
-  function addListing(data) {
-    const listing = { id: nextMockId(listings, "L", 200), ...data, status: "Available", photo: data.photo || null, createdAt: isoOffset(0) };
-    setListings((l) => [listing, ...l]);
-    return listing; // screen navigates to /marketplace/:id immediately
+  // ---- marketplace listings (LIVE Supabase) ----
+  // Build the insert/update column payload (uploads the photo if a new file).
+  async function listingCols(data) {
+    const photo_url = await resolvePhoto({ photo: data.photo, photoFile: data.photoFile }, "marketplace");
+    return {
+      title: data.title,
+      price: data.price,
+      condition: data.condition,
+      negotiable: !!data.negotiable,
+      category: data.category,
+      description: data.description,
+      photo_url,
+    };
   }
-  function updateListing(id, data) {
-    setListings((l) => l.map((x) => (x.id === id ? { ...x, ...data } : x)));
+  async function addListing(data) {
+    let cols;
+    try { cols = await listingCols(data); }
+    catch (e) { return { ok: false, error: "Photo upload failed: " + e.message }; }
+    const { data: row, error } = await supabase
+      .from("listings")
+      .insert({ ...cols, seller_id: currentUser.id })
+      .select("*")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    await loadListings();
+    return { ok: true, id: row.code };
   }
-  function deleteListing(id) {
-    setListings((l) => l.filter((x) => x.id !== id));
+  async function updateListing(id, data) {
+    let cols;
+    try { cols = await listingCols(data); }
+    catch (e) { return { ok: false, error: "Photo upload failed: " + e.message }; }
+    const { error } = await supabase.from("listings").update(cols).eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadListings();
+    return { ok: true };
   }
-  function markListingSold(id) {
-    setListings((l) => l.map((x) => (x.id === id ? { ...x, status: "Sold" } : x)));
+  async function deleteListing(id) {
+    const { error } = await supabase.from("listings").delete().eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadListings();
+    return { ok: true };
+  }
+  async function markListingSold(id) {
+    const { error } = await supabase.from("listings").update({ status: "Sold" }).eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadListings();
+    return { ok: true };
+  }
+  // Seller name + WhatsApp for a listing (whatsapp only if the seller opted in
+  // via show_whatsapp — enforced inside the listing_contact RPC).
+  async function getListingContact(code) {
+    const { data } = await supabase.rpc("listing_contact", { p_code: code });
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
   }
 
   // ---- events (PHASE-1 MOCK) ----
@@ -901,7 +953,7 @@ export function AppProvider({ children }) {
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
-    listings, addListing, updateListing, deleteListing, markListingSold,
+    listings, addListing, updateListing, deleteListing, markListingSold, getListingContact,
     events, addEvent, toggleRSVP, deleteEvent,
     rides, addRide, requestSeat, deleteRide,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor,
