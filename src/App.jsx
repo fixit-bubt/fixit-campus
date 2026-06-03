@@ -35,6 +35,7 @@ import { BusSchedule, BusDetail, BusRouteForm } from "./screens/bus/Bus.jsx";
 import { PrayerTimes } from "./screens/prayer/Prayer.jsx";
 import { Events, EventDetail, EventForm } from "./screens/events/Events.jsx";
 import { RideShare, RideDetail, OfferRide } from "./screens/rides/Rides.jsx";
+import { BloodDonation, RegisterDonor, RequestBlood } from "./screens/blood/Blood.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -148,6 +149,11 @@ export default function App() {
   if (path === "/rides") return <RequireAuth><RideShare /></RequireAuth>;
   if (path === "/rides/new") return <RequireAuth><OfferRide /></RequireAuth>;
   if ((m = matchRoute("/rides/:id", path))) return <RequireAuth><RideDetail id={m.id} /></RequireAuth>;
+
+  // ---- Community: Blood Donation (any signed-in user) ----
+  if (path === "/blood") return <RequireAuth><BloodDonation /></RequireAuth>;
+  if (path === "/blood/register") return <RequireAuth><RegisterDonor /></RequireAuth>;
+  if (path === "/blood/request") return <RequireAuth><RequestBlood /></RequireAuth>;
 
   // ---- 404 ----
   return <NotFound />;

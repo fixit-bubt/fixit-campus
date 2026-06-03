@@ -24,6 +24,7 @@ const CAMPUS_LIFE = [
 const COMMUNITY = [
   { key: "marketplace", label: "Marketplace", icon: "Store", path: "/marketplace" },
   { key: "rideshare", label: "Ride Share", icon: "Car", path: "/rides" },
+  { key: "blood", label: "Blood Donation", icon: "Droplet", path: "/blood" },
 ];
 
 const NAV_BY_ROLE = {
