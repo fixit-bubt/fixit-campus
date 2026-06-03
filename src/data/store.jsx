@@ -21,7 +21,7 @@ function toUser(p) {
   if (!p) return null;
   return {
     id: p.id,
-    name: p.full_name,
+    name: p.full_name || (p.email ? p.email.split("@")[0] : "User"),
     email: p.email ?? "",
     role: cap(p.role),
     dept: p.department ?? undefined,
