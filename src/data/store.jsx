@@ -132,7 +132,13 @@ export function AppProvider({ children }) {
     if (!sessionUserId) { setCurrentUser(null); return; }
     supabase
       .from("profiles").select("*").eq("id", sessionUserId).single()
-      .then(({ data }) => { if (active) setCurrentUser(toUser(data)); });
+      .then(({ data, error }) => {
+        // On a transient read failure, keep the user signed in rather than
+        // flipping to a confusing "logged out but session valid" state.
+        if (!active || error || !data) return;
+        setCurrentUser(toUser(data));
+      })
+      .catch(() => {});
     return () => { active = false; };
   }, [sessionUserId]);
 
