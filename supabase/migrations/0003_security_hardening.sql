@@ -38,7 +38,8 @@ grant  execute on function public.is_admin() to authenticated;
 
 -- ============================================================================
 -- Note: the public_profiles view is intentionally a SECURITY DEFINER view —
--- it exposes ONLY non-sensitive columns (id, full_name, role, department) and
--- never email. The advisor may still flag it; that is an accepted, documented
--- exception (it must bypass row RLS to show names across the app).
+-- it exposes ONLY non-sensitive columns (id, full_name, role, department, and
+-- avatar_url as of migration 0006) and never email, whatsapp, intake, or
+-- section. The advisor may still flag it; that is an accepted, documented
+-- exception (it must bypass row RLS to show names/photos across the app).
 -- ============================================================================
