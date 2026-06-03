@@ -332,8 +332,8 @@ export function Modal({ open, onClose, title, description, icon: HeadIcon, tone 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40" onClick={onClose} />
-      <div className={`relative w-full ${widths[size]} rounded-xl border border-slate-200 bg-white shadow-xl`} role="dialog" aria-modal="true">
-        <div className="p-6">
+      <div className={`relative flex max-h-[90vh] w-full flex-col ${widths[size]} rounded-xl border border-slate-200 bg-white shadow-xl`} role="dialog" aria-modal="true">
+        <div className="overflow-y-auto p-6">
           <div className="flex items-start gap-4">
             {HeadIcon && (
               <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${toneBg[tone]}`}>
@@ -355,7 +355,7 @@ export function Modal({ open, onClose, title, description, icon: HeadIcon, tone 
           </div>
         </div>
         {footer && (
-          <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 rounded-b-xl">{footer}</div>
+          <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 rounded-b-xl">{footer}</div>
         )}
       </div>
     </div>
