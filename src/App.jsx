@@ -36,6 +36,7 @@ import { PrayerTimes } from "./screens/prayer/Prayer.jsx";
 import { Events, EventDetail, EventForm } from "./screens/events/Events.jsx";
 import { RideShare, RideDetail, OfferRide } from "./screens/rides/Rides.jsx";
 import { BloodDonation, RegisterDonor, RequestBlood } from "./screens/blood/Blood.jsx";
+import { MedicalCenter, DoctorBooking, MyAppointments, DoctorQueue } from "./screens/medical/Medical.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -149,6 +150,12 @@ export default function App() {
   if (path === "/rides") return <RequireAuth><RideShare /></RequireAuth>;
   if (path === "/rides/new") return <RequireAuth><OfferRide /></RequireAuth>;
   if ((m = matchRoute("/rides/:id", path))) return <RequireAuth><RideDetail id={m.id} /></RequireAuth>;
+
+  // ---- Services: Medical Center (any signed-in user) ----
+  if (path === "/medical") return <RequireAuth><MedicalCenter /></RequireAuth>;
+  if (path === "/medical/appointments") return <RequireAuth><MyAppointments /></RequireAuth>;
+  if (path === "/medical/queue") return <RequireAuth><DoctorQueue /></RequireAuth>;
+  if ((m = matchRoute("/medical/:id", path))) return <RequireAuth><DoctorBooking id={m.id} /></RequireAuth>;
 
   // ---- Community: Blood Donation (any signed-in user) ----
   if (path === "/blood") return <RequireAuth><BloodDonation /></RequireAuth>;
