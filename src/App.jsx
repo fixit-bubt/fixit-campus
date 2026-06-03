@@ -31,6 +31,7 @@ import NotFound from "./screens/NotFound.jsx";
 
 import { Announcements, AnnouncementDetail, AnnouncementForm } from "./screens/announcements/Announcements.jsx";
 import { Marketplace, ListingDetail, ListingForm, MyListings } from "./screens/marketplace/Marketplace.jsx";
+import { BusSchedule, BusDetail, BusRouteForm } from "./screens/bus/Bus.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -118,6 +119,12 @@ export default function App() {
   if (path === "/announcements") return <RequireAuth><Announcements /></RequireAuth>;
   if (path === "/announcements/new") return <RequireAuth><AnnouncementForm /></RequireAuth>;
   if ((m = matchRoute("/announcements/:id", path))) return <RequireAuth><AnnouncementDetail id={m.id} /></RequireAuth>;
+
+  // ---- Campus Life: Bus Schedule (any signed-in user; add/edit is admin) ----
+  if (path === "/bus") return <RequireAuth><BusSchedule /></RequireAuth>;
+  if (path === "/bus/new") return <RequireAuth><BusRouteForm /></RequireAuth>;
+  if ((m = matchRoute("/bus/:id/edit", path))) return <RequireAuth><BusRouteForm id={m.id} /></RequireAuth>;
+  if ((m = matchRoute("/bus/:id", path))) return <RequireAuth><BusDetail id={m.id} /></RequireAuth>;
 
   // ---- Community: Marketplace (any signed-in user) ----
   if (path === "/marketplace") return <RequireAuth><Marketplace /></RequireAuth>;
