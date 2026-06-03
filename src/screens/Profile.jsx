@@ -4,6 +4,21 @@ import { useApp } from "../data/store.jsx";
 import { Card, Button, Field, Input, FileUpload, Avatar, Badge, Spinner, useToast } from "../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../components/AppShell.jsx";
 
+// Small on/off switch.
+function Toggle({ checked, onChange, label, hint }) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)} className="flex w-full items-start justify-between gap-3 text-left">
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-slate-700">{label}</span>
+        {hint && <span className="mt-0.5 block text-xs text-slate-400">{hint}</span>}
+      </span>
+      <span className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-slate-300"}`}>
+        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+      </span>
+    </button>
+  );
+}
+
 export default function Profile() {
   const { currentUser, updateProfile } = useApp();
   const toast = useToast();
@@ -16,11 +31,14 @@ export default function Profile() {
     section: currentUser.section || "",
     avatar: currentUser.avatar || null,
     avatarFile: null,
+    directoryVisible: currentUser.directoryVisible !== false,
+    showWhatsapp: currentUser.showWhatsapp === true,
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const set = (k) => (e) => { setSaved(false); setForm((f) => ({ ...f, [k]: e.target.value })); };
+  const setToggle = (k) => (v) => { setSaved(false); setForm((f) => ({ ...f, [k]: v })); };
 
   async function submit(e) {
     e.preventDefault();
@@ -78,7 +96,7 @@ export default function Profile() {
               </div>
             </Field>
 
-            <Field label="WhatsApp number" htmlFor="pf-wa" hint="Shared with the other person only after a Lost & Found claim is approved.">
+            <Field label="WhatsApp number" htmlFor="pf-wa" hint="Shared with a matched person after a Lost & Found claim is approved — and with other students only if you enable it below.">
               <Input id="pf-wa" type="tel" placeholder="e.g. +8801XXXXXXXXX" value={form.whatsapp} onChange={set("whatsapp")} />
             </Field>
 
@@ -90,6 +108,24 @@ export default function Profile() {
                 <Field label="Section" htmlFor="pf-section" hint="e.g. 5 / B">
                   <Input id="pf-section" placeholder="Section" value={form.section} onChange={set("section")} />
                 </Field>
+              </div>
+            )}
+
+            {isStudent && (
+              <div className="space-y-4 border-t border-slate-100 pt-5">
+                <p className="text-sm font-semibold text-slate-900">Student Directory</p>
+                <Toggle
+                  checked={form.directoryVisible}
+                  onChange={setToggle("directoryVisible")}
+                  label="Show me in the Student Directory"
+                  hint="Let other students find you. If you turn this off you're hidden — and you won't be able to browse others either."
+                />
+                <Toggle
+                  checked={form.showWhatsapp}
+                  onChange={setToggle("showWhatsapp")}
+                  label="Show my WhatsApp to other students"
+                  hint="Lets classmates message you on WhatsApp from your directory profile."
+                />
               </div>
             )}
           </Card>

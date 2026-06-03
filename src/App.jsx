@@ -8,6 +8,7 @@ import Login from "./screens/public/Login.jsx";
 import Register from "./screens/public/Register.jsx";
 
 import StudentDashboard from "./screens/student/StudentDashboard.jsx";
+import StudentDirectory from "./screens/student/StudentDirectory.jsx";
 import MyReports from "./screens/student/MyReports.jsx";
 import ReportIssue from "./screens/student/ReportIssue.jsx";
 import EditReport from "./screens/student/EditReport.jsx";
@@ -77,6 +78,7 @@ export default function App() {
 
   // ---- Student routes ----
   if (path === "/dashboard") return <RequireRole role="Student"><StudentDashboard /></RequireRole>;
+  if (path === "/students") return <RequireRole role="Student"><StudentDirectory /></RequireRole>;
   if (path === "/reports") return <RequireRole role="Student"><MyReports /></RequireRole>;
   if (path === "/reports/new") return <RequireRole role="Student"><ReportIssue /></RequireRole>;
   let m;

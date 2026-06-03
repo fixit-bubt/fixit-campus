@@ -28,6 +28,8 @@ function toUser(p) {
     intake: p.intake ?? "",
     section: p.section ?? "",
     avatar: p.avatar_url ?? null,
+    directoryVisible: p.directory_visible ?? true,
+    showWhatsapp: p.show_whatsapp ?? false,
     joined: day(p.created_at),
   };
 }
@@ -284,6 +286,8 @@ export function AppProvider({ children }) {
     if (currentUser.role === "Student") {
       patch.intake = form.intake?.trim() || null;
       patch.section = form.section?.trim() || null;
+      patch.directory_visible = form.directoryVisible !== false;
+      patch.show_whatsapp = form.showWhatsapp === true;
     }
     const { error } = await supabase.from("profiles").update(patch).eq("id", currentUser.id);
     if (error) return { ok: false, error: error.message };
@@ -495,6 +499,23 @@ export function AppProvider({ children }) {
   // Contact reveal: read a counterpart's name + email straight from profiles.
   // RLS only returns it if you're allowed (self, admin, or the matched party
   // of an approved claim) — so this is safe to call.
+  // Student directory (students only; respects each user's privacy toggles and
+  // the reciprocal "hidden users can't browse" rule — all enforced in the DB).
+  async function getStudentDirectory() {
+    const { data, error } = await supabase.rpc("student_directory");
+    if (error) return [];
+    return (data || []).map((r) => ({
+      id: r.id,
+      name: r.full_name,
+      avatar: r.avatar_url,
+      department: r.department,
+      intake: r.intake,
+      section: r.section,
+      email: r.email,
+      whatsapp: r.whatsapp,
+    }));
+  }
+
   async function getContact(userId) {
     if (!userId) return null;
     const { data } = await supabase
@@ -511,6 +532,7 @@ export function AppProvider({ children }) {
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
     setRole, updateProfile, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact, getProofUrl,
+    getStudentDirectory,
   };
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

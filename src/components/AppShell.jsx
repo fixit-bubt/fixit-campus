@@ -27,6 +27,7 @@ const NAV_BY_ROLE = {
     { key: "reports", label: "My Reports", Icon: FileText, path: "/reports" },
     { key: "report-new", label: "Report an Issue", Icon: CirclePlus, path: "/reports/new" },
     { key: "lost-found", label: "Lost & Found", Icon: PackageSearch, path: "/lost-found" },
+    { key: "directory", label: "Students", Icon: Users, path: "/students" },
     { key: "profile", label: "My Profile", Icon: CircleUser, path: "/profile" },
   ],
   Staff: [
