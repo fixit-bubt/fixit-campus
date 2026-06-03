@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { Search, SearchX, PackageSearch, Plus } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
-import { Button, Select, EmptyState } from "../../components/ui.jsx";
+import { Button, Select, EmptyState, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import { ItemCard } from "../../components/ItemBits.jsx";
 import { ITEM_CATEGORIES } from "../../lib/helpers.js";
 
 export default function LostFoundBrowse() {
-  const { items } = useApp();
+  const { items, dataLoading } = useApp();
   const [query, setQuery] = useState("");
   const [type, setType] = useState("All");
   const [category, setCategory] = useState("All");
@@ -52,7 +52,9 @@ export default function LostFoundBrowse() {
         </div>
       </div>
 
-      {items.length === 0 ? (
+      {dataLoading ? (
+        <Loading />
+      ) : items.length === 0 ? (
         <EmptyState icon={PackageSearch} title="Nothing here yet" message="Be the first to post a lost or found item." action={<Button icon={Plus} onClick={() => navigate("/lost-found/new")}>Post an Item</Button>} />
       ) : filtered.length === 0 ? (
         <EmptyState icon={SearchX} title="No matching items" message="Try a different search or filter." action={<Button variant="secondary" onClick={() => { setQuery(""); setType("All"); setCategory("All"); }}>Clear filters</Button>} />

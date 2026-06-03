@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { CirclePlus, Search, CircleHelp, Pencil, Trash2, ArrowRight, MapPin, Calendar, FileText, SearchX } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
-import { Card, Button, Modal, EmptyState, StatusBadge, useToast } from "../../components/ui.jsx";
+import { Card, Button, Modal, EmptyState, StatusBadge, Loading, useToast } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import { CATEGORY_ICON, fmtDate } from "../../lib/helpers.js";
@@ -43,7 +43,7 @@ function MyReportCard({ report, onView, onEdit, onDelete }) {
 }
 
 export default function MyReports() {
-  const { currentUser, reports, deleteReport } = useApp();
+  const { currentUser, reports, deleteReport, dataLoading } = useApp();
   const toast = useToast();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
@@ -98,7 +98,9 @@ export default function MyReports() {
         <FilterTabs options={statuses} value={filter} onChange={setFilter} counts={counts} />
       </div>
 
-      {mine.length === 0 ? (
+      {dataLoading ? (
+        <Loading />
+      ) : mine.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="No reports yet"

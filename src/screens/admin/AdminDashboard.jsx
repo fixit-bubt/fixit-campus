@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { FileText, CircleDot, Loader, CircleCheck, CheckCheck } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
-import { EmptyState, StatCard } from "../../components/ui.jsx";
+import { EmptyState, StatCard, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ReportsTable } from "../../components/ReportsTable.jsx";
 import { AssignModal } from "../../components/AssignModal.jsx";
 
 export default function AdminDashboard() {
-  const { reports } = useApp();
+  const { reports, dataLoading } = useApp();
   const count = (s) => reports.filter((r) => r.status === s).length;
   const unassigned = reports
     .filter((r) => r.status === "Open" && !r.assignedStaffId)
@@ -34,7 +34,9 @@ export default function AdminDashboard() {
           </div>
           <Link to="/admin/reports" className="text-sm font-medium text-blue-600 hover:text-blue-700">All reports</Link>
         </div>
-        {unassigned.length === 0 ? (
+        {dataLoading ? (
+          <Loading />
+        ) : unassigned.length === 0 ? (
           <EmptyState icon={CheckCheck} title="Nothing waiting" message="Every open report has been assigned." />
         ) : (
           <ReportsTable rows={unassigned} onAssign={setAssignTarget} onOpen={(r) => navigate(`/reports/${r.id}`)} />

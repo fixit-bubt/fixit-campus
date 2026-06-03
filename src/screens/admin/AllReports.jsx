@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { Search, SearchX } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
-import { Button, Select, EmptyState } from "../../components/ui.jsx";
+import { Button, Select, EmptyState, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ReportsTable } from "../../components/ReportsTable.jsx";
 import { AssignModal } from "../../components/AssignModal.jsx";
 import { CATEGORIES } from "../../lib/helpers.js";
 
 export default function AllReports() {
-  const { reports } = useApp();
+  const { reports, dataLoading } = useApp();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
   const [category, setCategory] = useState("All");
@@ -52,7 +52,9 @@ export default function AllReports() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {dataLoading ? (
+        <Loading />
+      ) : filtered.length === 0 ? (
         <EmptyState icon={SearchX} title="No matching reports" message="Try different filters." action={<Button variant="secondary" onClick={() => { setQuery(""); setStatus("All"); setCategory("All"); }}>Clear filters</Button>} />
       ) : (
         <ReportsTable rows={filtered} onAssign={setAssignTarget} onOpen={(r) => navigate(`/reports/${r.id}`)} />

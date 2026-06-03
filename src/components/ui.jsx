@@ -449,6 +449,15 @@ export function Skeleton({ className = "" }) {
   return <div className={`animate-pulse rounded-md bg-slate-200/70 ${className}`} />;
 }
 
+// Centered loading spinner for list/dashboard areas while data loads.
+export function Loading({ className = "" }) {
+  return (
+    <div className={`flex items-center justify-center py-16 ${className}`}>
+      <Spinner size={28} />
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // StatCard — dashboard metric tile. icon: lucide component
 // ---------------------------------------------------------------------------

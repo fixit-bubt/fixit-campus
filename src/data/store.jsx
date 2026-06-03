@@ -104,6 +104,7 @@ export function AppProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
 
   // ---- reports (real Supabase) ----
   const [reports, setReports] = useState([]);
@@ -177,11 +178,13 @@ export function AppProvider({ children }) {
   }, [currentUser]);
 
   useEffect(() => {
-    refreshUsers();
-    loadReports();
-    loadItems();
-    loadClaims();
-  }, [refreshUsers, loadReports, loadItems, loadClaims]);
+    let active = true;
+    if (currentUser) setDataLoading(true);
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims()]).finally(() => {
+      if (active) setDataLoading(false);
+    });
+    return () => { active = false; };
+  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -462,7 +465,7 @@ export function AppProvider({ children }) {
 
   const value = {
     users, setUsers, reports, setReports, items, setItems, claims, setClaims,
-    currentUser, setCurrentUser, loading,
+    currentUser, setCurrentUser, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,

@@ -2,12 +2,12 @@ import React from "react";
 import { ClipboardCheck, Loader, CircleCheck, CheckCheck } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
-import { Card, EmptyState, StatCard } from "../../components/ui.jsx";
+import { Card, EmptyState, StatCard, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ReportListRow } from "../../components/ReportListRow.jsx";
 
 export default function StaffDashboard() {
-  const { currentUser, reports } = useApp();
+  const { currentUser, reports, dataLoading } = useApp();
   const mine = reports.filter((r) => r.assignedStaffId === currentUser.id);
   const count = (s) => mine.filter((r) => r.status === s).length;
   const active = mine
@@ -35,7 +35,9 @@ export default function StaffDashboard() {
             <Link to="/staff/assigned" className="text-sm font-medium text-blue-600 hover:text-blue-700">View all assigned</Link>
           )}
         </div>
-        {active.length === 0 ? (
+        {dataLoading ? (
+          <Loading />
+        ) : active.length === 0 ? (
           <EmptyState icon={CheckCheck} title="All caught up" message="You have no open or in-progress reports right now." />
         ) : (
           <Card className="divide-y divide-slate-200 overflow-hidden">

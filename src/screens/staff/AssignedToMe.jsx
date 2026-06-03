@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { Search, ClipboardCheck, SearchX } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
-import { Card, Button, EmptyState } from "../../components/ui.jsx";
+import { Card, Button, EmptyState, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import { ReportListRow } from "../../components/ReportListRow.jsx";
 
 export default function AssignedToMe() {
-  const { currentUser, reports } = useApp();
+  const { currentUser, reports, dataLoading } = useApp();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
 
@@ -45,7 +45,9 @@ export default function AssignedToMe() {
         <FilterTabs options={statuses} value={filter} onChange={setFilter} counts={counts} />
       </div>
 
-      {mine.length === 0 ? (
+      {dataLoading ? (
+        <Loading />
+      ) : mine.length === 0 ? (
         <EmptyState icon={ClipboardCheck} title="Nothing assigned yet" message="When an admin assigns you a report, it'll appear here." />
       ) : filtered.length === 0 ? (
         <EmptyState icon={SearchX} title="No matching reports" message="Try a different search or filter." action={<Button variant="secondary" onClick={() => { setQuery(""); setFilter("All"); }}>Clear filters</Button>} />

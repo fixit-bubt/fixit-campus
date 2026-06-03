@@ -2,12 +2,12 @@ import React from "react";
 import { CirclePlus, PackageSearch, ArrowRight, CircleDot, Loader, CircleCheck, FileText } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
-import { Card, Button, EmptyState, StatCard } from "../../components/ui.jsx";
+import { Card, Button, EmptyState, StatCard, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ReportListRow } from "../../components/ReportListRow.jsx";
 
 export default function StudentDashboard() {
-  const { currentUser, reports } = useApp();
+  const { currentUser, reports, dataLoading } = useApp();
   const mine = reports.filter((r) => r.studentId === currentUser.id);
   const count = (s) => mine.filter((r) => r.status === s).length;
   const recent = [...mine].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
@@ -62,7 +62,9 @@ export default function StudentDashboard() {
             <Link to="/reports" className="text-sm font-medium text-blue-600 hover:text-blue-700">View all</Link>
           )}
         </div>
-        {recent.length === 0 ? (
+        {dataLoading ? (
+          <Loading />
+        ) : recent.length === 0 ? (
           <EmptyState
             icon={FileText}
             title="No reports yet"
