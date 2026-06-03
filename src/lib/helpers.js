@@ -51,13 +51,18 @@ export const ITEM_CATEGORY_ICON = {
 export function fmtDate(iso) {
   if (!iso) return "";
   const d = new Date(iso + (iso.length === 10 ? "T00:00:00" : ""));
+  if (isNaN(d.getTime())) return ""; // don't render "Invalid Date"
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export function relativeDate(iso) {
   if (!iso) return "";
-  const then = new Date(iso + (iso.length === 10 ? "T00:00:00" : "")).getTime();
-  const days = Math.round((Date.now() - then) / 86400000);
+  const d = new Date(iso + (iso.length === 10 ? "T00:00:00" : ""));
+  if (isNaN(d.getTime())) return "";
+  // Compare by calendar day (local), so "today" vs "yesterday" doesn't depend
+  // on the exact hours between the two timestamps.
+  const startOfDay = (t) => new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days} days ago`;
@@ -65,6 +70,9 @@ export function relativeDate(iso) {
   return fmtDate(iso);
 }
 
+// Local calendar date (YYYY-MM-DD) — not UTC, so it matches <input type="date">.
 export function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }

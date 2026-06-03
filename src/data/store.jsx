@@ -189,7 +189,10 @@ export function AppProvider({ children }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return { ok: false, error: "Incorrect email or password. Try again." };
     const { data: p } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
-    return { ok: true, user: toUser(p) || { name: email.split("@")[0], role: "Student" } };
+    // Don't fabricate a role if the profile read hiccuped — omit it so the
+    // post-login redirect lands on a safe default and the route guards (driven
+    // by the real currentUser loaded separately) correct it.
+    return { ok: true, user: toUser(p) || { name: email.split("@")[0] } };
   }
 
   async function register({ name, email, password }) {
@@ -500,7 +503,7 @@ export function AppProvider({ children }) {
   // the reciprocal "hidden users can't browse" rule — all enforced in the DB).
   async function getStudentDirectory() {
     const { data, error } = await supabase.rpc("student_directory");
-    if (error) return [];
+    if (error) throw error; // let the screen show an error + retry instead of a silent empty list
     return (data || []).map((r) => ({
       id: r.id,
       name: r.full_name,
@@ -533,23 +536,26 @@ export function AppProvider({ children }) {
   // so it leaves no trace and either student can start fresh later.
   async function respondConnection(requesterId, accept) {
     const match = (q) =>
-      q.eq("requester_id", requesterId).eq("addressee_id", currentUser.id).eq("status", "pending");
-    const { error } = accept
+      q.eq("requester_id", requesterId).eq("addressee_id", currentUser.id).eq("status", "pending").select("id");
+    const { data, error } = accept
       ? await match(supabase.from("connections").update({ status: "accepted", decided_at: new Date().toISOString() }))
       : await match(supabase.from("connections").delete());
     if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) return { ok: false, error: "This request is no longer pending." };
     return { ok: true };
   }
 
   // Cancel a pending request you sent to `addresseeId`.
   async function cancelConnectionRequest(addresseeId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("connections")
       .delete()
       .eq("requester_id", currentUser.id)
       .eq("addressee_id", addresseeId)
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .select("id");
     if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) return { ok: false, error: "This request was already handled." };
     return { ok: true };
   }
 
@@ -567,7 +573,7 @@ export function AppProvider({ children }) {
 
   const value = {
     users, reports, items, claims,
-    currentUser, setCurrentUser, loading, dataLoading,
+    currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,

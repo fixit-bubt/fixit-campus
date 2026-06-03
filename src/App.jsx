@@ -29,6 +29,12 @@ import ItemDetail from "./screens/lostfound/ItemDetail.jsx";
 import Profile from "./screens/Profile.jsx";
 import NotFound from "./screens/NotFound.jsx";
 
+// Render-safe redirect (navigates in an effect, not during render).
+function Redirect({ to }) {
+  useEffect(() => { navigate(to); }, [to]);
+  return null;
+}
+
 // Redirect to /login if there's no signed-in user.
 function RequireAuth({ children }) {
   const { currentUser } = useApp();
@@ -53,11 +59,12 @@ function RequireRole({ role, children }) {
 
 export default function App() {
   const path = useHashRoute();
-  const { currentUser, dashboardPath, loading } = useApp();
+  const { currentUser, dashboardPath, sessionUserId, loading } = useApp();
 
-  // While we check for an existing session, hold off routing (avoids a flash
-  // of the login page on refresh when the user is actually signed in).
-  if (loading) {
+  // Hold off routing while either the session check is running OR a known
+  // session's profile is still loading — otherwise a refresh while signed in
+  // briefly sees currentUser=null and flashes/bounces to /login.
+  if (loading || (sessionUserId && !currentUser)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <Spinner size={28} />
@@ -68,11 +75,11 @@ export default function App() {
   // ---- Public routes ----
   if (path === "/" || path === "") return <Landing />;
   if (path === "/login") {
-    if (currentUser) { navigate(dashboardPath(currentUser.role)); return null; }
+    if (currentUser) return <Redirect to={dashboardPath(currentUser.role)} />;
     return <Login />;
   }
   if (path === "/register") {
-    if (currentUser) { navigate(dashboardPath(currentUser.role)); return null; }
+    if (currentUser) return <Redirect to={dashboardPath(currentUser.role)} />;
     return <Register />;
   }
 

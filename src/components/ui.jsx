@@ -154,8 +154,12 @@ const MAX_UPLOAD_MB = 5;
 
 export function FileUpload({ value, onChange, error, label = "Upload photo", id }) {
   const inputRef = useRef(null);
+  const objectUrl = useRef(null); // the blob: URL we created, so we can revoke it
   const [preview, setPreview] = useState(value || null);
   const [localErr, setLocalErr] = useState("");
+
+  // Revoke any object URL we made when this component unmounts.
+  useEffect(() => () => { if (objectUrl.current) URL.revokeObjectURL(objectUrl.current); }, []);
 
   function handleFiles(files) {
     const file = files && files[0];
@@ -169,13 +173,16 @@ export function FileUpload({ value, onChange, error, label = "Upload photo", id 
       return;
     }
     setLocalErr("");
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current); // free the previous one
     const url = URL.createObjectURL(file);
+    objectUrl.current = url;
     setPreview(url);
     onChange && onChange(url, file);
   }
 
   function clear(e) {
     e.stopPropagation();
+    if (objectUrl.current) { URL.revokeObjectURL(objectUrl.current); objectUrl.current = null; }
     setPreview(null);
     onChange && onChange(null, null);
     if (inputRef.current) inputRef.current.value = "";
