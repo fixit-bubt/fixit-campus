@@ -29,7 +29,10 @@ export default function AllReports() {
 
   return (
     <AppShell activeKey="all-reports" title="All Reports">
-      <PageHeader title="All Reports" subtitle={`${reports.length} reports across campus.`} />
+      <PageHeader
+        title="All Reports"
+        subtitle={`${filtered.length} ${filtered.length === 1 ? "report" : "reports"}${filtered.length !== reports.length ? ` of ${reports.length}` : ""} across campus.`}
+      />
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-xs">
