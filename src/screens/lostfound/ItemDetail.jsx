@@ -145,7 +145,7 @@ function ContactCard({ user, label }) {
 }
 
 // One incoming claim, shown to the poster with Approve / Reject.
-function PosterClaimRow({ claim, claimant, onDecide, busy }) {
+function PosterClaimRow({ claim, claimant, onDecide, busy, proofUrl }) {
   return (
     <div className="border-t border-slate-100 pt-4 first:border-t-0 first:pt-0">
       <div className="flex items-center justify-between gap-2">
@@ -159,7 +159,7 @@ function PosterClaimRow({ claim, claimant, onDecide, busy }) {
         {claim.status !== "Pending" && <StatusBadge status={claim.status} />}
       </div>
       <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">{claim.message}</p>
-      {claim.proof && <img src={claim.proof} alt="proof" className="mt-3 max-h-40 rounded-lg border border-slate-200 object-cover" />}
+      {claim.proof && proofUrl && <img src={proofUrl} alt="proof" className="mt-3 max-h-40 rounded-lg border border-slate-200 object-cover" />}
       {claim.status === "Pending" && (
         <div className="mt-3 flex justify-end gap-2">
           <Button size="sm" variant="secondary" icon={X} className="text-red-600" disabled={busy} onClick={() => onDecide(claim, "Rejected")}>Reject</Button>
@@ -173,7 +173,7 @@ function PosterClaimRow({ claim, claimant, onDecide, busy }) {
 // Lost & Found item detail (students only). The POSTER approves/rejects claims;
 // contact between the two students unlocks once a claim is approved.
 export default function ItemDetail({ id }) {
-  const { currentUser, items, claims, userById, deleteItem, setClaimStatus, getContact } = useApp();
+  const { currentUser, items, claims, userById, deleteItem, setClaimStatus, getContact, getProofUrl } = useApp();
   const toast = useToast();
   const item = items.find((i) => i.id === id);
   const [claimOpen, setClaimOpen] = useState(false);
@@ -181,6 +181,7 @@ export default function ItemDetail({ id }) {
   const [contact, setContact] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [busyClaim, setBusyClaim] = useState(null); // id of the claim being decided
+  const [proofUrls, setProofUrls] = useState({}); // claim id -> short-lived signed proof URL
 
   // Reveal the counterpart's contact once a claim is approved (either side).
   useEffect(() => {
@@ -194,6 +195,18 @@ export default function ItemDetail({ id }) {
     }
     if (targetId) getContact(targetId).then((c) => { if (active) setContact(c); });
     else setContact(null);
+    return () => { active = false; };
+  }, [item?.id, claims, currentUser.id]);
+
+  // Poster only: resolve each claim's private proof path to a signed view URL.
+  useEffect(() => {
+    let active = true;
+    if (!item || item.posterId !== currentUser.id) { setProofUrls({}); return; }
+    const withProof = claims.filter((c) => c.itemId === item.id && c.proof);
+    if (!withProof.length) { setProofUrls({}); return; }
+    Promise.all(withProof.map((c) => getProofUrl(c.proof).then((url) => [c.id, url]))).then((pairs) => {
+      if (active) setProofUrls(Object.fromEntries(pairs));
+    });
     return () => { active = false; };
   }, [item?.id, claims, currentUser.id]);
 
@@ -344,7 +357,7 @@ export default function ItemDetail({ id }) {
                 <EmptyState icon={Inbox} title="No claims yet" message="When someone claims this item, it'll appear here for you to review." />
               ) : (
                 itemClaims.map((c) => (
-                  <PosterClaimRow key={c.id} claim={c} claimant={userById(c.claimantId)} onDecide={decide} busy={busyClaim === c.id} />
+                  <PosterClaimRow key={c.id} claim={c} claimant={userById(c.claimantId)} onDecide={decide} busy={busyClaim === c.id} proofUrl={proofUrls[c.id]} />
                 ))
               )}
             </div>

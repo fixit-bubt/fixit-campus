@@ -296,12 +296,29 @@ export function AppProvider({ children }) {
   // ---- photo upload (Supabase Storage) ----
   async function uploadPhoto(file, folder) {
     const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
-    const path = `${folder}/${currentUser.id}/${crypto.randomUUID()}.${ext}`;
+    // Proofs go to a PRIVATE bucket (viewed via signed URL); everything else to
+    // the public "photos" bucket (viewed via a permanent public URL).
+    const isProof = folder === "proofs";
+    const bucket = isProof ? "proofs" : "photos";
+    const path = isProof
+      ? `${currentUser.id}/${crypto.randomUUID()}.${ext}`
+      : `${folder}/${currentUser.id}/${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage
-      .from("photos")
+      .from(bucket)
       .upload(path, file, { cacheControl: "3600", upsert: false });
     if (error) throw error;
+    // Private proofs: store the object PATH (resolved to a signed URL on view).
+    if (isProof) return path;
     return supabase.storage.from("photos").getPublicUrl(path).data.publicUrl;
+  }
+
+  // Resolve a private proof PATH to a short-lived signed URL for viewing.
+  // (Passes through legacy http(s) URLs untouched.)
+  async function getProofUrl(pathOrUrl) {
+    if (!pathOrUrl) return null;
+    if (/^https?:\/\//.test(pathOrUrl)) return pathOrUrl;
+    const { data } = await supabase.storage.from("proofs").createSignedUrl(pathOrUrl, 3600);
+    return data?.signedUrl || null;
   }
 
   // A form carries `photo` (preview URL or existing saved URL) and `photoFile`
@@ -493,7 +510,7 @@ export function AppProvider({ children }) {
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
-    setRole, updateProfile, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact,
+    setRole, updateProfile, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact, getProofUrl,
   };
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
