@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "../../components/Icon.jsx";
 import {
   Button, Card, Badge, StatusBadge, Field, Input, Textarea, Select, FileUpload,
-  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, useToast,
+  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
@@ -56,10 +56,10 @@ export function NoticeCard({ note, unread, onOpen }) {
 
 // --- Browse -----------------------------------------------------------------
 export function Announcements() {
-  const { currentUser, announcements } = useApp();
+  const { currentUser, announcements, dataLoading } = useApp();
   const [dept, setDept] = React.useState("All");
   const [priority, setPriority] = React.useState("All");
-  const canCreate = currentUser.role === "Admin" || currentUser.role === "Staff";
+  const canCreate = currentUser.role === "Admin";
 
   const filtered = announcements
     .filter((a) => dept === "All" || a.department === dept)
@@ -82,7 +82,9 @@ export function Announcements() {
         </Select>
       </div>
 
-      {filtered.length === 0 ? (
+      {dataLoading ? (
+        <Loading />
+      ) : filtered.length === 0 ? (
         <EmptyState icon="Megaphone" title="No notices" message="Announcements from campus departments will appear here." />
       ) : (
         <div className="grid gap-3">
@@ -156,22 +158,23 @@ export function AnnouncementDetail({ id }) {
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} icon="Trash2" tone="red"
         title="Delete this notice?" description={`"${note.title}" will be removed from the notice board.`}
         footer={<><Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          <Button variant="destructive" onClick={() => { deleteAnnouncement(id); toast({ type: "success", title: "Notice deleted" }); navigate("/announcements"); }}>Delete notice</Button></>} />
+          <Button variant="destructive" onClick={async () => { const r = await deleteAnnouncement(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Notice deleted" }); navigate("/announcements"); }}>Delete notice</Button></>} />
     </AppShell>
   );
 }
 
-// --- Compose form (admin/staff) ---------------------------------------------
+// --- Compose form (admin only) ----------------------------------------------
 export function AnnouncementForm() {
   const { currentUser, addAnnouncement } = useApp();
   const toast = useToast();
   const fileRef = React.useRef(null);
-  React.useEffect(() => { if (currentUser.role === "Student") navigate("/announcements"); }, [currentUser]);
+  React.useEffect(() => { if (currentUser.role !== "Admin") navigate("/announcements"); }, [currentUser]);
   const [form, setForm] = React.useState({ title: "", body: "", department: "", priority: "General", pinned: false, attachment: null });
   const [errors, setErrors] = React.useState({});
+  const [saving, setSaving] = React.useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const er = {};
     if (!form.title.trim()) er.title = "Enter a title.";
@@ -179,9 +182,12 @@ export function AnnouncementForm() {
     if (!form.body.trim()) er.body = "Write the notice body.";
     setErrors(er);
     if (Object.keys(er).length) return;
-    const an = addAnnouncement({ title: form.title.trim(), body: form.body.trim(), department: form.department, priority: form.priority, pinned: form.pinned, attachment: form.attachment });
-    toast({ type: "success", title: "Notice posted", message: form.pinned ? "Pinned to the top of the board." : an.title });
-    navigate(`/announcements/${an.id}`);
+    setSaving(true);
+    const res = await addAnnouncement({ title: form.title.trim(), body: form.body.trim(), department: form.department, priority: form.priority, pinned: form.pinned, attachment: form.attachment });
+    setSaving(false);
+    if (!res.ok) { toast({ type: "error", title: "Couldn't post notice", message: res.error }); return; }
+    toast({ type: "success", title: "Notice posted", message: form.pinned ? "Pinned to the top of the board." : "It's now on the notice board." });
+    navigate(`/announcements/${res.id}`);
   }
 
   return (
@@ -228,7 +234,7 @@ export function AnnouncementForm() {
           </Card>
           <div className="flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => navigate("/announcements")}>Cancel</Button>
-            <Button type="submit" icon="Megaphone">Post notice</Button>
+            <Button type="submit" icon="Megaphone" disabled={saving}>{saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Post notice"}</Button>
           </div>
         </form>
       </div>

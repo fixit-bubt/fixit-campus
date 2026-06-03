@@ -90,6 +90,23 @@ function toClaim(r) {
   };
 }
 
+// DB announcement row -> screen shape. `id` is the code (routing); `readBy`
+// only needs to reflect whether THIS user has read it (RLS hides others' reads).
+function toAnnouncement(r, readByMe, userId) {
+  return {
+    id: r.code,
+    uuid: r.id,
+    title: r.title,
+    body: r.body,
+    department: r.department,
+    priority: r.priority,
+    pinned: r.pinned,
+    attachment: r.attachment_url || null,
+    date: day(r.created_at),
+    readBy: readByMe ? [userId] : [],
+  };
+}
+
 // ============================================================================
 // ⚠️ PHASE-1 MOCK — campus-feature slices (localStorage, not Supabase).
 // These ship the new UI on seed data while the screens are built one by one.
@@ -119,17 +136,6 @@ function nextMockId(list, prefix, floor) {
   }, floor);
   return `${prefix}-${max + 1}`;
 }
-
-// Announcements (notice board). `readBy` seed ids are demo-only and won't match
-// real user ids, so seeded notices simply read as "unread" for everyone — fine.
-const SEED_ANNOUNCEMENTS = [
-  { id: "AN-52", title: "Mid-term examination routine published", priority: "Important", department: "Examination Controller", date: isoOffset(0), pinned: true, attachment: "Midterm_Routine_Summer2026.pdf", body: "The mid-term examination routine for Summer 2026 has been published. Examinations begin from the week after next. Students must clear all dues before collecting admit cards from their respective departments. Seat plans will be displayed on notice boards two days before each exam.", readBy: [] },
-  { id: "AN-50", title: "Campus closed on national holiday", priority: "General", department: "Administration", date: isoOffset(-1), pinned: true, attachment: null, body: "The campus, including all administrative offices and the library, will remain closed on the upcoming national holiday. Shuttle services will not operate. Classes will resume the following working day as per the regular routine.", readBy: [] },
-  { id: "AN-49", title: "Urgent: Water supply maintenance in Building B", priority: "Urgent", department: "Facilities", date: isoOffset(0), pinned: false, attachment: null, body: "Due to emergency maintenance of the water pump, water supply in Building B will be interrupted tomorrow from 9:00 AM to 1:00 PM. We apologize for the inconvenience. Please plan accordingly.", readBy: [] },
-  { id: "AN-47", title: "Semester final tuition fee deadline", priority: "Important", department: "Accounts", date: isoOffset(-2), pinned: false, attachment: "Fee_Notice.pdf", body: "Students are reminded to pay the semester final tuition fee by the end of this month to avoid a late fine. Payment can be made online through the student portal or at the accounts office.", readBy: [] },
-  { id: "AN-44", title: "Library extended hours during exams", priority: "General", department: "Library", date: isoOffset(-3), pinned: false, attachment: null, body: "The central library will remain open until 10:00 PM on weekdays during the examination period to support student preparation. Please carry your ID cards at all times.", readBy: [] },
-  { id: "AN-41", title: "Club registration open for new members", priority: "General", department: "Student Welfare", date: isoOffset(-5), pinned: false, attachment: "Club_List.pdf", body: "Registration for all student clubs is now open. Visit the Student Welfare office or the respective club booths in the concourse to sign up. Membership is free for the first semester.", readBy: [] },
-];
 
 // Marketplace — listings. Seed sellerIds are demo-only and won't match real
 // user ids, so seeded sellers show as "Unknown" until a real user posts — fine.
@@ -204,12 +210,10 @@ export function AppProvider({ children }) {
   const [items, setItems] = useState([]);
   const [claims, setClaims] = useState([]);
 
-  // ---- campus features (PHASE-1 MOCK, localStorage) ----
-  const [announcements, setAnnouncements] = useState(() => loadMock("fixit_announcements", SEED_ANNOUNCEMENTS));
-  useEffect(() => {
-    try { localStorage.setItem("fixit_announcements", JSON.stringify(announcements)); } catch {}
-  }, [announcements]);
+  // ---- announcements (LIVE Supabase) ----
+  const [announcements, setAnnouncements] = useState([]);
 
+  // ---- campus features still on PHASE-1 MOCK (localStorage) ----
   const [listings, setListings] = useState(() => loadMock("fixit_listings", SEED_LISTINGS));
   useEffect(() => {
     try { localStorage.setItem("fixit_listings", JSON.stringify(listings)); } catch {}
@@ -310,14 +314,25 @@ export function AppProvider({ children }) {
     setClaims((data || []).map(toClaim));
   }, [currentUser]);
 
+  // Announcements + this user's read receipts (RLS returns only my own reads).
+  const loadAnnouncements = useCallback(async () => {
+    if (!currentUser) { setAnnouncements([]); return; }
+    const [{ data: rows }, { data: reads }] = await Promise.all([
+      supabase.from("announcements").select("*").order("created_at", { ascending: false }),
+      supabase.from("announcement_reads").select("announcement_id"),
+    ]);
+    const readSet = new Set((reads || []).map((r) => r.announcement_id));
+    setAnnouncements((rows || []).map((r) => toAnnouncement(r, readSet.has(r.id), currentUser.id)));
+  }, [currentUser]);
+
   useEffect(() => {
     let active = true;
     if (currentUser) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims]);
+  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -707,24 +722,51 @@ export function AppProvider({ children }) {
       : null;
   }
 
-  // ---- announcements (PHASE-1 MOCK) ----
-  function addAnnouncement(data) {
-    const an = { id: nextMockId(announcements, "AN", 52), date: isoOffset(0), readBy: [], ...data };
-    setAnnouncements((a) => [an, ...a]);
-    return an; // screen navigates to /announcements/:id immediately
+  // ---- announcements (LIVE Supabase) ----
+  // Insert is admin-only (RLS); returns { ok, id } where id is the new code.
+  async function addAnnouncement(data) {
+    const { data: row, error } = await supabase
+      .from("announcements")
+      .insert({
+        title: data.title,
+        body: data.body,
+        department: data.department,
+        priority: data.priority,
+        pinned: !!data.pinned,
+        attachment_url: data.attachment || null,
+        created_by: currentUser.id,
+      })
+      .select("*")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    await loadAnnouncements();
+    return { ok: true, id: row.code };
   }
-  function markAnnouncementRead(id) {
+
+  // Mark the current user as having read a notice (idempotent upsert).
+  async function markAnnouncementRead(id) {
     if (!currentUser) return;
-    setAnnouncements((as) =>
-      as.map((a) =>
-        a.id === id && !a.readBy.includes(currentUser.id)
-          ? { ...a, readBy: [...a.readBy, currentUser.id] }
-          : a
-      )
-    );
+    const note = announcements.find((a) => a.id === id);
+    if (!note || note.readBy.includes(currentUser.id)) return;
+    const { error } = await supabase
+      .from("announcement_reads")
+      .upsert(
+        { announcement_id: note.uuid, user_id: currentUser.id },
+        { onConflict: "announcement_id,user_id", ignoreDuplicates: true }
+      );
+    if (!error) {
+      setAnnouncements((as) =>
+        as.map((a) => (a.id === id ? { ...a, readBy: [...a.readBy, currentUser.id] } : a))
+      );
+    }
   }
-  function deleteAnnouncement(id) {
-    setAnnouncements((as) => as.filter((a) => a.id !== id));
+
+  // Delete a notice (admin or the author, enforced by RLS).
+  async function deleteAnnouncement(id) {
+    const { error } = await supabase.from("announcements").delete().eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadAnnouncements();
+    return { ok: true };
   }
 
   // ---- marketplace listings (PHASE-1 MOCK) ----
