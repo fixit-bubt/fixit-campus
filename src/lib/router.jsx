@@ -33,8 +33,11 @@ export function matchRoute(pattern, path) {
   if (pp.length !== ph.length) return null;
   const params = {};
   for (let i = 0; i < pp.length; i++) {
-    if (pp[i].startsWith(":")) params[pp[i].slice(1)] = decodeURIComponent(ph[i]);
-    else if (pp[i] !== ph[i]) return null;
+    if (pp[i].startsWith(":")) {
+      const key = pp[i].slice(1);
+      // Don't let a malformed %-escape (e.g. "#/reports/%") crash the whole app.
+      try { params[key] = decodeURIComponent(ph[i]); } catch { params[key] = ph[i]; }
+    } else if (pp[i] !== ph[i]) return null;
   }
   return params;
 }

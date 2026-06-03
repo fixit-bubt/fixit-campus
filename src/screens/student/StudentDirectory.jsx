@@ -85,11 +85,13 @@ export default function StudentDirectory() {
 
   const all = list || [];
   const incoming = all.filter((s) => s.status === "pending_incoming");
-  const filtered = all.filter((s) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return [s.name, s.intake, s.section, s.department].filter(Boolean).some((v) => v.toLowerCase().includes(q));
-  });
+  const filtered = all
+    .filter((s) => s.status !== "pending_incoming") // shown in the Requests section above
+    .filter((s) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return [s.name, s.intake, s.section, s.department].filter(Boolean).some((v) => v.toLowerCase().includes(q));
+    });
 
   return (
     <AppShell activeKey="directory" title="Students">
