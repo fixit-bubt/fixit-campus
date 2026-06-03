@@ -17,6 +17,10 @@ import { Logo } from "./Brand.jsx";
 const CAMPUS_LIFE = [
   { key: "announcements", label: "Announcements", icon: "Megaphone", path: "/announcements" },
 ];
+// Shared "Community" group (grows as features ship: ride share, blood…).
+const COMMUNITY = [
+  { key: "marketplace", label: "Marketplace", icon: "Store", path: "/marketplace" },
+];
 
 const NAV_BY_ROLE = {
   Student: [
@@ -30,6 +34,7 @@ const NAV_BY_ROLE = {
       { key: "lost-found", label: "Lost & Found", icon: "PackageSearch", path: "/lost-found" },
     ]},
     { section: "Community", items: [
+      ...COMMUNITY,
       { key: "directory", label: "Students", icon: "Users", path: "/students" },
     ]},
     { section: null, items: [
@@ -42,6 +47,7 @@ const NAV_BY_ROLE = {
       { key: "assigned", label: "Assigned to Me", icon: "ClipboardCheck", path: "/staff/assigned" },
     ]},
     { section: "Campus Life", items: CAMPUS_LIFE },
+    { section: "Community", items: COMMUNITY },
     { section: null, items: [
       { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
     ]},
@@ -53,6 +59,7 @@ const NAV_BY_ROLE = {
       { key: "users", label: "Manage Users", icon: "Users", path: "/admin/users" },
     ]},
     { section: "Campus Life", items: CAMPUS_LIFE },
+    { section: "Community", items: COMMUNITY },
     { section: null, items: [
       { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
     ]},
