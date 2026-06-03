@@ -34,7 +34,11 @@ export function excerpt(text, n = 120) {
 export function NoticeCard({ note, unread, onOpen }) {
   return (
     <button onClick={onOpen} className="group flex w-full items-start gap-4 rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50/30">
-      <AccentTile icon={PRIORITY_ICON[note.priority]} tone={PRIORITY_TONE[note.priority] === "slate" ? "amber" : PRIORITY_TONE[note.priority]} size={40} />
+      {note.image ? (
+        <img src={note.image} alt="" className="h-10 w-10 shrink-0 rounded-lg border border-slate-200 object-cover" />
+      ) : (
+        <AccentTile icon={PRIORITY_ICON[note.priority]} tone={PRIORITY_TONE[note.priority] === "slate" ? "amber" : PRIORITY_TONE[note.priority]} size={40} />
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           {note.pinned && <Badge tone="amber" icon="Pin">Pinned</Badge>}
@@ -140,7 +144,13 @@ export function AnnouncementDetail({ id }) {
 
           <div className="mt-5 whitespace-pre-line border-t border-slate-100 pt-5 text-sm leading-relaxed text-slate-700">{note.body}</div>
 
-          {note.attachment && (
+          {note.image && (
+            <div className="mt-5">
+              <img src={note.image} alt={note.title} className="w-full rounded-lg border border-slate-200" />
+            </div>
+          )}
+
+          {note.attachment && note.attachmentUrl && (
             <div className="mt-6">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Attachment</p>
               <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -148,7 +158,10 @@ export function AnnouncementDetail({ id }) {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-700"><Icon name="FileText" size={18} /></span>
                   <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-900">{note.attachment}</p><p className="text-xs text-slate-400">PDF document</p></div>
                 </div>
-                <Button size="sm" variant="secondary" icon="Download" onClick={() => toast({ type: "success", title: "Download started", message: note.attachment })}>Download</Button>
+                <a href={note.attachmentUrl} target="_blank" rel="noreferrer" download={note.attachment}
+                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                  <Icon name="Download" size={16} /> Download
+                </a>
               </div>
             </div>
           )}
@@ -169,7 +182,7 @@ export function AnnouncementForm() {
   const toast = useToast();
   const fileRef = React.useRef(null);
   React.useEffect(() => { if (currentUser.role !== "Admin") navigate("/announcements"); }, [currentUser]);
-  const [form, setForm] = React.useState({ title: "", body: "", department: "", priority: "General", pinned: false, attachment: null });
+  const [form, setForm] = React.useState({ title: "", body: "", department: "", priority: "General", pinned: false, image: null, imageFile: null, attachment: null, attachmentFile: null });
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -183,7 +196,7 @@ export function AnnouncementForm() {
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const res = await addAnnouncement({ title: form.title.trim(), body: form.body.trim(), department: form.department, priority: form.priority, pinned: form.pinned, attachment: form.attachment });
+    const res = await addAnnouncement({ title: form.title.trim(), body: form.body.trim(), department: form.department, priority: form.priority, pinned: form.pinned, image: form.image, imageFile: form.imageFile, attachmentFile: form.attachmentFile });
     setSaving(false);
     if (!res.ok) { toast({ type: "error", title: "Couldn't post notice", message: res.error }); return; }
     toast({ type: "success", title: "Notice posted", message: form.pinned ? "Pinned to the top of the board." : "It's now on the notice board." });
@@ -219,12 +232,15 @@ export function AnnouncementForm() {
               </Field>
             </div>
             <Field label="Body" htmlFor="an-body" required error={errors.body}><Textarea id="an-body" rows={6} placeholder="Write the full notice…" value={form.body} error={!!errors.body} onChange={(e) => set("body", e.target.value)} /></Field>
+            <Field label="Notice image" htmlFor="an-image" hint="Upload a photo or scan of the printed notice — it shows inline, the way notices are usually posted.">
+              <FileUpload id="an-image" value={form.image} onChange={(url, file) => setForm((f) => ({ ...f, image: url, imageFile: file }))} label="Upload notice image" />
+            </Field>
             <div>
               <label className="text-sm font-medium text-slate-700">Attachment <span className="text-slate-400">(optional PDF)</span></label>
               <div className="mt-1.5 flex items-center gap-2">
-                <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={(e) => set("attachment", e.target.files[0] ? e.target.files[0].name : null)} />
+                <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const file = e.target.files[0] || null; setForm((f) => ({ ...f, attachmentFile: file, attachment: file ? file.name : null })); }} />
                 <Button type="button" variant="secondary" size="sm" icon="Paperclip" onClick={() => fileRef.current && fileRef.current.click()}>{form.attachment ? "Change file" : "Attach PDF"}</Button>
-                {form.attachment && <span className="inline-flex items-center gap-1.5 text-sm text-slate-600"><Icon name="FileText" size={14} className="text-red-600" />{form.attachment}<button type="button" onClick={() => set("attachment", null)} className="text-slate-400 hover:text-slate-600"><Icon name="X" size={14} /></button></span>}
+                {form.attachment && <span className="inline-flex items-center gap-1.5 text-sm text-slate-600"><Icon name="FileText" size={14} className="text-red-600" />{form.attachment}<button type="button" onClick={() => setForm((f) => ({ ...f, attachment: null, attachmentFile: null }))} className="text-slate-400 hover:text-slate-600"><Icon name="X" size={14} /></button></span>}
               </div>
             </div>
             <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-4 py-3">
