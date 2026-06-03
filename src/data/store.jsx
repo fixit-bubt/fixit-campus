@@ -508,9 +508,48 @@ export function AppProvider({ children }) {
       department: r.department,
       intake: r.intake,
       section: r.section,
+      status: r.status, // 'none' | 'pending_outgoing' | 'pending_incoming' | 'accepted'
       email: r.email,
       whatsapp: r.whatsapp,
     }));
+  }
+
+  // Send a connection request to another student.
+  async function sendConnectionRequest(addresseeId) {
+    const { error } = await supabase
+      .from("connections")
+      .insert({ requester_id: currentUser.id, addressee_id: addresseeId });
+    if (error) {
+      const msg = /already exists/i.test(error.message)
+        ? "You're already connected or have a pending request with this student."
+        : error.message;
+      return { ok: false, error: msg };
+    }
+    return { ok: true };
+  }
+
+  // Accept or reject an incoming request from `requesterId`.
+  async function respondConnection(requesterId, accept) {
+    const { error } = await supabase
+      .from("connections")
+      .update({ status: accept ? "accepted" : "rejected", decided_at: new Date().toISOString() })
+      .eq("requester_id", requesterId)
+      .eq("addressee_id", currentUser.id)
+      .eq("status", "pending");
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
+  // Cancel a pending request you sent to `addresseeId`.
+  async function cancelConnectionRequest(addresseeId) {
+    const { error } = await supabase
+      .from("connections")
+      .delete()
+      .eq("requester_id", currentUser.id)
+      .eq("addressee_id", addresseeId)
+      .eq("status", "pending");
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   }
 
   // Contact reveal: read a counterpart's name + email + whatsapp from profiles.
@@ -532,7 +571,7 @@ export function AppProvider({ children }) {
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
     setRole, updateProfile, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact, getProofUrl,
-    getStudentDirectory,
+    getStudentDirectory, sendConnectionRequest, respondConnection, cancelConnectionRequest,
   };
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
