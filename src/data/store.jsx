@@ -90,6 +90,38 @@ function toClaim(r) {
   };
 }
 
+// ============================================================================
+// ⚠️ PHASE-1 MOCK — campus-feature slices (localStorage, not Supabase).
+// These ship the new UI on seed data while the screens are built one by one.
+// Phase 2 replaces each slice with real tables + RLS, keeping the same `value`
+// keys so the screens don't change. Replace this block, not the screens.
+// ----------------------------------------------------------------------------
+const isoOffset = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+function loadMock(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// Announcements (notice board). `readBy` seed ids are demo-only and won't match
+// real user ids, so seeded notices simply read as "unread" for everyone — fine.
+const SEED_ANNOUNCEMENTS = [
+  { id: "AN-52", title: "Mid-term examination routine published", priority: "Important", department: "Examination Controller", date: isoOffset(0), pinned: true, attachment: "Midterm_Routine_Summer2026.pdf", body: "The mid-term examination routine for Summer 2026 has been published. Examinations begin from the week after next. Students must clear all dues before collecting admit cards from their respective departments. Seat plans will be displayed on notice boards two days before each exam.", readBy: [] },
+  { id: "AN-50", title: "Campus closed on national holiday", priority: "General", department: "Administration", date: isoOffset(-1), pinned: true, attachment: null, body: "The campus, including all administrative offices and the library, will remain closed on the upcoming national holiday. Shuttle services will not operate. Classes will resume the following working day as per the regular routine.", readBy: [] },
+  { id: "AN-49", title: "Urgent: Water supply maintenance in Building B", priority: "Urgent", department: "Facilities", date: isoOffset(0), pinned: false, attachment: null, body: "Due to emergency maintenance of the water pump, water supply in Building B will be interrupted tomorrow from 9:00 AM to 1:00 PM. We apologize for the inconvenience. Please plan accordingly.", readBy: [] },
+  { id: "AN-47", title: "Semester final tuition fee deadline", priority: "Important", department: "Accounts", date: isoOffset(-2), pinned: false, attachment: "Fee_Notice.pdf", body: "Students are reminded to pay the semester final tuition fee by the end of this month to avoid a late fine. Payment can be made online through the student portal or at the accounts office.", readBy: [] },
+  { id: "AN-44", title: "Library extended hours during exams", priority: "General", department: "Library", date: isoOffset(-3), pinned: false, attachment: null, body: "The central library will remain open until 10:00 PM on weekdays during the examination period to support student preparation. Please carry your ID cards at all times.", readBy: [] },
+  { id: "AN-41", title: "Club registration open for new members", priority: "General", department: "Student Welfare", date: isoOffset(-5), pinned: false, attachment: "Club_List.pdf", body: "Registration for all student clubs is now open. Visit the Student Welfare office or the respective club booths in the concourse to sign up. Membership is free for the first semester.", readBy: [] },
+];
+
 export function AppProvider({ children }) {
   // ---- auth / profiles (real Supabase) ----
   const [sessionUserId, setSessionUserId] = useState(null);
@@ -104,6 +136,12 @@ export function AppProvider({ children }) {
   // ---- items / claims (real Supabase) ----
   const [items, setItems] = useState([]);
   const [claims, setClaims] = useState([]);
+
+  // ---- campus features (PHASE-1 MOCK, localStorage) ----
+  const [announcements, setAnnouncements] = useState(() => loadMock("fixit_announcements", SEED_ANNOUNCEMENTS));
+  useEffect(() => {
+    try { localStorage.setItem("fixit_announcements", JSON.stringify(announcements)); } catch {}
+  }, [announcements]);
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -572,8 +610,37 @@ export function AppProvider({ children }) {
       : null;
   }
 
+  // ---- announcements (PHASE-1 MOCK) ----
+  // Next AN-id from the current max suffix, so deletes can't cause a dup id.
+  function nextAnnId(list) {
+    const max = list.reduce((m, a) => {
+      const n = parseInt(String(a.id).replace(/\D/g, ""), 10);
+      return isNaN(n) ? m : Math.max(m, n);
+    }, 52);
+    return "AN-" + (max + 1);
+  }
+  function addAnnouncement(data) {
+    const an = { id: nextAnnId(announcements), date: isoOffset(0), readBy: [], ...data };
+    setAnnouncements((a) => [an, ...a]);
+    return an; // screen navigates to /announcements/:id immediately
+  }
+  function markAnnouncementRead(id) {
+    if (!currentUser) return;
+    setAnnouncements((as) =>
+      as.map((a) =>
+        a.id === id && !a.readBy.includes(currentUser.id)
+          ? { ...a, readBy: [...a.readBy, currentUser.id] }
+          : a
+      )
+    );
+  }
+  function deleteAnnouncement(id) {
+    setAnnouncements((as) => as.filter((a) => a.id !== id));
+  }
+
   const value = {
     users, reports, items, claims,
+    announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,

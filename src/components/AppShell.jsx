@@ -1,45 +1,61 @@
 import React, { useState } from "react";
-import {
-  LayoutDashboard,
-  FileText,
-  CirclePlus,
-  PackageSearch,
-  ClipboardCheck,
-  Users,
-  CircleUser,
-  LogOut,
-  Menu,
-  X,
-} from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { useApp } from "../data/store.jsx";
 import { navigate, Link } from "../lib/router.jsx";
 import { Avatar, Badge } from "./ui.jsx";
+import { Icon } from "./Icon.jsx";
 import { Logo } from "./Brand.jsx";
 
 // ============================================================================
 // AppShell — sidebar + top bar + content area for all logged-in screens.
-// Role-aware nav. Mobile: sidebar collapses into a slide-in drawer.
+// Role-aware, sectioned nav. Mobile: sidebar collapses into a slide-in drawer.
+// Nav items use lucide icon NAMES (resolved by <Icon name=…/>); only features
+// that actually exist are listed — Campus Life / Community grow per release.
 // ============================================================================
+
+// Shared "Campus Life" group (grows as features ship: bus, prayer, events…).
+const CAMPUS_LIFE = [
+  { key: "announcements", label: "Announcements", icon: "Megaphone", path: "/announcements" },
+];
 
 const NAV_BY_ROLE = {
   Student: [
-    { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard, path: "/dashboard" },
-    { key: "reports", label: "My Reports", Icon: FileText, path: "/reports" },
-    { key: "report-new", label: "Report an Issue", Icon: CirclePlus, path: "/reports/new" },
-    { key: "lost-found", label: "Lost & Found", Icon: PackageSearch, path: "/lost-found" },
-    { key: "directory", label: "Students", Icon: Users, path: "/students" },
-    { key: "profile", label: "My Profile", Icon: CircleUser, path: "/profile" },
+    { section: null, items: [
+      { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/dashboard" },
+      { key: "reports", label: "My Reports", icon: "FileText", path: "/reports" },
+    ]},
+    { section: "Campus Life", items: CAMPUS_LIFE },
+    { section: "Services", items: [
+      { key: "report-new", label: "Report an Issue", icon: "CirclePlus", path: "/reports/new" },
+      { key: "lost-found", label: "Lost & Found", icon: "PackageSearch", path: "/lost-found" },
+    ]},
+    { section: "Community", items: [
+      { key: "directory", label: "Students", icon: "Users", path: "/students" },
+    ]},
+    { section: null, items: [
+      { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
+    ]},
   ],
   Staff: [
-    { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard, path: "/staff" },
-    { key: "assigned", label: "Assigned to Me", Icon: ClipboardCheck, path: "/staff/assigned" },
-    { key: "profile", label: "My Profile", Icon: CircleUser, path: "/profile" },
+    { section: null, items: [
+      { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/staff" },
+      { key: "assigned", label: "Assigned to Me", icon: "ClipboardCheck", path: "/staff/assigned" },
+    ]},
+    { section: "Campus Life", items: CAMPUS_LIFE },
+    { section: null, items: [
+      { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
+    ]},
   ],
   Admin: [
-    { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard, path: "/admin" },
-    { key: "all-reports", label: "All Reports", Icon: FileText, path: "/admin/reports" },
-    { key: "users", label: "Manage Users", Icon: Users, path: "/admin/users" },
-    { key: "profile", label: "My Profile", Icon: CircleUser, path: "/profile" },
+    { section: null, items: [
+      { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/admin" },
+      { key: "all-reports", label: "All Reports", icon: "FileText", path: "/admin/reports" },
+      { key: "users", label: "Manage Users", icon: "Users", path: "/admin/users" },
+    ]},
+    { section: "Campus Life", items: CAMPUS_LIFE },
+    { section: null, items: [
+      { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
+    ]},
   ],
 };
 
@@ -48,28 +64,34 @@ export const ROLE_TONE = { Student: "blue", Staff: "amber", Admin: "emerald" };
 function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center px-5">
+      <div className="flex h-16 shrink-0 items-center px-5">
         <Link to="/"><Logo /></Link>
       </div>
-      <nav className="flex-1 space-y-1 px-3 py-2">
-        {nav.map((item) => {
-          const active = item.key === activeKey;
-          const ItemIcon = item.Icon;
-          return (
-            <button
-              key={item.key}
-              onClick={() => onNavigate(item.path)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <ItemIcon size={18} className={active ? "text-blue-600" : "text-slate-400"} />
-              {item.label}
-            </button>
-          );
-        })}
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
+        {nav.map((group, gi) => (
+          <div key={group.section || `g${gi}`} className="space-y-1">
+            {group.section && (
+              <p className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.section}</p>
+            )}
+            {group.items.map((item) => {
+              const active = item.key === activeKey;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => onNavigate(item.path)}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  <Icon name={item.icon} size={18} className={active ? "text-blue-600" : "text-slate-400"} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </nav>
-      <div className="border-t border-slate-200 p-3">
+      <div className="shrink-0 border-t border-slate-200 p-3">
         <button
           onClick={onLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
