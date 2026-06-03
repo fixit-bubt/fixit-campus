@@ -367,9 +367,12 @@ export function AppProvider({ children }) {
   }
 
   async function assignReport(id, staffId) {
-    const r = reports.find((x) => x.id === id);
     const patch = { assigned_staff_id: staffId || null };
-    if (r && r.status === "Open" && staffId) patch.status = "In Progress";
+    // Auto-advance Open -> In Progress, deciding from a fresh read (not cached state).
+    if (staffId) {
+      const { data: cur } = await supabase.from("reports").select("status").eq("code", id).single();
+      if (cur?.status === "Open") patch.status = "In Progress";
+    }
     const { error } = await supabase.from("reports").update(patch).eq("code", id);
     if (error) return { ok: false, error: error.message };
     await loadReports();

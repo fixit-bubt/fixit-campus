@@ -151,8 +151,8 @@ export default function ManageUsers() {
       <Modal
         open={!!pending}
         onClose={() => setPending(null)}
-        icon={ShieldCheck}
-        tone="blue"
+        icon={pending && pending.user.role === "Admin" && pending.newRole !== "Admin" ? TriangleAlert : ShieldCheck}
+        tone={pending && pending.user.role === "Admin" && pending.newRole !== "Admin" ? "amber" : "blue"}
         title="Change this user's role?"
         description={pending ? `${pending.user.name} will change from ${pending.user.role} to ${pending.newRole}. This updates what they can see and do across FixIt.` : ""}
         footer={

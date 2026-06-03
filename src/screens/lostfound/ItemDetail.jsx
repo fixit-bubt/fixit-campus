@@ -209,7 +209,13 @@ export default function ItemDetail({ id }) {
   const isPoster = item.posterId === currentUser.id;
   const myClaim = claims.find((c) => c.itemId === item.id && c.claimantId === currentUser.id);
   const itemClaims = isPoster
-    ? claims.filter((c) => c.itemId === item.id).sort((a, b) => (a.status === "Pending" ? -1 : 1))
+    ? claims
+        .filter((c) => c.itemId === item.id)
+        .sort(
+          (a, b) =>
+            (a.status === "Pending" ? 0 : 1) - (b.status === "Pending" ? 0 : 1) ||
+            b.createdAt.localeCompare(a.createdAt)
+        )
     : [];
   const isFound = item.type === "Found";
   const CategoryIcon = ITEM_CATEGORY_ICON[item.category];
