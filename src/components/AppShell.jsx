@@ -13,8 +13,9 @@ import { Logo } from "./Brand.jsx";
 // that actually exist are listed — Campus Life / Community grow per release.
 // ============================================================================
 
-// Shared "Campus Life" group (grows as features ship: bus, prayer, events…).
+// Shared "Campus Life" group (grows as features ship: prayer, events…).
 const CAMPUS_LIFE = [
+  { key: "bus", label: "Bus Schedule", icon: "Bus", path: "/bus" },
   { key: "announcements", label: "Announcements", icon: "Megaphone", path: "/announcements" },
 ];
 // Shared "Community" group (grows as features ship: ride share, blood…).
