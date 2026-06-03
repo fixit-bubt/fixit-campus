@@ -76,3 +76,27 @@ export function todayISO() {
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
+
+// Force a real download of a (possibly cross-origin) file with a given name.
+// The <a download> attribute is ignored cross-origin, so fetch the bytes and
+// download a blob URL instead. Falls back to opening the file in a new tab.
+export async function downloadFile(url, filename) {
+  if (!url) return false;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("fetch failed");
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objUrl;
+    a.download = filename || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objUrl);
+    return true;
+  } catch {
+    window.open(url, "_blank", "noopener");
+    return false;
+  }
+}

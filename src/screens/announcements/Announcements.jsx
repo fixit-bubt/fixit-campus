@@ -13,7 +13,7 @@ import {
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
-import { fmtDate, relativeDate, todayISO } from "../../lib/helpers.js";
+import { fmtDate, relativeDate, todayISO, downloadFile } from "../../lib/helpers.js";
 
 // ============================================================================
 // FEATURE 8 — Announcements  (signature accent: amber)
@@ -145,9 +145,9 @@ export function AnnouncementDetail({ id }) {
           <div className="mt-5 whitespace-pre-line border-t border-slate-100 pt-5 text-sm leading-relaxed text-slate-700">{note.body}</div>
 
           {note.image && (
-            <div className="mt-5">
-              <img src={note.image} alt={note.title} className="w-full rounded-lg border border-slate-200" />
-            </div>
+            <a href={note.image} target="_blank" rel="noreferrer" title="Open full image" className="mt-5 block">
+              <img src={note.image} alt={note.title} className="w-full cursor-zoom-in rounded-lg border border-slate-200 transition hover:opacity-95" />
+            </a>
           )}
 
           {note.attachment && note.attachmentUrl && (
@@ -158,10 +158,7 @@ export function AnnouncementDetail({ id }) {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-700"><Icon name="FileText" size={18} /></span>
                   <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-900">{note.attachment}</p><p className="text-xs text-slate-400">PDF document</p></div>
                 </div>
-                <a href={note.attachmentUrl} target="_blank" rel="noreferrer" download={note.attachment}
-                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-                  <Icon name="Download" size={16} /> Download
-                </a>
+                <Button size="sm" variant="secondary" icon="Download" onClick={() => downloadFile(note.attachmentUrl, note.attachment)}>Download</Button>
               </div>
             </div>
           )}
