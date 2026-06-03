@@ -4,25 +4,48 @@ A responsive web app for the **Bangladesh University of Business & Technology (B
 community to **report campus issues** and run a **Lost & Found** board, with
 role-based dashboards for **Students**, **Staff**, and **Admins**.
 
-Built with **React + Vite + Tailwind CSS** and **lucide-react** icons. No UI library —
-every component is plain HTML + Tailwind, so the design stays fully portable.
+Built with **React + Vite + Tailwind CSS** and **lucide-react** icons, backed by
+**Supabase** (Postgres + Auth + Row-Level Security + Storage). Course project for **SDP IV**.
 
-> Course project for **SDP IV**. This repository currently runs entirely on the
-> frontend with mock data (persisted to `localStorage`); a real backend
-> (Supabase Auth + Postgres + RLS) and image uploads (Cloudinary) are planned next.
+🔗 **Live:** https://fixit-campus-theta.vercel.app
 
 ---
 
 ## Features
 
-1. **Auth & role-based access** — register / log in; three roles (Student, Staff, Admin),
-   each with its own dashboard and navigation.
-2. **Campus issue reporting** — students file reports (category, description, location,
-   photo) and track them through **Open → In Progress → Resolved**. Admins assign reports
-   to staff; staff advance the status; admins can also Reject / Close. Full CRUD.
-3. **Lost & Found** — post lost or found items, browse and search the board, and submit a
-   claim (Found) or notification (Lost). **Contact details are revealed only after an admin
-   approves the claim.**
+1. **Auth & role-based access** — three roles, each with its own dashboard and navigation.
+   - **Students self-register.** **Staff and Admin accounts are created by an Admin** from
+     Manage Users (the first Admin is seeded once via SQL). Passwords are hashed by Supabase Auth.
+2. **Campus issue reporting** — students file reports (category, description, location, photo)
+   and track them **Open → In Progress → Resolved**. Admins assign reports to staff; staff
+   advance the status; admins can also Reject / Close. Status history is recorded automatically.
+3. **Lost & Found** *(students only)* — post lost/found items, browse and search, and claim an
+   item. **The item's poster** (not an admin) approves or rejects each claim; once approved,
+   the two students see each other's **email + WhatsApp**. Contact stays private until then.
+4. **Profiles** — every user can set a photo, WhatsApp number, and (students) intake & section.
+
+Security is enforced in the database with Row-Level Security, not just the UI.
+
+---
+
+## Tech stack
+
+- **React 18** + **Vite 6**, **Tailwind CSS** (stock palette; primary `blue-600`, **Inter** font)
+- **lucide-react** icons · tiny custom **hash router** (`src/lib/router.jsx`)
+- **Supabase**: Auth, Postgres, Row-Level Security, Storage (photos)
+- Hosting: **Vercel** (auto-deploys from `main`)
+
+## Project structure
+
+```
+src/
+  data/store.jsx      # the data layer — all Supabase reads/writes + auth; screens use useApp()
+  lib/                # supabase client, hash router, helpers (categories, icon maps, dates)
+  components/         # design system (ui.jsx) + shared pieces (AppShell, ReportsTable, ItemBits, …)
+  screens/            # one file per screen: public / student / staff / admin / lostfound + Profile
+  App.jsx             # routes + role guards (RequireAuth / RequireRole)
+supabase/migrations/  # numbered SQL: schema, RLS, storage, hardening (0001 → 0009)
+```
 
 ---
 
@@ -30,59 +53,45 @@ every component is plain HTML + Tailwind, so the design stays fully portable.
 
 ```bash
 npm install
-npm run dev      # start the dev server (Vite) — http://localhost:5173
+npm run dev      # dev server (Vite) — http://localhost:5173
 npm run build    # production build
 npm run preview  # preview the production build
 ```
 
-No backend is required to run the demo — all data lives in `src/data/store.jsx`
-and persists to `localStorage`.
+### 1. Configure Supabase
 
-### Demo accounts
+Copy `.env.example` to `.env` and fill in your project's values (Supabase → Project Settings → API):
 
-All demo passwords are `password123` (the login screen has one-tap chips to fill these in):
+```
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your anon / publishable key>
+```
 
-| Role    | Email                |
-| ------- | -------------------- |
-| Student | `tahmid@bubt.edu.bd` |
-| Staff   | `rahim@bubt.edu.bd`  |
-| Admin   | `admin@bubt.edu.bd`  |
+The anon/publishable key is safe for the browser. **Never** put the `service_role`/secret key here.
 
-Register creates a new **Student** account.
+### 2. Set up the database
+
+In the Supabase **SQL Editor**, run the migrations in `supabase/migrations/` in order
+(`0001` → `0009`). They create the tables, Row-Level Security policies, the storage bucket,
+and the security hardening.
+
+### 3. Create the first admin
+
+There are **no seeded demo accounts** — register yourself (you'll start as a Student), then
+promote your account once in the SQL Editor:
+
+```sql
+update public.profiles set role = 'admin' where email = 'you@example.com';
+```
+
+After that, that Admin can create Staff and Admin accounts from **Manage Users**.
 
 ---
 
-## Tech stack
+## Deploying
 
-- **React 18** + **Vite 6**
-- **Tailwind CSS** (stock palette; brand primary `blue-600`, **Inter** font)
-- **lucide-react** icons
-- Tiny custom **hash router** (`src/lib/router.jsx`)
-- State + mock data via React Context (`src/data/store.jsx`)
-
-## Project structure
-
-```
-src/
-  data/store.jsx     # the only stateful module — users/reports/items/claims + auth (swap for a real API to go live)
-  lib/               # router + helpers (categories, icon maps, date formatting)
-  components/         # design system (ui.jsx) + shared pieces (AppShell, ReportsTable, ItemBits, …)
-  screens/            # one file per screen, grouped by area: public / student / staff / admin / lostfound
-  App.jsx             # routes
-```
-
-Presentation is fully decoupled from data: every screen reads/writes through `useApp()`
-and never touches storage directly, so wiring a real backend means replacing
-`src/data/store.jsx` while keeping the same shape.
-
----
-
-## Roadmap
-
-- [x] UI for all 17 screens / 3 roles on mock data
-- [ ] Supabase backend (Auth + Postgres + Row-Level Security)
-- [ ] Cloudinary image uploads
-- [ ] Deploy to Vercel
+Hosted on **Vercel**: import the repo, add the two `VITE_SUPABASE_*` environment variables,
+and deploy. Every push to `main` redeploys automatically.
 
 ---
 
