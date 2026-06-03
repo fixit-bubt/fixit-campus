@@ -24,6 +24,7 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
     if (!form.description.trim()) er.description = "Add a description.";
     if (!form.location.trim()) er.location = "Where was it lost or found?";
     if (!form.date) er.date = "Pick a date.";
+    else if (form.date > todayISO()) er.date = "Date can't be in the future.";
     return er;
   }
 
@@ -106,7 +107,7 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
 
         <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
           <Lock size={14} className="shrink-0 text-slate-400" />
-          Your contact details stay private — they're shared only after an admin approves a claim.
+          Your contact details stay private — they're shared only after you approve a claim on this item.
         </div>
       </Card>
 

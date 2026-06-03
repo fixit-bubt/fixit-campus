@@ -8,6 +8,8 @@ import {
   XCircle,
   Info,
   Inbox,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 // ============================================================================
@@ -83,10 +85,36 @@ const controlBase =
   "w-full rounded-lg border bg-white text-slate-900 placeholder:text-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 disabled:bg-slate-50 disabled:text-slate-400";
 const controlError = "border-red-400 focus:ring-red-600/20 focus:border-red-500";
 
-export function Input({ error, className = "", ...rest }) {
+export function Input({ error, className = "", type, ...rest }) {
+  const [show, setShow] = useState(false);
+  const isPassword = type === "password";
+  const borders = error ? controlError : "border-slate-200";
+
+  if (isPassword) {
+    return (
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          className={`${controlBase} h-10 pl-3 pr-10 text-sm ${borders} ${className}`}
+          {...rest}
+        />
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          tabIndex={-1}
+          aria-label={show ? "Hide password" : "Show password"}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+        >
+          {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <input
-      className={`${controlBase} h-10 px-3 text-sm ${error ? controlError : "border-slate-200"} ${className}`}
+      type={type}
+      className={`${controlBase} h-10 px-3 text-sm ${borders} ${className}`}
       {...rest}
     />
   );
@@ -122,13 +150,25 @@ export function Select({ error, className = "", children, ...rest }) {
 // ---------------------------------------------------------------------------
 // FileUpload — drag/click area with image preview
 // ---------------------------------------------------------------------------
+const MAX_UPLOAD_MB = 5;
+
 export function FileUpload({ value, onChange, error, label = "Upload photo", id }) {
   const inputRef = useRef(null);
   const [preview, setPreview] = useState(value || null);
+  const [localErr, setLocalErr] = useState("");
 
   function handleFiles(files) {
     const file = files && files[0];
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setLocalErr("Please choose an image file (PNG or JPG).");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      setLocalErr(`Image must be under ${MAX_UPLOAD_MB} MB.`);
+      return;
+    }
+    setLocalErr("");
     const url = URL.createObjectURL(file);
     setPreview(url);
     onChange && onChange(url, file);
@@ -157,25 +197,33 @@ export function FileUpload({ value, onChange, error, label = "Upload photo", id 
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => inputRef.current && inputRef.current.click()}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        handleFiles(e.dataTransfer.files);
-      }}
-      className={`flex h-44 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-slate-50 text-center transition-colors hover:bg-slate-100 ${
-        error ? "border-red-400" : "border-slate-300"
-      }`}
-    >
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
-        <ImagePlus size={20} />
-      </span>
-      <span className="text-sm font-medium text-slate-700">{label}</span>
-      <span className="text-xs text-slate-400">PNG or JPG, drag &amp; drop or click</span>
-      <input ref={inputRef} id={id} type="file" accept="image/*" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
-    </button>
+    <div>
+      <button
+        type="button"
+        onClick={() => inputRef.current && inputRef.current.click()}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          handleFiles(e.dataTransfer.files);
+        }}
+        className={`flex h-44 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-slate-50 text-center transition-colors hover:bg-slate-100 ${
+          error || localErr ? "border-red-400" : "border-slate-300"
+        }`}
+      >
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
+          <ImagePlus size={20} />
+        </span>
+        <span className="text-sm font-medium text-slate-700">{label}</span>
+        <span className="text-xs text-slate-400">PNG or JPG up to {MAX_UPLOAD_MB} MB, drag &amp; drop or click</span>
+        <input ref={inputRef} id={id} type="file" accept="image/*" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+      </button>
+      {localErr && (
+        <p className="mt-1.5 flex items-center gap-1 text-xs text-red-600">
+          <AlertCircle size={13} />
+          {localErr}
+        </p>
+      )}
+    </div>
   );
 }
 

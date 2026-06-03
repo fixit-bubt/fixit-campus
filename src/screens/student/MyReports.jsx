@@ -50,7 +50,7 @@ export default function MyReports() {
   const [toDelete, setToDelete] = useState(null);
 
   const mine = reports.filter((r) => r.studentId === currentUser.id);
-  const statuses = ["All", "Open", "In Progress", "Resolved", "Rejected"];
+  const statuses = ["All", "Open", "In Progress", "Resolved", "Rejected", "Closed"];
   const counts = statuses.reduce((acc, s) => {
     acc[s] = s === "All" ? mine.length : mine.filter((r) => r.status === s).length;
     return acc;

@@ -7,7 +7,7 @@ import { Logo } from "../../components/Brand.jsx";
 
 const FEATURES = [
   { Icon: ClipboardList, title: "Report campus issues", body: "Flag a broken light, a leaking tap, or dead Wi-Fi in seconds — then track it from Open to Resolved." },
-  { Icon: Search, title: "Lost & Found", body: "Post what you've lost or found, browse the board, and claim items — contact details stay private until verified." },
+  { Icon: Search, title: "Lost & Found", body: "Post what you've lost or found, browse the board, and claim items — contact details stay private until the poster approves your claim." },
   { Icon: ShieldCheck, title: "Handled by the right people", body: "Reports route to campus staff and admins, so the people who can fix it actually see it." },
 ];
 
