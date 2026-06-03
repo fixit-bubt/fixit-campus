@@ -223,11 +223,22 @@ export function AppProvider({ children }) {
     if (error) {
       return { ok: false, error: /already/i.test(error.message) ? "An account with this email already exists." : error.message };
     }
-    const { error: e2 } = await supabase
-      .from("profiles").update({ role: lower(role), department: dept?.trim() || null })
-      .eq("id", data.user?.id);
+    // If email confirmation is on, signUp returns no user — we can't set the role.
+    if (!data.user) {
+      await tmp.auth.signOut();
+      return { ok: false, error: "Account created, but it must confirm its email before the role can be set. Set the role from the Users list once confirmed." };
+    }
+    // Set the role (the signup trigger created the row as 'student'); verify it took.
+    const { data: updated, error: e2 } = await supabase
+      .from("profiles")
+      .update({ role: lower(role), department: dept?.trim() || null })
+      .eq("id", data.user.id)
+      .select("id");
     await tmp.auth.signOut();
     if (e2) return { ok: false, error: e2.message };
+    if (!updated || updated.length !== 1) {
+      return { ok: false, error: "Account created, but assigning the role failed — set it from the Users list." };
+    }
     await refreshUsers();
     return { ok: true };
   }
