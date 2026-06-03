@@ -145,7 +145,7 @@ function ContactCard({ user, label }) {
 }
 
 // One incoming claim, shown to the poster with Approve / Reject.
-function PosterClaimRow({ claim, claimant, onDecide }) {
+function PosterClaimRow({ claim, claimant, onDecide, busy }) {
   return (
     <div className="border-t border-slate-100 pt-4 first:border-t-0 first:pt-0">
       <div className="flex items-center justify-between gap-2">
@@ -162,8 +162,8 @@ function PosterClaimRow({ claim, claimant, onDecide }) {
       {claim.proof && <img src={claim.proof} alt="proof" className="mt-3 max-h-40 rounded-lg border border-slate-200 object-cover" />}
       {claim.status === "Pending" && (
         <div className="mt-3 flex justify-end gap-2">
-          <Button size="sm" variant="secondary" icon={X} className="text-red-600" onClick={() => onDecide(claim, "Rejected")}>Reject</Button>
-          <Button size="sm" icon={Check} onClick={() => onDecide(claim, "Approved")}>Approve</Button>
+          <Button size="sm" variant="secondary" icon={X} className="text-red-600" disabled={busy} onClick={() => onDecide(claim, "Rejected")}>Reject</Button>
+          <Button size="sm" icon={Check} disabled={busy} onClick={() => onDecide(claim, "Approved")}>Approve</Button>
         </div>
       )}
     </div>
@@ -179,6 +179,8 @@ export default function ItemDetail({ id }) {
   const [claimOpen, setClaimOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [contact, setContact] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [busyClaim, setBusyClaim] = useState(null); // id of the claim being decided
 
   // Reveal the counterpart's contact once a claim is approved (either side).
   useEffect(() => {
@@ -220,21 +222,30 @@ export default function ItemDetail({ id }) {
     : Clock;
 
   async function doDelete() {
+    if (deleting) return;
+    setDeleting(true);
     const res = await deleteItem(id);
-    if (res.ok) { toast({ type: "success", title: "Item removed" }); navigate("/lost-found"); }
-    else toast({ type: "error", title: "Couldn't remove", message: res.error });
+    if (res.ok) { toast({ type: "success", title: "Item removed" }); navigate("/lost-found"); return; }
+    toast({ type: "error", title: "Couldn't remove", message: res.error });
+    setDeleting(false);
   }
 
   async function decide(claim, status) {
-    const res = await setClaimStatus(claim.id, status);
-    if (res.ok) {
-      toast({
-        type: "success",
-        title: status === "Approved" ? "Claim approved" : "Claim rejected",
-        message: status === "Approved" ? "Contact details are now shared between you both." : "The claimant will see it wasn't approved.",
-      });
-    } else {
-      toast({ type: "error", title: "Couldn't update claim", message: res.error });
+    if (busyClaim) return;
+    setBusyClaim(claim.id);
+    try {
+      const res = await setClaimStatus(claim.id, status);
+      if (res.ok) {
+        toast({
+          type: "success",
+          title: status === "Approved" ? "Claim approved" : "Claim rejected",
+          message: status === "Approved" ? "Contact details are now shared between you both." : "The claimant will see it wasn't approved.",
+        });
+      } else {
+        toast({ type: "error", title: "Couldn't update claim", message: res.error });
+      }
+    } finally {
+      setBusyClaim(null);
     }
   }
 
@@ -327,7 +338,7 @@ export default function ItemDetail({ id }) {
                 <EmptyState icon={Inbox} title="No claims yet" message="When someone claims this item, it'll appear here for you to review." />
               ) : (
                 itemClaims.map((c) => (
-                  <PosterClaimRow key={c.id} claim={c} claimant={userById(c.claimantId)} onDecide={decide} />
+                  <PosterClaimRow key={c.id} claim={c} claimant={userById(c.claimantId)} onDecide={decide} busy={busyClaim === c.id} />
                 ))
               )}
             </div>
@@ -351,8 +362,8 @@ export default function ItemDetail({ id }) {
         description={`"${item.title}" and any claims on it will be permanently removed.`}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={doDelete}>Delete item</Button>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={doDelete} disabled={deleting}>Delete item</Button>
           </>
         }
       />

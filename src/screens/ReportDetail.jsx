@@ -66,6 +66,7 @@ export default function ReportDetail({ id }) {
   const report = reports.find((r) => r.id === id);
   const [assignTo, setAssignTo] = useState("");
   const [confirm, setConfirm] = useState(null); // 'delete' | 'reject' | 'close'
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (report) setAssignTo(report.assignedStaffId || "");
@@ -102,16 +103,22 @@ export default function ReportDetail({ id }) {
     else toast({ type: "error", title: "Couldn't assign", message: res.error });
   }
   async function doConfirm() {
-    if (confirm === "delete") {
-      const res = await deleteReport(id);
-      if (res.ok) { toast({ type: "success", title: "Report deleted" }); navigate(backPath); }
-      else toast({ type: "error", title: "Couldn't delete", message: res.error });
-    } else if (confirm === "reject") {
-      await setStatus("Rejected");
-    } else if (confirm === "close") {
-      await setStatus("Closed");
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (confirm === "delete") {
+        const res = await deleteReport(id);
+        if (res.ok) { toast({ type: "success", title: "Report deleted" }); navigate(backPath); }
+        else toast({ type: "error", title: "Couldn't delete", message: res.error });
+      } else if (confirm === "reject") {
+        await setStatus("Rejected");
+      } else if (confirm === "close") {
+        await setStatus("Closed");
+      }
+    } finally {
+      setBusy(false);
+      setConfirm(null);
     }
-    setConfirm(null);
   }
 
   const canEdit = isOwner && report.status === "Open";
@@ -262,8 +269,8 @@ export default function ReportDetail({ id }) {
         }
         footer={
           <>
-            <Button variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button>
-            <Button variant={confirm === "close" ? "primary" : "destructive"} onClick={doConfirm}>
+            <Button variant="secondary" onClick={() => setConfirm(null)} disabled={busy}>Cancel</Button>
+            <Button variant={confirm === "close" ? "primary" : "destructive"} onClick={doConfirm} disabled={busy}>
               {confirm === "delete" ? "Delete" : confirm === "reject" ? "Reject report" : "Close report"}
             </Button>
           </>

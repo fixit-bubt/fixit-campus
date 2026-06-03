@@ -48,6 +48,7 @@ export default function MyReports() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [toDelete, setToDelete] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   const mine = reports.filter((r) => r.studentId === currentUser.id);
   const statuses = ["All", "Open", "In Progress", "Resolved", "Rejected", "Closed"];
@@ -71,10 +72,16 @@ export default function MyReports() {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   async function confirmDelete() {
-    const res = await deleteReport(toDelete.id);
-    if (res.ok) toast({ type: "success", title: "Report deleted", message: `${toDelete.id} was removed.` });
-    else toast({ type: "error", title: "Couldn't delete", message: res.error });
-    setToDelete(null);
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await deleteReport(toDelete.id);
+      if (res.ok) toast({ type: "success", title: "Report deleted", message: `${toDelete.id} was removed.` });
+      else toast({ type: "error", title: "Couldn't delete", message: res.error });
+    } finally {
+      setBusy(false);
+      setToDelete(null);
+    }
   }
 
   return (
@@ -137,8 +144,8 @@ export default function MyReports() {
         description={toDelete ? `${toDelete.id} — ${toDelete.category} will be permanently removed. This can't be undone.` : ""}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setToDelete(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Delete report</Button>
+            <Button variant="secondary" onClick={() => setToDelete(null)} disabled={busy}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={busy}>Delete report</Button>
           </>
         }
       />
