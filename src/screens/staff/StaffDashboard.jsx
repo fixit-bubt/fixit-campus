@@ -5,6 +5,7 @@ import { navigate, Link } from "../../lib/router.jsx";
 import { Card, EmptyState, StatCard, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ReportListRow } from "../../components/ReportListRow.jsx";
+import { CampusToday } from "../../components/CampusToday.jsx";
 
 export default function StaffDashboard() {
   const { currentUser, reports, dataLoading } = useApp();
@@ -47,6 +48,8 @@ export default function StaffDashboard() {
           </Card>
         )}
       </div>
+
+      <CampusToday className="mt-8" />
     </AppShell>
   );
 }

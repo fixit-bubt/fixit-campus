@@ -6,6 +6,7 @@ import { EmptyState, StatCard, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ReportsTable } from "../../components/ReportsTable.jsx";
 import { AssignModal } from "../../components/AssignModal.jsx";
+import { CampusToday } from "../../components/CampusToday.jsx";
 
 export default function AdminDashboard() {
   const { reports, dataLoading } = useApp();
@@ -42,6 +43,8 @@ export default function AdminDashboard() {
           <ReportsTable rows={unassigned} onAssign={setAssignTarget} onOpen={(r) => navigate(`/reports/${r.id}`)} />
         )}
       </div>
+
+      <CampusToday className="mt-8" />
 
       <AssignModal report={assignTarget} onClose={() => setAssignTarget(null)} />
     </AppShell>
