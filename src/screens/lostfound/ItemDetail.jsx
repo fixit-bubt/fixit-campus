@@ -129,7 +129,7 @@ function ContactCard({ user, label }) {
         <a href={`mailto:${user.email}`} className="flex min-w-0 items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700">
           <Mail size={13} className="shrink-0" /> <span className="truncate">{user.email}</span>
         </a>
-        {user.whatsapp && (
+        {wa && (
           <a
             href={`https://wa.me/${wa}`}
             target="_blank"

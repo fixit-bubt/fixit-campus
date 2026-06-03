@@ -14,6 +14,11 @@ export default function ManageUsers() {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [pending, setPending] = useState(null); // { user, newRole }
+  const [changing, setChanging] = useState(false);
+
+  const adminCount = users.filter((u) => u.role === "Admin").length;
+  const blockedLastAdmin =
+    pending && pending.user.role === "Admin" && pending.newRole !== "Admin" && adminCount <= 1;
 
   // Create-account modal state
   const [addOpen, setAddOpen] = useState(false);
@@ -33,13 +38,19 @@ export default function ManageUsers() {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   async function applyChange() {
-    const res = await setRole(pending.user.id, pending.newRole);
-    if (res && res.ok === false) {
-      toast({ type: "error", title: "Couldn't update role", message: res.error });
-    } else {
-      toast({ type: "success", title: "Role updated", message: `${pending.user.name} is now ${pending.newRole}.` });
+    if (changing) return;
+    setChanging(true);
+    try {
+      const res = await setRole(pending.user.id, pending.newRole);
+      if (res && res.ok === false) {
+        toast({ type: "error", title: "Couldn't update role", message: res.error });
+      } else {
+        toast({ type: "success", title: "Role updated", message: `${pending.user.name} is now ${pending.newRole}.` });
+      }
+    } finally {
+      setChanging(false);
+      setPending(null);
     }
-    setPending(null);
   }
 
   function openAdd() {
@@ -157,17 +168,22 @@ export default function ManageUsers() {
         description={pending ? `${pending.user.name} will change from ${pending.user.role} to ${pending.newRole}. This updates what they can see and do across FixIt.` : ""}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setPending(null)}>Cancel</Button>
-            <Button onClick={applyChange}>Change to {pending?.newRole}</Button>
+            <Button variant="secondary" onClick={() => setPending(null)} disabled={changing}>Cancel</Button>
+            <Button onClick={applyChange} disabled={changing || blockedLastAdmin}>Change to {pending?.newRole}</Button>
           </>
         }
       >
-        {pending && pending.user.id === currentUser.id && pending.newRole !== "Admin" && (
+        {blockedLastAdmin ? (
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+            <span>This is the last admin — promote another admin first, or you'll lock everyone out of admin tools.</span>
+          </div>
+        ) : pending && pending.user.id === currentUser.id && pending.newRole !== "Admin" ? (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
             <TriangleAlert size={16} className="mt-0.5 shrink-0" />
             <span>You're changing your own role — you'll lose admin access immediately.</span>
           </div>
-        )}
+        ) : null}
       </Modal>
 
       {/* Create Staff / Admin account */}

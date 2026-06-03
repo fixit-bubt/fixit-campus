@@ -15,8 +15,13 @@ function StatusTimeline({ report }) {
   report.timeline.forEach((t) => { reached[t.status] = t.date; });
   const terminal = report.timeline.find((t) => t.status === "Rejected" || t.status === "Closed");
 
-  const steps = flow.map((status) => ({ status, date: reached[status] || null, done: !!reached[status] }));
-  if (terminal) steps.push({ status: terminal.status, date: terminal.date, done: true, terminal: true });
+  let steps = flow.map((status) => ({ status, date: reached[status] || null, done: !!reached[status] }));
+  if (terminal) {
+    // Rejected/Closed ends the flow — show only the stages actually reached,
+    // then the terminal step (don't show In Progress/Resolved as "upcoming").
+    steps = steps.filter((s) => s.done);
+    steps.push({ status: terminal.status, date: terminal.date, done: true, terminal: true });
+  }
 
   const doneTone = (s) =>
     s === "Resolved" ? "bg-emerald-600" : s === "Rejected" || s === "Closed" ? "bg-red-600" : "bg-blue-600";

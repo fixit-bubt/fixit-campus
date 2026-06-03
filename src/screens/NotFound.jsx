@@ -22,7 +22,7 @@ export default function NotFound() {
           The page you're looking for doesn't exist or may have been moved.
         </p>
         <div className="mt-6 flex gap-2">
-          <Button variant="secondary" icon={ArrowLeft} onClick={() => history.back()}>Go back</Button>
+          <Button variant="secondary" icon={ArrowLeft} onClick={() => (window.history.length > 1 ? window.history.back() : navigate("/"))}>Go back</Button>
           {currentUser ? (
             <Button icon={LayoutDashboard} onClick={() => navigate(dashboardPath(currentUser.role))}>My dashboard</Button>
           ) : (

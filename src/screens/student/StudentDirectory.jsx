@@ -208,7 +208,7 @@ export default function StudentDirectory() {
                     <Mail size={15} className="shrink-0" /> <span className="truncate">{selected.email}</span>
                   </a>
                 )}
-                {selected.whatsapp ? (
+                {selected.whatsapp && selected.whatsapp.replace(/[^0-9]/g, "") ? (
                   <a href={`https://wa.me/${selected.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-emerald-600 hover:bg-slate-100">
                     <MessageCircle size={15} className="shrink-0" /> <span className="truncate">{selected.whatsapp}</span>
                   </a>
