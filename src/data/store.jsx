@@ -101,7 +101,9 @@ function toAnnouncement(r, readByMe, userId) {
     department: r.department,
     priority: r.priority,
     pinned: r.pinned,
-    attachment: r.attachment_url || null,
+    image: r.image_url || null,            // inline notice photo/scan
+    attachment: r.attachment_name || null, // display filename (PDF)
+    attachmentUrl: r.attachment_url || null, // real download URL
     date: day(r.created_at),
     readBy: readByMe ? [userId] : [],
   };
@@ -723,8 +725,31 @@ export function AppProvider({ children }) {
   }
 
   // ---- announcements (LIVE Supabase) ----
-  // Insert is admin-only (RLS); returns { ok, id } where id is the new code.
+  // Upload a PDF (or any file) to the private-ish "attachments" bucket; returns
+  // a public URL. (Bucket is public-read; upload is admin-only via RLS.)
+  async function uploadAttachment(file) {
+    const ext = (file.name?.split(".").pop() || "pdf").toLowerCase();
+    const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("attachments")
+      .upload(path, file, { cacheControl: "3600", upsert: false });
+    if (error) throw error;
+    return supabase.storage.from("attachments").getPublicUrl(path).data.publicUrl;
+  }
+
+  // Insert is admin-only (RLS). Uploads the optional notice image + PDF first.
+  // Returns { ok, id } where id is the new code.
   async function addAnnouncement(data) {
+    let image_url = null, attachment_url = null, attachment_name = null;
+    try {
+      image_url = await resolvePhoto({ photo: data.image, photoFile: data.imageFile }, "announcements");
+      if (data.attachmentFile) {
+        attachment_url = await uploadAttachment(data.attachmentFile);
+        attachment_name = data.attachmentFile.name;
+      }
+    } catch (e) {
+      return { ok: false, error: "Upload failed: " + e.message };
+    }
     const { data: row, error } = await supabase
       .from("announcements")
       .insert({
@@ -733,7 +758,9 @@ export function AppProvider({ children }) {
         department: data.department,
         priority: data.priority,
         pinned: !!data.pinned,
-        attachment_url: data.attachment || null,
+        image_url,
+        attachment_url,
+        attachment_name,
         created_by: currentUser.id,
       })
       .select("*")
