@@ -27,8 +27,11 @@ export function ReportForm({ initial, mode = "create", onSubmit, onCancel }) {
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    await onSubmit(form);
-    setSaving(false);
+    try {
+      await onSubmit(form);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -45,6 +48,7 @@ export function ReportForm({ initial, mode = "create", onSubmit, onCancel }) {
           <Textarea
             id="rf-desc"
             rows={5}
+            maxLength={1000}
             placeholder="e.g. The projector in Room 402 won't connect over HDMI…"
             value={form.description}
             error={!!errors.description}

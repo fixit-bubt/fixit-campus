@@ -9,15 +9,19 @@ export function AssignModal({ report, onClose }) {
   const { staffList, assignReport } = useApp();
   const toast = useToast();
   const [staffId, setStaffId] = useState(report ? report.assignedStaffId || "" : "");
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     setStaffId(report ? report.assignedStaffId || "" : "");
   }, [report]);
   if (!report) return null;
 
   async function doAssign() {
-    const name = staffList.find((s) => s.id === staffId)?.name;
+    if (busy) return;
+    const name = staffList.find((s) => s.id === staffId)?.name || "the selected staff";
     const was = !!report.assignedStaffId;
+    setBusy(true);
     const res = await assignReport(report.id, staffId);
+    setBusy(false);
     if (res && res.ok === false) {
       toast({ type: "error", title: "Couldn't assign", message: res.error });
       return;
@@ -36,8 +40,8 @@ export function AssignModal({ report, onClose }) {
       description={`${report.id} · ${report.category} — route this to the right staff member.`}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button disabled={!staffId || staffId === report.assignedStaffId} onClick={doAssign}>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button disabled={busy || !staffId || staffId === report.assignedStaffId} onClick={doAssign}>
             {report.assignedStaffId ? "Reassign" : "Assign"}
           </Button>
         </>

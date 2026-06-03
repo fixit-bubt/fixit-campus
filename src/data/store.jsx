@@ -202,7 +202,8 @@ export function AppProvider({ children }) {
     if (error) {
       return { ok: false, error: /already/i.test(error.message) ? "An account with this email already exists." : error.message };
     }
-    if (!data.session) return { ok: false, error: "Check your email to confirm your account, then log in." };
+    // Email-confirmation ON: account created but no session yet — not an error.
+    if (!data.session) return { ok: true, needsConfirm: true };
     return { ok: true, user: { name: name.trim(), role: "Student" } };
   }
 

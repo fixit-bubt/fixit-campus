@@ -18,7 +18,7 @@ export default function Register() {
     const er = {};
     if (!form.name.trim()) er.name = "Enter your full name.";
     if (!form.email.trim()) er.email = "Enter your email.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) er.email = "Enter a valid email address.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) er.email = "Enter a valid email address.";
     if (!form.password) er.password = "Choose a password.";
     else if (form.password.length < 8) er.password = "Password must be at least 8 characters.";
     if (form.confirm !== form.password) er.confirm = "Passwords don't match.";
@@ -31,14 +31,24 @@ export default function Register() {
     setErrors(er);
     if (Object.keys(er).length) return;
     setLoading(true);
-    const res = await register({ name: form.name, email: form.email, password: form.password });
-    setLoading(false);
-    if (!res.ok) {
-      setErrors({ email: res.error });
-      return;
+    try {
+      const res = await register({ name: form.name, email: form.email, password: form.password });
+      if (!res.ok) {
+        setErrors({ email: res.error });
+        return;
+      }
+      if (res.needsConfirm) {
+        toast({ type: "info", title: "Confirm your email", message: "We sent a confirmation link — confirm it, then log in." });
+        navigate("/login");
+        return;
+      }
+      toast({ type: "success", title: "Account created", message: "You're signed in as a Student." });
+      navigate(dashboardPath(res.user.role));
+    } catch {
+      setErrors({ email: "Something went wrong. Please try again." });
+    } finally {
+      setLoading(false);
     }
-    toast({ type: "success", title: "Account created", message: "You're signed in as a Student." });
-    navigate(dashboardPath(res.user.role));
   }
 
   return (

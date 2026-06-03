@@ -21,14 +21,19 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    const res = await login(email, password);
-    setLoading(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
+    try {
+      const res = await login(email, password);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      toast({ type: "success", title: `Welcome back, ${(res.user.name || "").split(" ")[0]}` });
+      navigate(dashboardPath(res.user.role));
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    toast({ type: "success", title: `Welcome back, ${(res.user.name || "").split(" ")[0]}` });
-    navigate(dashboardPath(res.user.role));
   }
 
   return (

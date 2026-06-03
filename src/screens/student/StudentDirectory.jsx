@@ -30,6 +30,7 @@ export default function StudentDirectory() {
   const toast = useToast();
   const hidden = currentUser.directoryVisible === false;
   const [list, setList] = useState(null); // null = still loading
+  const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -37,14 +38,22 @@ export default function StudentDirectory() {
   useEffect(() => {
     let active = true;
     if (hidden) { setList([]); return; }
-    getStudentDirectory().then((rows) => { if (active) setList(rows); });
+    setLoadError(false);
+    getStudentDirectory()
+      .then((rows) => { if (active) setList(rows); })
+      .catch(() => { if (active) { setLoadError(true); setList([]); } });
     return () => { active = false; };
   }, [hidden]);
 
   async function refresh() {
-    const rows = await getStudentDirectory();
-    setList(rows);
-    setSelected((sel) => (sel ? rows.find((r) => r.id === sel.id) || null : null));
+    try {
+      const rows = await getStudentDirectory();
+      setLoadError(false);
+      setList(rows);
+      setSelected((sel) => (sel ? rows.find((r) => r.id === sel.id) || null : null));
+    } catch {
+      setLoadError(true);
+    }
   }
 
   async function connect(s) {
@@ -71,6 +80,7 @@ export default function StudentDirectory() {
       toast({ type: "error", title: "Couldn't update", message: res.error });
     }
     await refresh();
+    if (res.ok && !accept) setSelected(null); // declined — don't leave a "Connect" prompt open
     setBusy(false);
   }
 
@@ -103,6 +113,13 @@ export default function StudentDirectory() {
           title="Your profile is hidden"
           message="You've turned off 'Show me in the Student Directory', so you can't browse other students. Turn it back on in your profile to use the directory."
           action={<Button onClick={() => navigate("/profile")}>Go to My Profile</Button>}
+        />
+      ) : loadError ? (
+        <EmptyState
+          icon={SearchX}
+          title="Couldn't load the directory"
+          message="Something went wrong reaching the server."
+          action={<Button onClick={refresh}>Try again</Button>}
         />
       ) : list === null ? (
         <Loading />

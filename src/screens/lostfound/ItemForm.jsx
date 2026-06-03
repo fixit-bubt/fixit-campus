@@ -34,8 +34,11 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    await onSubmit(form);
-    setSaving(false);
+    try {
+      await onSubmit(form);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
