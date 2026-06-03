@@ -178,6 +178,17 @@ const SEED_DONORS = [
   { id: "DN-5", userId: "u-adm-1", name: "Farhana Islam", group: "AB+", area: "Gulshan", lastDonated: isoOffset(-365), phone: "" },
 ];
 
+// Medical Center — appointments. Seed studentIds are demo-only, so a real
+// student starts with an empty list and books fresh; doctors are in-screen.
+const SEED_APPOINTMENTS = [
+  { id: "APT-1001", doctorId: "d1", studentId: "u-stu-1", date: isoOffset(0), slot: "10:30", token: "T-07", status: "Confirmed" },
+  { id: "APT-0998", doctorId: "d3", studentId: "u-stu-1", date: isoOffset(2), slot: "11:15", token: "T-12", status: "Booked" },
+  { id: "APT-0990", doctorId: "d2", studentId: "u-stu-1", date: isoOffset(-14), slot: "10:00", token: "T-03", status: "Completed" },
+  { id: "APT-0986", doctorId: "d4", studentId: "u-stu-1", date: isoOffset(-30), slot: "09:45", token: "T-09", status: "Cancelled" },
+  { id: "APT-0985", doctorId: "d1", studentId: "u-stu-2", date: isoOffset(0), slot: "09:45", token: "T-05", status: "Booked" },
+  { id: "APT-0980", doctorId: "d1", studentId: "u-stu-3", date: isoOffset(0), slot: "09:30", token: "T-04", status: "Confirmed" },
+];
+
 export function AppProvider({ children }) {
   // ---- auth / profiles (real Supabase) ----
   const [sessionUserId, setSessionUserId] = useState(null);
@@ -223,6 +234,11 @@ export function AppProvider({ children }) {
   useEffect(() => {
     try { localStorage.setItem("fixit_donors", JSON.stringify(donors)); } catch {}
   }, [donors]);
+
+  const [appointments, setAppointments] = useState(() => loadMock("fixit_appointments", SEED_APPOINTMENTS));
+  useEffect(() => {
+    try { localStorage.setItem("fixit_appointments", JSON.stringify(appointments)); } catch {}
+  }, [appointments]);
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -795,6 +811,24 @@ export function AppProvider({ children }) {
     });
   }
 
+  // ---- medical appointments (PHASE-1 MOCK) ----
+  function addAppointment({ doctorId, date, slot }) {
+    const n = appointments.length;
+    const appt = {
+      id: nextMockId(appointments, "APT", 1001),
+      token: "T-" + String(13 + n).padStart(2, "0"),
+      doctorId, studentId: currentUser?.id, date, slot, status: "Booked",
+    };
+    setAppointments((a) => [appt, ...a]);
+    return appt; // booking modal shows the returned token
+  }
+  function cancelAppointment(id) {
+    setAppointments((a) => a.map((x) => (x.id === id ? { ...x, status: "Cancelled" } : x)));
+  }
+  function setAppointmentStatus(id, status) {
+    setAppointments((a) => a.map((x) => (x.id === id ? { ...x, status } : x)));
+  }
+
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
@@ -802,6 +836,7 @@ export function AppProvider({ children }) {
     events, addEvent, toggleRSVP, deleteEvent,
     rides, addRide, requestSeat, deleteRide,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor,
+    appointments, addAppointment, cancelAppointment, setAppointmentStatus,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,

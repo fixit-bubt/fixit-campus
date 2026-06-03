@@ -35,6 +35,7 @@ const NAV_BY_ROLE = {
     ]},
     { section: "Campus Life", items: CAMPUS_LIFE },
     { section: "Services", items: [
+      { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
       { key: "report-new", label: "Report an Issue", icon: "CirclePlus", path: "/reports/new" },
       { key: "lost-found", label: "Lost & Found", icon: "PackageSearch", path: "/lost-found" },
     ]},
@@ -52,6 +53,9 @@ const NAV_BY_ROLE = {
       { key: "assigned", label: "Assigned to Me", icon: "ClipboardCheck", path: "/staff/assigned" },
     ]},
     { section: "Campus Life", items: CAMPUS_LIFE },
+    { section: "Services", items: [
+      { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
+    ]},
     { section: "Community", items: COMMUNITY },
     { section: null, items: [
       { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
@@ -64,6 +68,9 @@ const NAV_BY_ROLE = {
       { key: "users", label: "Manage Users", icon: "Users", path: "/admin/users" },
     ]},
     { section: "Campus Life", items: CAMPUS_LIFE },
+    { section: "Services", items: [
+      { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
+    ]},
     { section: "Community", items: COMMUNITY },
     { section: null, items: [
       { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
