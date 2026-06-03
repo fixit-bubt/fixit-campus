@@ -111,6 +111,15 @@ function loadMock(key, fallback) {
   }
 }
 
+// Next "PREFIX-<n>" code from the current max suffix, so deletes can't dup an id.
+function nextMockId(list, prefix, floor) {
+  const max = list.reduce((m, x) => {
+    const n = parseInt(String(x.id).replace(/\D/g, ""), 10);
+    return isNaN(n) ? m : Math.max(m, n);
+  }, floor);
+  return `${prefix}-${max + 1}`;
+}
+
 // Announcements (notice board). `readBy` seed ids are demo-only and won't match
 // real user ids, so seeded notices simply read as "unread" for everyone — fine.
 const SEED_ANNOUNCEMENTS = [
@@ -120,6 +129,17 @@ const SEED_ANNOUNCEMENTS = [
   { id: "AN-47", title: "Semester final tuition fee deadline", priority: "Important", department: "Accounts", date: isoOffset(-2), pinned: false, attachment: "Fee_Notice.pdf", body: "Students are reminded to pay the semester final tuition fee by the end of this month to avoid a late fine. Payment can be made online through the student portal or at the accounts office.", readBy: [] },
   { id: "AN-44", title: "Library extended hours during exams", priority: "General", department: "Library", date: isoOffset(-3), pinned: false, attachment: null, body: "The central library will remain open until 10:00 PM on weekdays during the examination period to support student preparation. Please carry your ID cards at all times.", readBy: [] },
   { id: "AN-41", title: "Club registration open for new members", priority: "General", department: "Student Welfare", date: isoOffset(-5), pinned: false, attachment: "Club_List.pdf", body: "Registration for all student clubs is now open. Visit the Student Welfare office or the respective club booths in the concourse to sign up. Membership is free for the first semester.", readBy: [] },
+];
+
+// Marketplace — listings. Seed sellerIds are demo-only and won't match real
+// user ids, so seeded sellers show as "Unknown" until a real user posts — fine.
+const SEED_LISTINGS = [
+  { id: "L-205", title: "Lenovo IdeaPad 3 (i3, 8GB, 256 SSD)", price: 28000, condition: "Used", negotiable: true, category: "Electronics", description: "Reliable everyday laptop, used for two semesters. Battery backup ~4 hrs, no dents. Comes with charger and a sleeve.", sellerId: "u-stu-1", status: "Available", photo: null, createdAt: isoOffset(-1) },
+  { id: "L-203", title: "Study table + chair set", price: 3500, condition: "Used", negotiable: true, category: "Furniture", description: "Wooden study table with drawer and a cushioned chair. Selling because I'm moving hostels. Pickup from Mirpur-2.", sellerId: "u-stu-3", status: "Available", photo: null, createdAt: isoOffset(-2) },
+  { id: "L-202", title: "Casio fx-991EX calculator", price: 1200, condition: "Like New", negotiable: false, category: "Electronics", description: "Barely used scientific calculator, all functions working. Great for engineering courses.", sellerId: "u-stu-2", status: "Available", photo: null, createdAt: isoOffset(-3) },
+  { id: "L-201", title: "HSC Physics + Chemistry book bundle", price: 800, condition: "Used", negotiable: true, category: "Books", description: "Complete set, minimal highlighting. Selling the whole bundle together only.", sellerId: "u-stu-2", status: "Available", photo: null, createdAt: isoOffset(-4) },
+  { id: "L-206", title: "CSE 3rd semester handwritten notes", price: 300, condition: "Like New", negotiable: false, category: "Notes", description: "Full DSA + DLD notes, neat and complete. Soft copy also available after purchase.", sellerId: "u-stu-3", status: "Available", photo: null, createdAt: isoOffset(-6) },
+  { id: "L-204", title: "Drafting & geometry set", price: 450, condition: "New", negotiable: false, category: "Other", description: "Unused drafting set, still in box. Bought an extra by mistake.", sellerId: "u-stu-2", status: "Sold", photo: null, createdAt: isoOffset(-10) },
 ];
 
 export function AppProvider({ children }) {
@@ -142,6 +162,11 @@ export function AppProvider({ children }) {
   useEffect(() => {
     try { localStorage.setItem("fixit_announcements", JSON.stringify(announcements)); } catch {}
   }, [announcements]);
+
+  const [listings, setListings] = useState(() => loadMock("fixit_listings", SEED_LISTINGS));
+  useEffect(() => {
+    try { localStorage.setItem("fixit_listings", JSON.stringify(listings)); } catch {}
+  }, [listings]);
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -611,16 +636,8 @@ export function AppProvider({ children }) {
   }
 
   // ---- announcements (PHASE-1 MOCK) ----
-  // Next AN-id from the current max suffix, so deletes can't cause a dup id.
-  function nextAnnId(list) {
-    const max = list.reduce((m, a) => {
-      const n = parseInt(String(a.id).replace(/\D/g, ""), 10);
-      return isNaN(n) ? m : Math.max(m, n);
-    }, 52);
-    return "AN-" + (max + 1);
-  }
   function addAnnouncement(data) {
-    const an = { id: nextAnnId(announcements), date: isoOffset(0), readBy: [], ...data };
+    const an = { id: nextMockId(announcements, "AN", 52), date: isoOffset(0), readBy: [], ...data };
     setAnnouncements((a) => [an, ...a]);
     return an; // screen navigates to /announcements/:id immediately
   }
@@ -638,9 +655,26 @@ export function AppProvider({ children }) {
     setAnnouncements((as) => as.filter((a) => a.id !== id));
   }
 
+  // ---- marketplace listings (PHASE-1 MOCK) ----
+  function addListing(data) {
+    const listing = { id: nextMockId(listings, "L", 200), ...data, status: "Available", photo: data.photo || null, createdAt: isoOffset(0) };
+    setListings((l) => [listing, ...l]);
+    return listing; // screen navigates to /marketplace/:id immediately
+  }
+  function updateListing(id, data) {
+    setListings((l) => l.map((x) => (x.id === id ? { ...x, ...data } : x)));
+  }
+  function deleteListing(id) {
+    setListings((l) => l.filter((x) => x.id !== id));
+  }
+  function markListingSold(id) {
+    setListings((l) => l.map((x) => (x.id === id ? { ...x, status: "Sold" } : x)));
+  }
+
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
+    listings, addListing, updateListing, deleteListing, markListingSold,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,

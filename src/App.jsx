@@ -30,6 +30,7 @@ import Profile from "./screens/Profile.jsx";
 import NotFound from "./screens/NotFound.jsx";
 
 import { Announcements, AnnouncementDetail, AnnouncementForm } from "./screens/announcements/Announcements.jsx";
+import { Marketplace, ListingDetail, ListingForm, MyListings } from "./screens/marketplace/Marketplace.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -117,6 +118,13 @@ export default function App() {
   if (path === "/announcements") return <RequireAuth><Announcements /></RequireAuth>;
   if (path === "/announcements/new") return <RequireAuth><AnnouncementForm /></RequireAuth>;
   if ((m = matchRoute("/announcements/:id", path))) return <RequireAuth><AnnouncementDetail id={m.id} /></RequireAuth>;
+
+  // ---- Community: Marketplace (any signed-in user) ----
+  if (path === "/marketplace") return <RequireAuth><Marketplace /></RequireAuth>;
+  if (path === "/marketplace/new") return <RequireAuth><ListingForm /></RequireAuth>;
+  if (path === "/marketplace/mine") return <RequireAuth><MyListings /></RequireAuth>;
+  if ((m = matchRoute("/marketplace/:id/edit", path))) return <RequireAuth><ListingForm id={m.id} /></RequireAuth>;
+  if ((m = matchRoute("/marketplace/:id", path))) return <RequireAuth><ListingDetail id={m.id} /></RequireAuth>;
 
   // ---- 404 ----
   return <NotFound />;
