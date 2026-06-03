@@ -96,7 +96,15 @@ export default function Profile() {
               </div>
             </Field>
 
-            <Field label="WhatsApp number" htmlFor="pf-wa" hint="Shared with a matched person after a Lost & Found claim is approved — and with other students only if you enable it below.">
+            <Field
+              label="WhatsApp number"
+              htmlFor="pf-wa"
+              hint={
+                isStudent
+                  ? "Shared with a matched person after a Lost & Found claim is approved — and with other students only if you turn on sharing below."
+                  : "Optional — an extra contact number for your profile."
+              }
+            >
               <Input id="pf-wa" type="tel" placeholder="e.g. +8801XXXXXXXXX" value={form.whatsapp} onChange={set("whatsapp")} />
             </Field>
 

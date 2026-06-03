@@ -496,9 +496,6 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // Contact reveal: read a counterpart's name + email straight from profiles.
-  // RLS only returns it if you're allowed (self, admin, or the matched party
-  // of an approved claim) — so this is safe to call.
   // Student directory (students only; respects each user's privacy toggles and
   // the reciprocal "hidden users can't browse" rule — all enforced in the DB).
   async function getStudentDirectory() {
@@ -516,6 +513,9 @@ export function AppProvider({ children }) {
     }));
   }
 
+  // Contact reveal: read a counterpart's name + email + whatsapp from profiles.
+  // RLS only returns it if you're allowed (self, admin, or the matched party of
+  // an approved claim) — so this is safe to call.
   async function getContact(userId) {
     if (!userId) return null;
     const { data } = await supabase
