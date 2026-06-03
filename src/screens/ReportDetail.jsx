@@ -137,7 +137,7 @@ export default function ReportDetail({ id }) {
               <CatIcon size={22} />
             </span>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{report.category}</h2>
                 <StatusBadge status={report.status} />
               </div>

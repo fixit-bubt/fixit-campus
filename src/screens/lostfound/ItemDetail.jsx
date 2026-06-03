@@ -126,17 +126,17 @@ function ContactCard({ user, label }) {
           <Avatar name={user.name} src={user.avatar} />
           <p className="truncate text-sm font-medium text-slate-900">{user.name}</p>
         </div>
-        <a href={`mailto:${user.email}`} className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700">
-          <Mail size={13} /> {user.email}
+        <a href={`mailto:${user.email}`} className="flex min-w-0 items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700">
+          <Mail size={13} className="shrink-0" /> <span className="truncate">{user.email}</span>
         </a>
         {user.whatsapp && (
           <a
             href={`https://wa.me/${wa}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700"
+            className="flex min-w-0 items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700"
           >
-            <MessageCircle size={13} /> {user.whatsapp}
+            <MessageCircle size={13} className="shrink-0" /> <span className="truncate">{user.whatsapp}</span>
           </a>
         )}
       </div>
