@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "../../components/Icon.jsx";
 import {
   Button, Card, Badge, StatusBadge, Field, Input, Textarea, Select, FileUpload,
-  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, useToast,
+  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
@@ -36,6 +36,7 @@ export function eventStatus(ev) {
 }
 
 export function EventBanner({ ev, className = "" }) {
+  if (ev.banner) return <img src={ev.banner} alt={ev.title} className={`object-cover ${className}`} />;
   return (
     <div className={`flex items-center justify-center bg-fuchsia-50 ${className}`}>
       <Icon name={EVENT_CATEGORY_ICON[ev.category] || "CalendarDays"} size={44} strokeWidth={1.5} className="text-fuchsia-300" />
@@ -124,11 +125,10 @@ export function CalendarView({ events, onOpen }) {
 
 // --- Browse -----------------------------------------------------------------
 export function Events() {
-  const { currentUser, events } = useApp();
+  const { events, canCreateEvents, dataLoading } = useApp();
   const [view, setView] = React.useState("list");
   const [category, setCategory] = React.useState("All");
   const [tab, setTab] = React.useState("Upcoming");
-  const canCreate = currentUser.role === "Admin" || currentUser.role === "Staff";
 
   const filtered = events.filter((e) => category === "All" || e.category === category);
   const upcoming = filtered.filter((e) => eventStatus(e) !== "Ended").sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -138,7 +138,7 @@ export function Events() {
   return (
     <AppShell activeKey="events" title="Events">
       <PageHeader title="Events" subtitle="What's happening around campus."
-        action={canCreate ? <Button icon="Plus" onClick={() => navigate("/events/new")}>Create event</Button> : null} />
+        action={canCreateEvents ? <Button icon="Plus" onClick={() => navigate("/events/new")}>Create event</Button> : null} />
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <SegmentToggle options={[{ value: "list", label: "List", icon: "List" }, { value: "calendar", label: "Calendar", icon: "CalendarDays" }]} value={view} onChange={setView} />
@@ -151,7 +151,9 @@ export function Events() {
         </div>
       </div>
 
-      {view === "calendar" ? (
+      {dataLoading ? (
+        <Loading />
+      ) : view === "calendar" ? (
         <CalendarView events={filtered} onOpen={(e) => navigate(`/events/${e.id}`)} />
       ) : list.length === 0 ? (
         <EmptyState icon="CalendarDays" title={`No ${tab.toLowerCase()} events`} message={tab === "Upcoming" ? "Check back soon, or browse the calendar." : "Past events will appear here."} />
@@ -180,8 +182,15 @@ export function EventDetail({ id }) {
   }
   const status = eventStatus(ev);
   const going = ev.attendees.includes(currentUser.id);
-  const canManage = currentUser.role === "Admin" || ev.organizer === currentUser.name;
+  const canManage = currentUser.role === "Admin" || ev.createdById === currentUser.id;
   const ended = status === "Ended";
+
+  async function onToggleRSVP() {
+    const wasGoing = going;
+    const r = await toggleRSVP(ev.id);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't update RSVP", message: r.error }); return; }
+    toast({ type: "success", title: wasGoing ? "RSVP cancelled" : "You're going!", message: wasGoing ? "" : ev.title });
+  }
 
   return (
     <AppShell activeKey="events" title="Event">
@@ -225,7 +234,7 @@ export function EventDetail({ id }) {
                   <Icon name="CalendarPlus" size={16} /> Add to calendar
                 </a>
                 {!ended && (
-                  <Button variant={going ? "secondary" : "primary"} icon={going ? "Check" : "Ticket"} onClick={() => { toggleRSVP(ev.id); toast({ type: "success", title: going ? "RSVP cancelled" : "You're going!", message: going ? "" : ev.title }); }}>
+                  <Button variant={going ? "secondary" : "primary"} icon={going ? "Check" : "Ticket"} onClick={onToggleRSVP}>
                     {going ? "Going" : "RSVP"}
                   </Button>
                 )}
@@ -238,22 +247,22 @@ export function EventDetail({ id }) {
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} icon="Trash2" tone="red"
         title="Delete this event?" description={`"${ev.title}" and its RSVPs will be permanently removed.`}
         footer={<><Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          <Button variant="destructive" onClick={() => { deleteEvent(id); toast({ type: "success", title: "Event deleted" }); navigate("/events"); }}>Delete event</Button></>} />
+          <Button variant="destructive" onClick={async () => { const r = await deleteEvent(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Event deleted" }); navigate("/events"); }}>Delete event</Button></>} />
     </AppShell>
   );
 }
 
 // --- Create form ------------------------------------------------------------
 export function EventForm() {
-  const { currentUser, addEvent } = useApp();
+  const { canCreateEvents, addEvent } = useApp();
   const toast = useToast();
-  React.useEffect(() => { if (currentUser.role === "Student") navigate("/events"); }, [currentUser]);
-  const [form, setForm] = React.useState({ title: "", category: "", organizer: "", date: todayISO(), time: "10:00", endTime: "12:00", venue: "", description: "", capacity: "", banner: null });
+  React.useEffect(() => { if (!canCreateEvents) navigate("/events"); }, [canCreateEvents]);
+  const [form, setForm] = React.useState({ title: "", category: "", organizer: "", date: todayISO(), time: "10:00", endTime: "12:00", venue: "", description: "", capacity: "", banner: null, bannerFile: null });
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const er = {};
     if (!form.title.trim()) er.title = "Enter a title.";
@@ -264,11 +273,10 @@ export function EventForm() {
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    setTimeout(() => {
-      const ev = addEvent({ title: form.title.trim(), category: form.category, organizer: form.organizer.trim(), date: form.date, time: form.time, endTime: form.endTime, venue: form.venue.trim(), description: form.description.trim(), capacity: form.capacity ? Number(form.capacity) : null });
-      toast({ type: "success", title: "Event created", message: `"${ev.title}" is now live.` });
-      navigate(`/events/${ev.id}`);
-    }, 450);
+    const r = await addEvent({ title: form.title.trim(), category: form.category, organizer: form.organizer.trim(), date: form.date, time: form.time, endTime: form.endTime, venue: form.venue.trim(), description: form.description.trim(), capacity: form.capacity ? Number(form.capacity) : null, banner: form.banner, bannerFile: form.bannerFile });
+    if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't create event", message: r.error }); return; }
+    toast({ type: "success", title: "Event created", message: `"${form.title.trim()}" is now live.` });
+    navigate(`/events/${r.id}`);
   }
 
   return (
@@ -281,7 +289,7 @@ export function EventForm() {
         <form onSubmit={submit} className="space-y-6">
           <Card className="space-y-5 p-6">
             <Field label="Banner" htmlFor="ev-banner" hint="Optional cover image.">
-              <FileUpload id="ev-banner" value={form.banner} onChange={(url) => set("banner", url)} />
+              <FileUpload id="ev-banner" value={form.banner} onChange={(url, file) => setForm((f) => ({ ...f, banner: url, bannerFile: file }))} />
             </Field>
             <Field label="Title" htmlFor="ev-title" required error={errors.title}><Input id="ev-title" placeholder="e.g. Spring Cultural Night" value={form.title} error={!!errors.title} onChange={(e) => set("title", e.target.value)} /></Field>
             <div className="grid gap-5 sm:grid-cols-2">
