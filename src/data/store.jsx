@@ -169,6 +169,36 @@ function toRide(r, requesterIds) {
   };
 }
 
+// DB blood_requests row -> screen shape. pledgeIds aggregates the blood_pledges
+// join rows (the screen reads `pledges` as an array of donor ids).
+function toBloodRequest(r, pledgeIds) {
+  return {
+    id: r.code,
+    uuid: r.id,
+    group: r.blood_group,
+    units: r.units,
+    patient: r.patient,
+    hospital: r.hospital,
+    area: r.area,
+    urgency: r.urgency,
+    requesterId: r.requester_id,
+    createdAt: day(r.created_at),
+    pledges: pledgeIds || [],
+  };
+}
+
+// DB donors row -> screen shape. Donor name is resolved from `users`
+// (public_profiles) via userById in the screen — not stored on the row.
+function toDonor(d) {
+  return {
+    id: d.user_id,       // one row per user; user_id is the PK
+    userId: d.user_id,
+    group: d.blood_group,
+    area: d.area,
+    lastDonated: d.last_donated || "",
+  };
+}
+
 // ============================================================================
 // ⚠️ PHASE-1 MOCK — campus-feature slices (localStorage, not Supabase).
 // These ship the new UI on seed data while the screens are built one by one.
@@ -198,22 +228,6 @@ function nextMockId(list, prefix, floor) {
   }, floor);
   return `${prefix}-${max + 1}`;
 }
-
-// Blood donation — urgent requests + donor registry. Seed ids are demo-only.
-const SEED_BLOOD_REQUESTS = [
-  { id: "BQ-21", group: "O-", patient: "Rafiul (CSE, 3rd yr)", hospital: "Dhaka Medical College Hospital", units: 2, urgency: "Urgent", area: "Shahbagh", requesterId: "u-stu-3", createdAt: isoOffset(0), pledges: [] },
-  { id: "BQ-19", group: "B+", patient: "Patient of Sumaiya (EEE)", hospital: "Sohrawardi Hospital", units: 1, urgency: "Today", area: "Sher-e-Bangla Nagar", requesterId: "u-stu-2", createdAt: isoOffset(0), pledges: ["u-stu-1"] },
-  { id: "BQ-17", group: "A+", patient: "Father of Tanvir (BBA)", hospital: "Popular Diagnostic, Dhanmondi", units: 2, urgency: "This week", area: "Dhanmondi", requesterId: "u-stu-1", createdAt: isoOffset(-1), pledges: [] },
-  { id: "BQ-14", group: "AB+", patient: "Nusaiba (Pharmacy)", hospital: "Ibn Sina Hospital, Mirpur", units: 1, urgency: "This week", area: "Mirpur-1", requesterId: "u-stu-3", createdAt: isoOffset(-2), pledges: ["u-stu-2"] },
-];
-
-const SEED_DONORS = [
-  { id: "DN-1", userId: "u-stu-1", name: "Tahmid Rahman", group: "O+", area: "Mirpur-2", lastDonated: isoOffset(-150), phone: "" },
-  { id: "DN-2", userId: "u-stu-2", name: "Nusrat Jahan", group: "B+", area: "Mohammadpur", lastDonated: isoOffset(-40), phone: "" },
-  { id: "DN-3", userId: "u-stu-3", name: "Arefin Khan", group: "A+", area: "Uttara", lastDonated: isoOffset(-200), phone: "" },
-  { id: "DN-4", userId: "u-staff-2", name: "Shahana Akter", group: "O-", area: "Savar", lastDonated: isoOffset(-95), phone: "" },
-  { id: "DN-5", userId: "u-adm-1", name: "Farhana Islam", group: "AB+", area: "Gulshan", lastDonated: isoOffset(-365), phone: "" },
-];
 
 // Medical Center — appointments. Seed studentIds are demo-only, so a real
 // student starts with an empty list and books fresh; doctors are in-screen.
@@ -256,17 +270,11 @@ export function AppProvider({ children }) {
   // ---- ride share (LIVE Supabase) ----
   const [rides, setRides] = useState([]);
 
+  // ---- blood donation (LIVE Supabase) ----
+  const [bloodRequests, setBloodRequests] = useState([]);
+  const [donors, setDonors] = useState([]);
+
   // ---- campus features still on PHASE-1 MOCK (localStorage) ----
-  const [bloodRequests, setBloodRequests] = useState(() => loadMock("fixit_blood_requests", SEED_BLOOD_REQUESTS));
-  useEffect(() => {
-    try { localStorage.setItem("fixit_blood_requests", JSON.stringify(bloodRequests)); } catch {}
-  }, [bloodRequests]);
-
-  const [donors, setDonors] = useState(() => loadMock("fixit_donors", SEED_DONORS));
-  useEffect(() => {
-    try { localStorage.setItem("fixit_donors", JSON.stringify(donors)); } catch {}
-  }, [donors]);
-
   const [appointments, setAppointments] = useState(() => loadMock("fixit_appointments", SEED_APPOINTMENTS));
   useEffect(() => {
     try { localStorage.setItem("fixit_appointments", JSON.stringify(appointments)); } catch {}
@@ -387,14 +395,29 @@ export function AppProvider({ children }) {
     setRides((rows || []).map((r) => toRide(r, byRide[r.id])));
   }, [currentUser]);
 
+  // Blood requests (+ pledges aggregated into each request's `pledges` array)
+  // and the donor registry.
+  const loadBlood = useCallback(async () => {
+    if (!currentUser) { setBloodRequests([]); setDonors([]); return; }
+    const [{ data: reqs }, { data: pledges }, { data: ds }] = await Promise.all([
+      supabase.from("blood_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("blood_pledges").select("request_id, donor_id"),
+      supabase.from("donors").select("*"),
+    ]);
+    const byReq = {};
+    (pledges || []).forEach((p) => { (byReq[p.request_id] ||= []).push(p.donor_id); });
+    setBloodRequests((reqs || []).map((r) => toBloodRequest(r, byReq[r.id])));
+    setDonors((ds || []).map(toDonor));
+  }, [currentUser]);
+
   useEffect(() => {
     let active = true;
     if (currentUser) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides]);
+  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -1021,30 +1044,72 @@ export function AppProvider({ children }) {
     return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
   }
 
-  // ---- blood donation (PHASE-1 MOCK) ----
-  function addBloodRequest(data) {
-    const req = { pledges: [], ...data, id: nextMockId(bloodRequests, "BQ", 21), requesterId: currentUser?.id, createdAt: isoOffset(0) };
-    setBloodRequests((b) => [req, ...b]);
-    return req; // screen navigates / shows confirmation with the new id
-  }
-  function pledgeBlood(id) {
-    if (!currentUser) return;
-    setBloodRequests((bs) =>
-      bs.map((b) => {
-        if (b.id !== id) return b;
-        const pl = b.pledges || [];
-        if (pl.includes(currentUser.id)) return b; // idempotent — no double-pledge
-        return { ...b, pledges: [...pl, currentUser.id] };
+  // ---- blood donation (LIVE Supabase) ----
+  async function addBloodRequest(data) {
+    const { data: row, error } = await supabase
+      .from("blood_requests")
+      .insert({
+        blood_group: data.group,
+        units: data.units,
+        patient: data.patient,
+        hospital: data.hospital,
+        area: data.area,
+        urgency: data.urgency,
+        requester_id: currentUser.id,
       })
-    );
+      .select("*")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    await loadBlood();
+    return { ok: true, id: row.code };
   }
-  function registerDonor(data) {
-    if (!currentUser) return;
-    setDonors((ds) => {
-      const existing = ds.find((d) => d.userId === currentUser.id);
-      if (existing) return ds.map((d) => (d.userId === currentUser.id ? { ...d, ...data } : d));
-      return [{ id: nextMockId(ds, "DN", 0), userId: currentUser.id, name: currentUser.name, ...data }, ...ds];
-    });
+  // Pledge to donate (idempotent via PK). Pledging on your own request is allowed.
+  async function pledgeBlood(id) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const req = bloodRequests.find((b) => b.id === id);
+    if (!req) return { ok: false, error: "Request not found." };
+    if (req.pledges.includes(currentUser.id)) return { ok: true };
+    const { error } = await supabase
+      .from("blood_pledges")
+      .upsert(
+        { request_id: req.uuid, donor_id: currentUser.id },
+        { onConflict: "request_id,donor_id", ignoreDuplicates: true }
+      );
+    if (error) return { ok: false, error: error.message };
+    await loadBlood();
+    return { ok: true };
+  }
+  // Join / update the donor registry (one row per user). The WhatsApp number the
+  // donor enters is saved to their profile (donor contact = profiles.whatsapp).
+  async function registerDonor(data) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    if (data.phone && data.phone !== currentUser.whatsapp) {
+      const { error: pErr } = await supabase
+        .from("profiles").update({ whatsapp: data.phone }).eq("id", currentUser.id);
+      if (pErr) return { ok: false, error: pErr.message };
+      setCurrentUser((c) => ({ ...c, whatsapp: data.phone }));
+    }
+    const { error } = await supabase
+      .from("donors")
+      .upsert(
+        { user_id: currentUser.id, blood_group: data.group, area: data.area, last_donated: data.lastDonated || null },
+        { onConflict: "user_id" }
+      );
+    if (error) return { ok: false, error: error.message };
+    await loadBlood();
+    return { ok: true };
+  }
+  // Name + WhatsApp of a registered donor (consent: registering = reachable).
+  async function getDonorContact(userId) {
+    const { data } = await supabase.rpc("donor_contact", { p_user_id: userId });
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
+  }
+  // Name + WhatsApp of a blood request's requester — only for a donor who pledged.
+  async function getBloodRequesterContact(code) {
+    const { data } = await supabase.rpc("blood_requester_contact", { p_code: code });
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
   }
 
   // ---- medical appointments (PHASE-1 MOCK) ----
@@ -1071,7 +1136,7 @@ export function AppProvider({ children }) {
     listings, addListing, updateListing, deleteListing, markListingSold, getListingContact,
     events, canCreateEvents, addEvent, toggleRSVP, deleteEvent,
     rides, addRide, requestSeat, deleteRide, getRideContact,
-    bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor,
+    bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor, getDonorContact, getBloodRequesterContact,
     appointments, addAppointment, cancelAppointment, setAppointmentStatus,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
