@@ -199,6 +199,33 @@ function toDonor(d) {
   };
 }
 
+// DB doctors row -> screen shape (start_time/end_time -> start/end).
+function toDoctor(d) {
+  return {
+    id: d.id,
+    name: d.name,
+    specialty: d.specialty,
+    days: d.days || [],
+    start: d.start_time,
+    end: d.end_time,
+    room: d.room || "",
+  };
+}
+
+// DB appointments row -> screen shape (id = code for routing; uuid = real PK).
+function toAppointment(a) {
+  return {
+    id: a.code,
+    uuid: a.id,
+    doctorId: a.doctor_id,
+    studentId: a.student_id,
+    date: a.date,
+    slot: a.slot,
+    token: a.token,
+    status: a.status,
+  };
+}
+
 // ============================================================================
 // ⚠️ PHASE-1 MOCK — campus-feature slices (localStorage, not Supabase).
 // These ship the new UI on seed data while the screens are built one by one.
@@ -228,17 +255,6 @@ function nextMockId(list, prefix, floor) {
   }, floor);
   return `${prefix}-${max + 1}`;
 }
-
-// Medical Center — appointments. Seed studentIds are demo-only, so a real
-// student starts with an empty list and books fresh; doctors are in-screen.
-const SEED_APPOINTMENTS = [
-  { id: "APT-1001", doctorId: "d1", studentId: "u-stu-1", date: isoOffset(0), slot: "10:30", token: "T-07", status: "Confirmed" },
-  { id: "APT-0998", doctorId: "d3", studentId: "u-stu-1", date: isoOffset(2), slot: "11:15", token: "T-12", status: "Booked" },
-  { id: "APT-0990", doctorId: "d2", studentId: "u-stu-1", date: isoOffset(-14), slot: "10:00", token: "T-03", status: "Completed" },
-  { id: "APT-0986", doctorId: "d4", studentId: "u-stu-1", date: isoOffset(-30), slot: "09:45", token: "T-09", status: "Cancelled" },
-  { id: "APT-0985", doctorId: "d1", studentId: "u-stu-2", date: isoOffset(0), slot: "09:45", token: "T-05", status: "Booked" },
-  { id: "APT-0980", doctorId: "d1", studentId: "u-stu-3", date: isoOffset(0), slot: "09:30", token: "T-04", status: "Confirmed" },
-];
 
 export function AppProvider({ children }) {
   // ---- auth / profiles (real Supabase) ----
@@ -274,11 +290,9 @@ export function AppProvider({ children }) {
   const [bloodRequests, setBloodRequests] = useState([]);
   const [donors, setDonors] = useState([]);
 
-  // ---- campus features still on PHASE-1 MOCK (localStorage) ----
-  const [appointments, setAppointments] = useState(() => loadMock("fixit_appointments", SEED_APPOINTMENTS));
-  useEffect(() => {
-    try { localStorage.setItem("fixit_appointments", JSON.stringify(appointments)); } catch {}
-  }, [appointments]);
+  // ---- medical center (LIVE Supabase) ----
+  const [doctors, setDoctors] = useState([]);
+  const [appointments, setAppointments] = useState([]);
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -410,14 +424,26 @@ export function AppProvider({ children }) {
     setDonors((ds || []).map(toDonor));
   }, [currentUser]);
 
+  // Doctors (active reference data) + appointments (RLS returns the student's
+  // own rows; admins see all).
+  const loadMedical = useCallback(async () => {
+    if (!currentUser) { setDoctors([]); setAppointments([]); return; }
+    const [{ data: docs }, { data: appts }] = await Promise.all([
+      supabase.from("doctors").select("*").eq("active", true).order("id"),
+      supabase.from("appointments").select("*").order("date", { ascending: false }),
+    ]);
+    setDoctors((docs || []).map(toDoctor));
+    setAppointments((appts || []).map(toAppointment));
+  }, [currentUser]);
+
   useEffect(() => {
     let active = true;
     if (currentUser) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood]);
+  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -486,6 +512,7 @@ export function AppProvider({ children }) {
 
   // ---- lookups ----
   const userById = (id) => users.find((u) => u.id === id);
+  const doctorById = (id) => doctors.find((d) => d.id === id);
   const dashboardPath = (role) =>
     role === "Admin" ? "/admin" : role === "Staff" ? "/staff" : "/dashboard";
   const staffList = users
@@ -1112,22 +1139,40 @@ export function AppProvider({ children }) {
     return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
   }
 
-  // ---- medical appointments (PHASE-1 MOCK) ----
-  function addAppointment({ doctorId, date, slot }) {
-    const n = appointments.length;
-    const appt = {
-      id: nextMockId(appointments, "APT", 1001),
-      token: "T-" + String(13 + n).padStart(2, "0"),
-      doctorId, studentId: currentUser?.id, date, slot, status: "Booked",
-    };
-    setAppointments((a) => [appt, ...a]);
-    return appt; // booking modal shows the returned token
+  // ---- medical appointments (LIVE Supabase) ----
+  // Token is server-set by a trigger; the unique index blocks double-booking
+  // (a taken slot returns a friendly error). Returns the booked row so the
+  // success modal can show the token.
+  async function addAppointment({ doctorId, date, slot }) {
+    const { data: row, error } = await supabase
+      .from("appointments")
+      .insert({ doctor_id: doctorId, student_id: currentUser.id, date, slot, status: "Booked" })
+      .select("*")
+      .single();
+    if (error) {
+      const taken = error.code === "23505" || /duplicate|unique/i.test(error.message);
+      return { ok: false, error: taken ? "That slot was just taken — please pick another." : error.message };
+    }
+    await loadMedical();
+    return { ok: true, appt: toAppointment(row) };
   }
-  function cancelAppointment(id) {
-    setAppointments((a) => a.map((x) => (x.id === id ? { ...x, status: "Cancelled" } : x)));
+  async function cancelAppointment(id) {
+    const { error } = await supabase.from("appointments").update({ status: "Cancelled" }).eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadMedical();
+    return { ok: true };
   }
-  function setAppointmentStatus(id, status) {
-    setAppointments((a) => a.map((x) => (x.id === id ? { ...x, status } : x)));
+  async function setAppointmentStatus(id, status) {
+    const { error } = await supabase.from("appointments").update({ status }).eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadMedical();
+    return { ok: true };
+  }
+  // Taken slots for a doctor+date — via the booked_slots RPC, since RLS hides
+  // other students' appointment rows from the booking grid.
+  async function getBookedSlots(doctorId, date) {
+    const { data } = await supabase.rpc("booked_slots", { p_doctor_id: doctorId, p_date: date });
+    return (data || []).map((r) => (typeof r === "string" ? r : Object.values(r)[0]));
   }
 
   const value = {
@@ -1137,7 +1182,7 @@ export function AppProvider({ children }) {
     events, canCreateEvents, addEvent, toggleRSVP, deleteEvent,
     rides, addRide, requestSeat, deleteRide, getRideContact,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor, getDonorContact, getBloodRequesterContact,
-    appointments, addAppointment, cancelAppointment, setAppointmentStatus,
+    doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,

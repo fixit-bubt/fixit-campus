@@ -2,13 +2,13 @@ import React from "react";
 import { Icon } from "../../components/Icon.jsx";
 import {
   Button, Card, Badge, StatusBadge, Field, Input, Textarea, Select, FileUpload,
-  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, useToast,
+  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
   AccentTile, CountdownBanner, SegmentToggle, RevealContact, SectionTitle,
-  taka, phoneFor, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
+  taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
   nowDhakaMinutes, dhakaParts, useTick, useLocalState,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
@@ -21,15 +21,8 @@ import { fmtDate, relativeDate, todayISO } from "../../lib/helpers.js";
 // staff today's queue, dashboard widget.
 // ============================================================================
 
-export const DOCTORS = [
-  { id: "d1", name: "Dr. Farhana Haque", specialty: "General Physician", days: ["Sat","Sun","Mon","Tue","Wed"], start: "09:00", end: "13:00", room: "Medical Center · Room 1" },
-  { id: "d2", name: "Dr. Imran Chowdhury", specialty: "Medicine", days: ["Sat","Sun","Mon","Tue","Wed"], start: "10:00", end: "14:00", room: "Medical Center · Room 2" },
-  { id: "d3", name: "Dr. Sabrina Akter", specialty: "Gynecology", days: ["Sun","Tue","Thu"], start: "11:00", end: "14:00", room: "Medical Center · Room 3" },
-  { id: "d4", name: "Dr. Mahmudul Hasan", specialty: "Dental", days: ["Sat","Sun","Mon","Tue","Wed"], start: "09:30", end: "13:30", room: "Dental Unit" },
-  { id: "d5", name: "Dr. Nasreen Sultana", specialty: "ENT", days: ["Mon","Wed"], start: "10:00", end: "13:00", room: "Medical Center · Room 4" },
-  { id: "d6", name: "Dr. Rafiqul Islam", specialty: "Orthopedics", days: ["Sat","Mon","Wed"], start: "10:00", end: "13:00", room: "Medical Center · Room 5" },
-];
-export const doctorById = (id) => DOCTORS.find((d) => d.id === id);
+// Doctors are live reference data now (public.doctors, seeded in 0021) — read
+// from the store via useApp().doctors / doctorById.
 
 export function dhakaISO(offset = 0) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date(Date.now() + offset * 86400000));
@@ -88,8 +81,9 @@ export function DoctorCard({ doc, onBook }) {
 
 // --- Browse -----------------------------------------------------------------
 export function MedicalCenter() {
-  const { currentUser, appointments } = useApp();
+  const { currentUser, appointments, doctors, dataLoading } = useApp();
   const myUpcoming = appointments.filter((a) => a.studentId === currentUser.id && (a.status === "Booked" || a.status === "Confirmed") && a.date >= dhakaISO(0)).length;
+  const canSeeQueue = currentUser.role === "Staff" || currentUser.role === "Admin";
 
   return (
     <AppShell activeKey="medical" title="Medical Center">
@@ -98,7 +92,7 @@ export function MedicalCenter() {
         subtitle="Book an appointment with campus doctors."
         action={
           <div className="flex gap-2">
-            {currentUser.role === "Staff" && <Button variant="secondary" icon="ListChecks" onClick={() => navigate("/medical/queue")}>Today's queue</Button>}
+            {canSeeQueue && <Button variant="secondary" icon="ListChecks" onClick={() => navigate("/medical/queue")}>Today's queue</Button>}
             <Button variant="secondary" icon="Ticket" onClick={() => navigate("/medical/appointments")}>
               My Appointments{myUpcoming > 0 ? ` (${myUpcoming})` : ""}
             </Button>
@@ -114,44 +108,72 @@ export function MedicalCenter() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {DOCTORS.map((d) => (
-          <DoctorCard key={d.id} doc={d} onBook={() => navigate(`/medical/${d.id}`)} />
-        ))}
-      </div>
+      {dataLoading ? (
+        <Loading />
+      ) : doctors.length === 0 ? (
+        <EmptyState icon="Stethoscope" title="No doctors available" message="Check back soon — the medical center roster will appear here." />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {doctors.map((d) => (
+            <DoctorCard key={d.id} doc={d} onBook={() => navigate(`/medical/${d.id}`)} />
+          ))}
+        </div>
+      )}
     </AppShell>
   );
 }
 
 // --- Booking ----------------------------------------------------------------
 export function DoctorBooking({ id }) {
-  const { currentUser, appointments, addAppointment } = useApp();
+  const { doctorById, addAppointment, getBookedSlots, dataLoading } = useApp();
+  const toast = useToast();
   const doc = doctorById(id);
-  const dates = doc ? nextDutyDates(doc) : [];
-  const [date, setDate] = React.useState(dates[0] || "");
+  const [date, setDate] = React.useState("");
   const [slot, setSlot] = React.useState(null);
   const [confirm, setConfirm] = React.useState(false);
   const [done, setDone] = React.useState(null); // booked appt
+  const [taken, setTaken] = React.useState(new Set());
+  const [booking, setBooking] = React.useState(false);
+
+  // Pick the first on-duty date once the doctor has loaded.
+  React.useEffect(() => {
+    if (doc && !date) {
+      const ds = nextDutyDates(doc);
+      if (ds.length) setDate(ds[0]);
+    }
+  }, [doc, date]);
+
+  // Taken slots come from the booked_slots RPC (RLS hides other students' rows).
+  React.useEffect(() => {
+    if (!doc || !date) { setTaken(new Set()); return; }
+    let active = true;
+    getBookedSlots(doc.id, date).then((slots) => { if (active) setTaken(new Set(slots)); });
+    return () => { active = false; };
+  }, [doc, date]);
 
   if (!doc) {
     return (
       <AppShell activeKey="medical" title="Doctor">
-        <EmptyState icon="Stethoscope" title="Doctor not found" action={<Button onClick={() => navigate("/medical")}>Back</Button>} />
+        {dataLoading ? <Loading /> : <EmptyState icon="Stethoscope" title="Doctor not found" action={<Button onClick={() => navigate("/medical")}>Back</Button>} />}
       </AppShell>
     );
   }
 
+  const dates = nextDutyDates(doc);
   const slots = slotsFor(doc);
-  // booked = real appointments + a deterministic few so the grid looks alive
-  const taken = new Set(
-    appointments.filter((a) => a.doctorId === doc.id && a.date === date && a.status !== "Cancelled").map((a) => a.slot)
-  );
-  if (date) slots.forEach((s, i) => { if ((i * 7 + date.charCodeAt(date.length - 1)) % 5 === 0) taken.add(s); });
 
-  function book() {
-    const appt = addAppointment({ doctorId: doc.id, date, slot });
+  async function book() {
+    setBooking(true);
+    const r = await addAppointment({ doctorId: doc.id, date, slot });
+    setBooking(false);
     setConfirm(false);
-    setDone(appt);
+    if (!r.ok) {
+      toast({ type: "error", title: "Couldn't book", message: r.error });
+      setSlot(null);
+      getBookedSlots(doc.id, date).then((s) => setTaken(new Set(s))); // slot may be gone
+      return;
+    }
+    setDone(r.appt);
   }
 
   return (
@@ -222,7 +244,7 @@ export function DoctorBooking({ id }) {
         description={`${doc.name} · ${fmtDate(date)} at ${slot ? fmtTime(slot) : ""}. You'll receive a token number.`}
         footer={<>
           <Button variant="secondary" onClick={() => setConfirm(false)}>Back</Button>
-          <Button onClick={book}>Confirm booking</Button>
+          <Button onClick={book} disabled={booking}>{booking ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Confirm booking"}</Button>
         </>}
       />
 
@@ -246,7 +268,7 @@ export function DoctorBooking({ id }) {
 
 // --- My Appointments --------------------------------------------------------
 export function MyAppointments() {
-  const { currentUser, appointments, cancelAppointment } = useApp();
+  const { currentUser, appointments, cancelAppointment, doctorById } = useApp();
   const toast = useToast();
   const [tab, setTab] = React.useState("Upcoming");
   const [toCancel, setToCancel] = React.useState(null);
@@ -257,8 +279,9 @@ export function MyAppointments() {
   const past = mine.filter((a) => !((a.status === "Booked" || a.status === "Confirmed") && a.date >= today)).sort((a, b) => b.date.localeCompare(a.date));
   const rows = tab === "Upcoming" ? upcoming : past;
 
-  function doCancel() {
-    cancelAppointment(toCancel.id);
+  async function doCancel() {
+    const r = await cancelAppointment(toCancel.id);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't cancel", message: r.error }); return; }
     toast({ type: "success", title: "Appointment cancelled", message: `Token ${toCancel.token} released.` });
     setToCancel(null);
   }
@@ -310,16 +333,17 @@ export function MyAppointments() {
 
 // --- Staff: today's queue ---------------------------------------------------
 export function DoctorQueue() {
-  const { currentUser, appointments, userById, setAppointmentStatus } = useApp();
+  const { currentUser, appointments, userById, setAppointmentStatus, doctorById } = useApp();
   const toast = useToast();
   React.useEffect(() => { if (currentUser.role === "Student") navigate("/medical"); }, [currentUser]);
   const today = dhakaISO(0);
   const queue = appointments.filter((a) => a.date === today && a.status !== "Cancelled")
     .sort((a, b) => a.slot.localeCompare(b.slot));
 
-  function advance(a) {
+  async function advance(a) {
     const next = a.status === "Booked" ? "Confirmed" : a.status === "Confirmed" ? "Completed" : "Completed";
-    setAppointmentStatus(a.id, next);
+    const r = await setAppointmentStatus(a.id, next);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
     toast({ type: "success", title: `Marked ${next}`, message: `Token ${a.token}.` });
   }
 
@@ -358,7 +382,7 @@ export function DoctorQueue() {
 
 // --- Dashboard widget -------------------------------------------------------
 export function MedicalWidget() {
-  const { currentUser, appointments } = useApp();
+  const { currentUser, appointments, doctorById } = useApp();
   const today = dhakaISO(0);
   const next = appointments
     .filter((a) => a.studentId === currentUser.id && (a.status === "Booked" || a.status === "Confirmed") && a.date >= today)
