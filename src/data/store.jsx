@@ -256,6 +256,8 @@ export function AppProvider({ children }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
+  const [profileError, setProfileError] = useState(false); // profile read failed
+  const [profileTry, setProfileTry] = useState(0);          // bump to retry
 
   // ---- reports (real Supabase) ----
   const [reports, setReports] = useState([]);
@@ -310,25 +312,35 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     let active = true;
-    if (!sessionUserId) { setCurrentUser(null); return; }
+    if (!sessionUserId) { setCurrentUser(null); setProfileError(false); return; }
+    // Drop any previously-loaded identity that isn't this session (account
+    // switch / multi-tab sync) so we show the spinner until the right profile
+    // arrives instead of rendering the old user.
+    setCurrentUser((prev) => (prev && prev.id === sessionUserId ? prev : null));
+    setProfileError(false);
+    const wanted = sessionUserId;
     supabase
-      .from("profiles").select("*").eq("id", sessionUserId).single()
+      .from("profiles").select("*").eq("id", wanted).single()
       .then(({ data, error }) => {
-        // On a transient read failure, keep the user signed in rather than
-        // flipping to a confusing "logged out but session valid" state.
-        if (!active || error || !data) return;
+        if (!active || wanted !== sessionUserId) return;
+        // A failed/empty read leaves a terminal error state (App shows a
+        // recoverable error screen) instead of an infinite spinner.
+        if (error || !data) { setProfileError(true); return; }
         setCurrentUser(toUser(data));
       })
-      .catch(() => {});
+      .catch(() => { if (active) setProfileError(true); });
     return () => { active = false; };
-  }, [sessionUserId]);
+  }, [sessionUserId, profileTry]);
+
+  // Retry a failed profile load (from the App error screen).
+  const retryProfile = useCallback(() => { setProfileError(false); setProfileTry((n) => n + 1); }, []);
 
   const refreshUsers = useCallback(async () => {
     if (!currentUser) { setUsers([]); return; }
     const src = currentUser.role === "Admin" ? "profiles" : "public_profiles";
     const { data } = await supabase.from(src).select("*").order("full_name");
     setUsers((data || []).map(toUser));
-  }, [currentUser]);
+  }, [currentUser?.id, currentUser?.role]);
 
   // ---- reports: load (RLS returns only rows this user may see) ----
   const loadReports = useCallback(async () => {
@@ -346,14 +358,14 @@ export function AppProvider({ children }) {
       });
     }
     setReports((rows || []).map((r) => toReport(r, byReport[r.id])));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   const loadItems = useCallback(async () => {
     if (!currentUser) { setItems([]); return; }
     const { data } = await supabase
       .from("lost_found_items").select("*").order("item_date", { ascending: false });
     setItems((data || []).map(toItem));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   const loadClaims = useCallback(async () => {
     if (!currentUser) { setClaims([]); return; }
@@ -362,7 +374,7 @@ export function AppProvider({ children }) {
       .select("*, item:lost_found_items(code)")
       .order("created_at", { ascending: false });
     setClaims((data || []).map(toClaim));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // Announcements + this user's read receipts (RLS returns only my own reads).
   const loadAnnouncements = useCallback(async () => {
@@ -373,14 +385,14 @@ export function AppProvider({ children }) {
     ]);
     const readSet = new Set((reads || []).map((r) => r.announcement_id));
     setAnnouncements((rows || []).map((r) => toAnnouncement(r, readSet.has(r.id), currentUser.id)));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   const loadListings = useCallback(async () => {
     if (!currentUser) { setListings([]); return; }
     const { data } = await supabase
       .from("listings").select("*").order("created_at", { ascending: false });
     setListings((data || []).map(toListing));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // Events + RSVPs (aggregated into each event's `attendees` array) + the
   // organizer allowlist (to gate the "Create event" button; RLS enforces it).
@@ -395,7 +407,7 @@ export function AppProvider({ children }) {
     (rsvps || []).forEach((r) => { (byEvent[r.event_id] ||= []).push(r.user_id); });
     setEvents((rows || []).map((r) => toEvent(r, byEvent[r.id])));
     setEventOrganizers((orgs || []).map((o) => o.user_id));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // Rides + seat requests (aggregated into each ride's `requesterIds` array).
   const loadRides = useCallback(async () => {
@@ -407,7 +419,7 @@ export function AppProvider({ children }) {
     const byRide = {};
     (reqs || []).forEach((r) => { (byRide[r.ride_id] ||= []).push(r.requester_id); });
     setRides((rows || []).map((r) => toRide(r, byRide[r.id])));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // Blood requests (+ pledges aggregated into each request's `pledges` array)
   // and the donor registry.
@@ -422,7 +434,7 @@ export function AppProvider({ children }) {
     (pledges || []).forEach((p) => { (byReq[p.request_id] ||= []).push(p.donor_id); });
     setBloodRequests((reqs || []).map((r) => toBloodRequest(r, byReq[r.id])));
     setDonors((ds || []).map(toDonor));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // Doctors (active reference data) + appointments (RLS returns the student's
   // own rows; admins see all).
@@ -434,7 +446,7 @@ export function AppProvider({ children }) {
     ]);
     setDoctors((docs || []).map(toDoctor));
     setAppointments((appts || []).map(toAppointment));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // Bus routes (active reference data) + this user's saved (starred) route ids.
   const loadBus = useCallback(async () => {
@@ -445,23 +457,23 @@ export function AppProvider({ children }) {
     ]);
     setBusRoutes((routes || []).map(toBusRoute));
     setSavedBusRoutes((saved || []).map((s) => s.route_id));
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // Prayer times config (Azan + Jamaat per prayer), ordered by `sort`.
   const loadPrayer = useCallback(async () => {
     if (!currentUser) { setPrayerTimes([]); return; }
     const { data } = await supabase.from("prayer_times").select("*").order("sort");
     setPrayerTimes(data || []);
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     let active = true;
-    if (currentUser) setDataLoading(true);
+    if (currentUser?.id) setDataLoading(true);
     Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer]);
+  }, [currentUser?.id, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -507,6 +519,13 @@ export function AppProvider({ children }) {
     });
     if (error) {
       return { ok: false, error: /already/i.test(error.message) ? "An account with this email already exists." : error.message };
+    }
+    // When confirmation is ON and the email already exists, Supabase returns an
+    // obfuscated user with empty identities (anti-enumeration) and no error.
+    // Bail out before we accidentally overwrite that real account's role/dept.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      await tmp.auth.signOut();
+      return { ok: false, error: "An account with this email already exists." };
     }
     // If email confirmation is on, signUp returns no user — we can't set the role.
     if (!data.user) {
@@ -768,7 +787,10 @@ export function AppProvider({ children }) {
       message: message.trim(),
       proof_url,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      const dup = error.code === "23505" || /duplicate|unique/i.test(error.message);
+      return { ok: false, error: dup ? "You've already submitted a claim on this item." : error.message };
+    }
     await loadClaims();
     return { ok: true };
   }
@@ -1265,7 +1287,7 @@ export function AppProvider({ children }) {
     doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
     busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
     prayerTimes, updatePrayerJamaat,
-    currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
+    currentUser, setCurrentUser, sessionUserId, loading, dataLoading, profileError, retryProfile,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
