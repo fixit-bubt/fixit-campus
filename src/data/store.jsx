@@ -127,6 +127,27 @@ function toListing(r) {
   };
 }
 
+// DB event row -> screen shape. attendeeIds aggregates the event_rsvps join
+// rows (the screen reads `attendees` as an array of user ids).
+function toEvent(r, attendeeIds) {
+  return {
+    id: r.code,
+    uuid: r.id,
+    title: r.title,
+    category: r.category,
+    organizer: r.organizer,
+    date: r.date,
+    time: r.time,
+    endTime: r.end_time || null,
+    venue: r.venue,
+    description: r.description,
+    capacity: r.capacity,
+    banner: r.banner_url || null,
+    createdById: r.created_by,
+    attendees: attendeeIds || [],
+  };
+}
+
 // ============================================================================
 // ⚠️ PHASE-1 MOCK — campus-feature slices (localStorage, not Supabase).
 // These ship the new UI on seed data while the screens are built one by one.
@@ -156,16 +177,6 @@ function nextMockId(list, prefix, floor) {
   }, floor);
   return `${prefix}-${max + 1}`;
 }
-
-// Events. Seed attendee ids are demo-only; real RSVPs add the real user id.
-const SEED_EVENTS = [
-  { id: "EV-41", title: "Intra-University Hackathon 2026", category: "Club", organizer: "BUBT Computer Club", date: isoOffset(3), time: "09:00", endTime: "18:00", venue: "Auditorium, Main Building", description: "A 9-hour build sprint where teams ship a working prototype solving a real campus problem. Mentors from the industry, free lunch, and ৳50,000 in prizes. Open to all departments — form a team of up to 4.", attendees: ["u-stu-2", "u-stu-3"], capacity: 120 },
-  { id: "EV-39", title: "Career Fair: Tech & Beyond", category: "Career", organizer: "Career Services Office", date: isoOffset(6), time: "10:00", endTime: "16:00", venue: "Ground Floor Concourse", description: "Meet 30+ recruiters from leading software, telecom, and banking firms. Bring printed CVs. On-spot interviews for final-year students.", attendees: ["u-stu-1"], capacity: 400 },
-  { id: "EV-37", title: "Spring Cultural Night", category: "Cultural", organizer: "Cultural Club", date: isoOffset(1), time: "17:00", endTime: "21:00", venue: "Open Stage, Field", description: "An evening of music, dance, and drama performances by students. Food stalls open from 5 PM.", attendees: ["u-stu-1", "u-stu-2", "u-stu-3"], capacity: 600 },
-  { id: "EV-35", title: "Inter-Department Football Final", category: "Sports", organizer: "Sports Office", date: isoOffset(0), time: "15:30", endTime: "17:30", venue: "BUBT Playground", description: "CSE vs EEE in the championship final. Come support your department!", attendees: ["u-stu-3"], capacity: 300 },
-  { id: "EV-33", title: "Guest Lecture: AI in Bangladesh", category: "Academic", organizer: "Dept. of CSE", date: isoOffset(4), time: "11:00", endTime: "13:00", venue: "Seminar Hall, 5th Floor", description: "A talk on the state of AI research and industry in Bangladesh, followed by Q&A. Certificates for attendees.", attendees: ["u-stu-1", "u-stu-2"], capacity: 150 },
-  { id: "EV-28", title: "Orientation: Summer 2026 Intake", category: "Academic", organizer: "Registrar's Office", date: isoOffset(-7), time: "10:00", endTime: "12:00", venue: "Auditorium, Main Building", description: "Welcome session for new students with an overview of academics, clubs, and campus services.", attendees: ["u-stu-2"], capacity: 500 },
-];
 
 // Ride Share — offered rides + seat requests. Seed driver/requester ids are
 // demo-only; real offers/requests use the real user id.
@@ -225,12 +236,13 @@ export function AppProvider({ children }) {
   // ---- marketplace listings (LIVE Supabase) ----
   const [listings, setListings] = useState([]);
 
-  // ---- campus features still on PHASE-1 MOCK (localStorage) ----
-  const [events, setEvents] = useState(() => loadMock("fixit_events", SEED_EVENTS));
-  useEffect(() => {
-    try { localStorage.setItem("fixit_events", JSON.stringify(events)); } catch {}
-  }, [events]);
+  // ---- events (LIVE Supabase) ----
+  const [events, setEvents] = useState([]);
+  // Admin-curated allowlist of users who may publish events (+ admins). Used to
+  // gate the "Create event" UI; RLS enforces the same via can_create_events().
+  const [eventOrganizers, setEventOrganizers] = useState([]);
 
+  // ---- campus features still on PHASE-1 MOCK (localStorage) ----
   const [rides, setRides] = useState(() => loadMock("fixit_rides", SEED_RIDES));
   useEffect(() => {
     try { localStorage.setItem("fixit_rides", JSON.stringify(rides)); } catch {}
@@ -339,14 +351,29 @@ export function AppProvider({ children }) {
     setListings((data || []).map(toListing));
   }, [currentUser]);
 
+  // Events + RSVPs (aggregated into each event's `attendees` array) + the
+  // organizer allowlist (to gate the "Create event" button; RLS enforces it).
+  const loadEvents = useCallback(async () => {
+    if (!currentUser) { setEvents([]); setEventOrganizers([]); return; }
+    const [{ data: rows }, { data: rsvps }, { data: orgs }] = await Promise.all([
+      supabase.from("events").select("*").order("date", { ascending: true }),
+      supabase.from("event_rsvps").select("event_id, user_id"),
+      supabase.from("event_organizers").select("user_id"),
+    ]);
+    const byEvent = {};
+    (rsvps || []).forEach((r) => { (byEvent[r.event_id] ||= []).push(r.user_id); });
+    setEvents((rows || []).map((r) => toEvent(r, byEvent[r.id])));
+    setEventOrganizers((orgs || []).map((o) => o.user_id));
+  }, [currentUser]);
+
   useEffect(() => {
     let active = true;
     if (currentUser) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings]);
+  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -864,25 +891,59 @@ export function AppProvider({ children }) {
     return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
   }
 
-  // ---- events (PHASE-1 MOCK) ----
-  function addEvent(data) {
-    const ev = { attendees: [], ...data, id: nextMockId(events, "EV", 41), organizer: data.organizer || currentUser?.name };
-    setEvents((e) => [ev, ...e]);
-    return ev; // screen navigates to /events/:id immediately
+  // ---- events (LIVE Supabase) ----
+  // Whether the current user may publish events (admin or on the allowlist) —
+  // mirrors the can_create_events() helper that RLS uses on insert.
+  const canCreateEvents = !!currentUser &&
+    (currentUser.role === "Admin" || eventOrganizers.includes(currentUser.id));
+
+  // Build the insert column payload (uploads the banner if a new file).
+  async function eventCols(data) {
+    const banner_url = await resolvePhoto({ photo: data.banner, photoFile: data.bannerFile }, "events");
+    return {
+      title: data.title,
+      category: data.category,
+      organizer: data.organizer,
+      date: data.date,
+      time: data.time,
+      end_time: data.endTime || null,
+      venue: data.venue,
+      description: data.description,
+      capacity: data.capacity ?? null,
+      banner_url,
+    };
   }
-  function toggleRSVP(id) {
-    if (!currentUser) return;
-    setEvents((es) =>
-      es.map((e) => {
-        if (e.id !== id) return e;
-        const att = e.attendees || [];
-        const going = att.includes(currentUser.id);
-        return { ...e, attendees: going ? att.filter((u) => u !== currentUser.id) : [...att, currentUser.id] };
-      })
-    );
+  async function addEvent(data) {
+    let cols;
+    try { cols = await eventCols(data); }
+    catch (e) { return { ok: false, error: "Banner upload failed: " + e.message }; }
+    const { data: row, error } = await supabase
+      .from("events")
+      .insert({ ...cols, created_by: currentUser.id })
+      .select("*")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    await loadEvents();
+    return { ok: true, id: row.code }; // screen navigates to /events/:id
   }
-  function deleteEvent(id) {
-    setEvents((es) => es.filter((e) => e.id !== id));
+  // Add/remove the current user's own RSVP (idempotent via the join-table PK).
+  async function toggleRSVP(id) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const ev = events.find((e) => e.id === id);
+    if (!ev) return { ok: false, error: "Event not found." };
+    const going = ev.attendees.includes(currentUser.id);
+    const { error } = going
+      ? await supabase.from("event_rsvps").delete().eq("event_id", ev.uuid).eq("user_id", currentUser.id)
+      : await supabase.from("event_rsvps").insert({ event_id: ev.uuid, user_id: currentUser.id });
+    if (error) return { ok: false, error: error.message };
+    await loadEvents();
+    return { ok: true, going: !going };
+  }
+  async function deleteEvent(id) {
+    const { error } = await supabase.from("events").delete().eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadEvents();
+    return { ok: true };
   }
 
   // ---- ride share (PHASE-1 MOCK) ----
@@ -954,7 +1015,7 @@ export function AppProvider({ children }) {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
     listings, addListing, updateListing, deleteListing, markListingSold, getListingContact,
-    events, addEvent, toggleRSVP, deleteEvent,
+    events, canCreateEvents, addEvent, toggleRSVP, deleteEvent,
     rides, addRide, requestSeat, deleteRide,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor,
     appointments, addAppointment, cancelAppointment, setAppointmentStatus,
