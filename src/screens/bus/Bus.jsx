@@ -290,27 +290,51 @@ export function BusDetail({ id }) {
 }
 
 // --- Admin form -------------------------------------------------------------
+// Wrapper: gate on admin + on the route being loaded before mounting the editor,
+// so a deep-link/refresh to /bus/:id/edit never seeds a blank form (which a Save
+// would write back over the real route).
 export function BusRouteForm({ id }) {
-  const { currentUser, busById, addBusRoute, updateBusRoute } = useApp();
-  const toast = useToast();
+  const { currentUser, busById, dataLoading } = useApp();
   const editing = !!id;
   const existing = editing ? busById(id) : null;
-  const [form, setForm] = React.useState(
-    existing
-      ? { code: existing.id, name: existing.name, area: existing.area, busNo: existing.busNo, helperName: existing.helperName, helperPhone: existing.helperPhone, days: existing.days, toDepartures: existing.toDepartures.join(", "), fromDepartures: existing.fromDepartures.join(", "), stops: existing.stops.join("\n") }
-      : { code: "", name: "", area: "", busNo: "", helperName: "", helperPhone: "", days: "Sat–Wed", toDepartures: "", fromDepartures: "", stops: "" }
-  );
-  const [saving, setSaving] = React.useState(false);
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   React.useEffect(() => {
     if (currentUser.role !== "Admin") navigate("/bus");
   }, [currentUser]);
 
+  if (editing && (dataLoading || !existing)) {
+    return (
+      <AppShell activeKey="bus" title="Edit Route">
+        {dataLoading ? <Loading /> : <EmptyState icon="Bus" title="Route not found" message="This route may have changed." action={<Button onClick={() => navigate("/bus")}>Back to routes</Button>} />}
+      </AppShell>
+    );
+  }
+  return <BusRouteEditor id={id} existing={existing} />;
+}
+
+function BusRouteEditor({ id, existing }) {
+  const { addBusRoute, updateBusRoute } = useApp();
+  const toast = useToast();
+  const editing = !!id;
+  const [form, setForm] = React.useState(
+    existing
+      ? { code: existing.id, name: existing.name, area: existing.area, busNo: existing.busNo, helperName: existing.helperName, helperPhone: existing.helperPhone, days: existing.days, fridayNote: existing.fridayNote, legMins: existing.legMins, toDepartures: existing.toDepartures.join(", "), fromDepartures: existing.fromDepartures.join(", "), stops: existing.stops.join("\n") }
+      : { code: "", name: "", area: "", busNo: "", helperName: "", helperPhone: "", days: "Sat–Wed", fridayNote: "", legMins: [], toDepartures: "", fromDepartures: "", stops: "" }
+  );
+  const [saving, setSaving] = React.useState(false);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
   async function submit(e) {
     e.preventDefault();
     const splitList = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
     const splitLines = (s) => s.split("\n").map((x) => x.trim()).filter(Boolean);
+    const stops = splitLines(form.stops);
+    const toDepartures = splitList(form.toDepartures);
+    // Guard: never let an empty/blank form overwrite a real route.
+    if (!form.name.trim() || stops.length < 2 || toDepartures.length === 0 || (!editing && !form.code.trim())) {
+      toast({ type: "error", title: "Missing details", message: "Add a name, a route code, at least 2 stops, and a departure time." });
+      return;
+    }
     const payload = {
       id: form.code.trim(),
       name: form.name.trim(),
@@ -319,8 +343,10 @@ export function BusRouteForm({ id }) {
       helperName: form.helperName.trim(),
       helperPhone: form.helperPhone.trim(),
       days: form.days.trim(),
-      stops: splitLines(form.stops),
-      toDepartures: splitList(form.toDepartures),
+      fridayNote: form.fridayNote.trim(),
+      legMins: form.legMins,
+      stops,
+      toDepartures,
       fromDepartures: splitList(form.fromDepartures),
     };
     setSaving(true);
@@ -361,6 +387,7 @@ export function BusRouteForm({ id }) {
               <Field label="To-campus departures" htmlFor="btd" hint="Comma-separated, 24h"><Input id="btd" placeholder="06:45, 07:30" value={form.toDepartures} onChange={(e) => set("toDepartures", e.target.value)} /></Field>
               <Field label="From-campus departures" htmlFor="bfd" hint="Comma-separated, 24h"><Input id="bfd" placeholder="16:30, 18:15" value={form.fromDepartures} onChange={(e) => set("fromDepartures", e.target.value)} /></Field>
             </div>
+            <Field label="Friday / holiday note" htmlFor="bfn" hint="Shown on the route's service-details card."><Input id="bfn" placeholder="No service on Friday & government holidays." value={form.fridayNote} onChange={(e) => set("fridayNote", e.target.value)} /></Field>
           </Card>
           <div className="flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => navigate("/bus")}>Cancel</Button>

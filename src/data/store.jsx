@@ -1206,11 +1206,16 @@ export function AppProvider({ children }) {
     setSavedBusRoutes((s) => (saved ? s.filter((x) => x !== routeId) : [...s, routeId]));
     return { ok: true };
   }
-  // Build the bus_routes column payload from the admin form. The form collects
-  // stops + departures but not per-leg minutes, so default each leg to 10 min;
-  // `days` is stored as a one-element array (opaque display string).
+  // Build the bus_routes column payload from the admin form. `days` is stored as
+  // a one-element array (opaque display string). leg_mins is round-tripped from
+  // the existing route (the form doesn't expose per-leg minutes) so editing a
+  // route never destroys its real stop timings — gaps are matched to the current
+  // stop count, padding any *new* gap with 10 min.
   function busRouteCols(data) {
     const stops = (data.stops || []).filter(Boolean);
+    const gaps = Math.max(stops.length - 1, 0);
+    const provided = Array.isArray(data.legMins) ? data.legMins : [];
+    const leg_mins = Array.from({ length: gaps }, (_, i) => Number(provided[i]) || 10);
     return {
       name: data.name,
       area: data.area,
@@ -1220,7 +1225,7 @@ export function AppProvider({ children }) {
       days: data.days ? [data.days] : [],
       friday_note: data.fridayNote || "No service on Friday & government holidays.",
       stops,
-      leg_mins: stops.length > 1 ? Array(stops.length - 1).fill(10) : [],
+      leg_mins,
       to_departures: data.toDepartures || [],
       from_departures: data.fromDepartures || [],
     };
