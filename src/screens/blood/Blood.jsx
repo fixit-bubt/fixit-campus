@@ -2,13 +2,13 @@ import React from "react";
 import { Icon } from "../../components/Icon.jsx";
 import {
   Button, Card, Badge, StatusBadge, Field, Input, Textarea, Select, FileUpload,
-  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, useToast,
+  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
   AccentTile, CountdownBanner, SegmentToggle, RevealContact, SectionTitle,
-  taka, phoneFor, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
+  taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
   nowDhakaMinutes, dhakaParts, useTick, useLocalState,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
@@ -79,6 +79,35 @@ export function RequestCard({ req, requester, mine, pledged, onDonate }) {
   );
 }
 
+// A registered donor's WhatsApp, revealed on click (registering is consent, so
+// the donor_contact RPC always returns it — unless they never saved a number).
+function DonorContact({ userId }) {
+  const { getDonorContact } = useApp();
+  const [phase, setPhase] = React.useState("idle"); // idle | loading | done
+  const [contact, setContact] = React.useState(null);
+
+  async function reveal() {
+    setPhase("loading");
+    setContact(await getDonorContact(userId));
+    setPhase("done");
+  }
+
+  if (phase === "done") {
+    const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
+    return wa ? (
+      <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-medium text-white hover:bg-emerald-700"><Icon name="MessageCircle" size={14} /> Chat</a>
+    ) : (
+      <span className="shrink-0 text-xs text-slate-400">No number shared</span>
+    );
+  }
+  return (
+    <button onClick={reveal} disabled={phase === "loading"}
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60">
+      <Icon name="MessageCircle" size={14} /> {phase === "loading" ? "…" : "Contact"}
+    </button>
+  );
+}
+
 // --- Donor card -------------------------------------------------------------
 export function DonorCard({ donor }) {
   const eligible = isEligible(donor);
@@ -97,17 +126,44 @@ export function DonorCard({ donor }) {
       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
         {eligible ? <Badge tone="emerald"><span className="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>Available to donate</Badge>
           : <Badge tone="amber">Eligible {fmtDate(eligibleDate(donor.lastDonated))}</Badge>}
-        {eligible && (
-          <a href={`https://wa.me/${phoneFor(donor.userId).replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-medium text-white hover:bg-emerald-700"><Icon name="MessageCircle" size={14} /> Contact</a>
-        )}
+        {eligible && <DonorContact userId={donor.userId} />}
       </div>
     </Card>
   );
 }
 
+// The requester's contact, shown in the pledge modal. The donor has just
+// pledged, so the blood_requester_contact RPC will return it — fetched on open.
+function BloodRequesterContact({ code, fallbackName }) {
+  const { getBloodRequesterContact } = useApp();
+  const [phase, setPhase] = React.useState("loading"); // loading | done
+  const [contact, setContact] = React.useState(null);
+
+  React.useEffect(() => {
+    let active = true;
+    getBloodRequesterContact(code).then((c) => { if (active) { setContact(c); setPhase("done"); } });
+    return () => { active = false; };
+  }, [code]);
+
+  const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
+  return (
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+      <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700"><Icon name="CircleCheck" size={16} /> Requester contact</div>
+      {phase === "loading" ? (
+        <p className="mt-2 text-xs text-slate-500">Getting contact…</p>
+      ) : (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
+          <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-900">{contact?.name || fallbackName || "Requester"}</p><p className="truncate text-xs text-slate-500">{contact?.whatsapp || "No number shared"}</p></div>
+          {wa && <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700"><Icon name="MessageCircle" size={16} /> WhatsApp</a>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main (tabs) ------------------------------------------------------------
 export function BloodDonation() {
-  const { currentUser, bloodRequests, donors, userById, pledgeBlood } = useApp();
+  const { currentUser, bloodRequests, donors, userById, pledgeBlood, dataLoading } = useApp();
   const toast = useToast();
   const [tab, setTab] = React.useState("Requests");
   const [groupFilter, setGroupFilter] = React.useState("All");
@@ -125,8 +181,9 @@ export function BloodDonation() {
   // donors-by-group summary
   const byGroup = BLOOD_GROUPS.map((g) => ({ g, n: donors.filter((d) => d.group === g).length }));
 
-  function donate(req) {
-    pledgeBlood(req.id);
+  async function donate(req) {
+    const r = await pledgeBlood(req.id);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't pledge", message: r.error }); return; }
     setActive(req);
   }
 
@@ -148,7 +205,9 @@ export function BloodDonation() {
         </Select>
       </div>
 
-      {tab === "Requests" ? (
+      {dataLoading ? (
+        <Loading />
+      ) : tab === "Requests" ? (
         requests.length === 0 ? (
           <EmptyState icon="Droplet" title="No requests right now" message="Urgent blood requests will appear here, most urgent first." action={<Button icon="Plus" onClick={() => navigate("/blood/request")}>Request blood</Button>} />
         ) : (
@@ -175,7 +234,7 @@ export function BloodDonation() {
             <EmptyState icon="Users" title="No donors yet" message="Be the first to join the donor registry." action={<Button icon="UserPlus" onClick={() => navigate("/blood/register")}>Register as donor</Button>} />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {donorList.map((d) => <DonorCard key={d.id} donor={d} />)}
+              {donorList.map((d) => <DonorCard key={d.id} donor={{ ...d, name: userById(d.userId)?.name || "Student" }} />)}
             </div>
           )}
         </>
@@ -185,15 +244,7 @@ export function BloodDonation() {
       <Modal open={!!active} onClose={() => setActive(null)} icon="HeartPulse" tone="red"
         title="Thank you for donating" description={active ? `You've responded to the ${active.group} request. Contact the requester to coordinate.` : ""}
         footer={<Button onClick={() => setActive(null)}>Done</Button>}>
-        {active && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700"><Icon name="CircleCheck" size={16} /> Requester contact</div>
-            <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
-              <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-900">{userById(active.requesterId)?.name}</p><p className="truncate text-xs text-slate-500">{phoneFor(active.requesterId)}</p></div>
-              <a href={`https://wa.me/${phoneFor(active.requesterId).replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700"><Icon name="MessageCircle" size={16} /> WhatsApp</a>
-            </div>
-          </div>
-        )}
+        {active && <BloodRequesterContact code={active.id} fallbackName={userById(active.requesterId)?.name} />}
       </Modal>
     </AppShell>
   );
@@ -205,19 +256,22 @@ export function RegisterDonor() {
   const toast = useToast();
   const existing = donors.find((d) => d.userId === currentUser.id);
   const [form, setForm] = React.useState(existing
-    ? { group: existing.group, area: existing.area, lastDonated: existing.lastDonated || "", phone: existing.phone || "" }
-    : { group: "", area: "", lastDonated: "", phone: "" });
+    ? { group: existing.group, area: existing.area, lastDonated: existing.lastDonated || "", phone: currentUser.whatsapp || "" }
+    : { group: "", area: "", lastDonated: "", phone: currentUser.whatsapp || "" });
   const [errors, setErrors] = React.useState({});
+  const [saving, setSaving] = React.useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const er = {};
     if (!form.group) er.group = "Select your blood group.";
     if (!form.area.trim()) er.area = "Enter your area.";
     setErrors(er);
     if (Object.keys(er).length) return;
-    registerDonor({ group: form.group, area: form.area.trim(), lastDonated: form.lastDonated || null, phone: form.phone.trim() });
+    setSaving(true);
+    const r = await registerDonor({ group: form.group, area: form.area.trim(), lastDonated: form.lastDonated || null, phone: form.phone.trim() });
+    if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't save", message: r.error }); return; }
     toast({ type: "success", title: existing ? "Donor info updated" : "Registered as donor", message: "Thank you for joining the registry." });
     navigate("/blood");
   }
@@ -250,7 +304,7 @@ export function RegisterDonor() {
           </Card>
           <div className="flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => navigate("/blood")}>Cancel</Button>
-            <Button type="submit" icon="Check">{existing ? "Save changes" : "Register"}</Button>
+            <Button type="submit" icon="Check" disabled={saving}>{saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : (existing ? "Save changes" : "Register")}</Button>
           </div>
         </form>
       </div>
@@ -264,9 +318,10 @@ export function RequestBlood() {
   const toast = useToast();
   const [form, setForm] = React.useState({ group: "", units: "1", patient: "", hospital: "", area: "", urgency: "Urgent" });
   const [errors, setErrors] = React.useState({});
+  const [saving, setSaving] = React.useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const er = {};
     if (!form.group) er.group = "Select the blood group needed.";
@@ -275,8 +330,10 @@ export function RequestBlood() {
     if (!form.area.trim()) er.area = "Enter the area.";
     setErrors(er);
     if (Object.keys(er).length) return;
-    const req = addBloodRequest({ group: form.group, units: Number(form.units), patient: form.patient.trim(), hospital: form.hospital.trim(), area: form.area.trim(), urgency: form.urgency });
-    toast({ type: "success", title: "Request posted", message: `${req.group} request is now visible to donors.` });
+    setSaving(true);
+    const r = await addBloodRequest({ group: form.group, units: Number(form.units), patient: form.patient.trim(), hospital: form.hospital.trim(), area: form.area.trim(), urgency: form.urgency });
+    if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't post request", message: r.error }); return; }
+    toast({ type: "success", title: "Request posted", message: `${form.group} request is now visible to donors.` });
     navigate("/blood");
   }
 
@@ -318,7 +375,7 @@ export function RequestBlood() {
           </Card>
           <div className="flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => navigate("/blood")}>Cancel</Button>
-            <Button type="submit" variant="destructive" icon="Droplet">Post request</Button>
+            <Button type="submit" variant="destructive" icon="Droplet" disabled={saving}>{saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Post request"}</Button>
           </div>
         </form>
       </div>
