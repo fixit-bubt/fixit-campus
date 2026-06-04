@@ -223,7 +223,7 @@ function RequesterContact({ code, requesterId }) {
 
 // --- Detail -----------------------------------------------------------------
 export function RideDetail({ id }) {
-  const { currentUser, rides, userById, requestSeat, deleteRide } = useApp();
+  const { currentUser, rides, userById, requestSeat, deleteRide, dataLoading } = useApp();
   const toast = useToast();
   const ride = rides.find((r) => r.id === id);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -231,7 +231,7 @@ export function RideDetail({ id }) {
   if (!ride) {
     return (
       <AppShell activeKey="rideshare" title="Ride">
-        <EmptyState icon="Car" title="Ride not found" action={<Button onClick={() => navigate("/rides")}>Back to Ride Share</Button>} />
+        {dataLoading ? <Loading /> : <EmptyState icon="Car" title="Ride not found" action={<Button onClick={() => navigate("/rides")}>Back to Ride Share</Button>} />}
       </AppShell>
     );
   }

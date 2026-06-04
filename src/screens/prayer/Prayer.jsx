@@ -43,12 +43,21 @@ export function isFridayDhaka() {
 }
 
 // Builds the daily prayer list (with icons) + the Jummah row from live config.
+// `displayList` applies the Friday substitution (Jummah replaces Dhuhr) so the
+// screen and the dashboard widget compute "next prayer" identically.
 export function usePrayerSchedule() {
   const { prayerTimes } = useApp();
   const withIcon = (p) => ({ ...p, icon: PRAYER_ICONS[p.key] || "Clock" });
-  const list = prayerTimes.filter((p) => p.key !== "jummah").map(withIcon);
-  const jummah = prayerTimes.find((p) => p.key === "jummah");
-  return { list, jummah: jummah ? withIcon(jummah) : null };
+  const list = plist(prayerTimes).map(withIcon);
+  const jummahRow = prayerTimes.find((p) => p.key === "jummah");
+  const jummah = jummahRow ? withIcon(jummahRow) : null;
+  const displayList = isFridayDhaka() && jummah
+    ? list.map((p) => (p.key === "dhuhr" ? jummah : p))
+    : list;
+  return { list, jummah, displayList };
+}
+function plist(prayerTimes) {
+  return prayerTimes.filter((p) => p.key !== "jummah");
 }
 
 export function prayerState(list) {
@@ -120,7 +129,7 @@ export function monthRows(base) {
 
 export function PrayerTimes() {
   const { currentUser, dataLoading, updatePrayerJamaat } = useApp();
-  const { list, jummah } = usePrayerSchedule();
+  const { list, jummah, displayList } = usePrayerSchedule();
   const toast = useToast();
   const [view, setView] = React.useState("today");
   const [adjust, setAdjust] = React.useState(null); // prayer being edited
@@ -138,9 +147,11 @@ export function PrayerTimes() {
   }
 
   const friday = isFridayDhaka();
-  const displayList = friday && jummah ? list.map((p) => (p.key === "dhuhr" ? jummah : p)) : list;
   const st = prayerState(displayList);
-  const fajr = list[0], maghrib = list[3];
+  // Look up by key (not position) — the table is admin-editable, so a row could
+  // be missing; the Ramadan strip below only renders when both are present.
+  const fajr = list.find((p) => p.key === "fajr");
+  const maghrib = list.find((p) => p.key === "maghrib");
   const base = Object.fromEntries(list.map((p) => [p.key, p.azan]));
 
   function openAdjust(p) { setAdjust(p); setAdjVal(p.jamaat); }
@@ -167,7 +178,7 @@ export function PrayerTimes() {
         meta={`${gregorianDhaka()} · ${hijriDate()}`}
       />
 
-      {SHOW_RAMADAN_STRIP && (
+      {SHOW_RAMADAN_STRIP && fajr && maghrib && (
         <div className="mt-4 grid grid-cols-2 gap-4">
           <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
             <AccentTile icon="Moon" tone="emerald" size={40} />
@@ -278,10 +289,10 @@ export function PrayerTimes() {
 
 // --- Dashboard widget -------------------------------------------------------
 export function PrayerWidget() {
-  const { list } = usePrayerSchedule();
+  const { displayList } = usePrayerSchedule();
   useTick();
-  if (list.length === 0) return null;
-  const st = prayerState(list);
+  if (displayList.length === 0) return null;
+  const st = prayerState(displayList);
   return (
     <button onClick={() => navigate("/prayer")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50/40">
       <AccentTile icon={st.next.icon} tone="emerald" size={44} />

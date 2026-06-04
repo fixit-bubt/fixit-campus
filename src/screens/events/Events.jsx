@@ -254,9 +254,11 @@ export function EventDetail({ id }) {
 
 // --- Create form ------------------------------------------------------------
 export function EventForm() {
-  const { canCreateEvents, addEvent } = useApp();
+  const { canCreateEvents, addEvent, dataLoading } = useApp();
   const toast = useToast();
-  React.useEffect(() => { if (!canCreateEvents) navigate("/events"); }, [canCreateEvents]);
+  // Wait for the organizer allowlist to load before deciding access, so a
+  // non-admin designated organizer isn't bounced on a cold load/refresh.
+  React.useEffect(() => { if (!dataLoading && !canCreateEvents) navigate("/events"); }, [dataLoading, canCreateEvents]);
   const [form, setForm] = React.useState({ title: "", category: "", organizer: "", date: todayISO(), time: "10:00", endTime: "12:00", venue: "", description: "", capacity: "", banner: null, bannerFile: null });
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);
@@ -278,6 +280,8 @@ export function EventForm() {
     toast({ type: "success", title: "Event created", message: `"${form.title.trim()}" is now live.` });
     navigate(`/events/${r.id}`);
   }
+
+  if (dataLoading) return <AppShell activeKey="events" title="Create Event"><Loading /></AppShell>;
 
   return (
     <AppShell activeKey="events" title="Create Event">

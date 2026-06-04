@@ -83,7 +83,10 @@ export function DoctorCard({ doc, onBook }) {
 export function MedicalCenter() {
   const { currentUser, appointments, doctors, dataLoading } = useApp();
   const myUpcoming = appointments.filter((a) => a.studentId === currentUser.id && (a.status === "Booked" || a.status === "Confirmed") && a.date >= dhakaISO(0)).length;
-  const canSeeQueue = currentUser.role === "Staff" || currentUser.role === "Admin";
+  // Admin-only for now: RLS lets only the row owner or an admin read/advance
+  // appointments (0016), so a Staff queue would be empty + non-actionable until a
+  // doctor_user_id link exists.
+  const canSeeQueue = currentUser.role === "Admin";
 
   return (
     <AppShell activeKey="medical" title="Medical Center">
@@ -335,7 +338,7 @@ export function MyAppointments() {
 export function DoctorQueue() {
   const { currentUser, appointments, userById, setAppointmentStatus, doctorById } = useApp();
   const toast = useToast();
-  React.useEffect(() => { if (currentUser.role === "Student") navigate("/medical"); }, [currentUser]);
+  React.useEffect(() => { if (currentUser.role !== "Admin") navigate("/medical"); }, [currentUser]);
   const today = dhakaISO(0);
   const queue = appointments.filter((a) => a.date === today && a.status !== "Cancelled")
     .sort((a, b) => a.slot.localeCompare(b.slot));
