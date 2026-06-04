@@ -2,14 +2,14 @@ import React from "react";
 import { Icon } from "../../components/Icon.jsx";
 import {
   Button, Card, Badge, StatusBadge, Field, Input, Textarea, Select, FileUpload,
-  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, useToast,
+  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
   AccentTile, CountdownBanner, SegmentToggle, RevealContact, SectionTitle,
-  taka, phoneFor, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
-  nowDhakaMinutes, dhakaParts, useTick, useLocalState,
+  taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
+  nowDhakaMinutes, dhakaParts, useTick,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
@@ -21,14 +21,9 @@ import { fmtDate, relativeDate, todayISO } from "../../lib/helpers.js";
 // month table, Ramadan Sehri/Iftar strip, musallah location, admin adjust.
 // ============================================================================
 
-export const PRAYERS = [
-  { key: "fajr", en: "Fajr", ar: "الفجر", azan: "03:50", jamaat: "04:15", icon: "Sunrise" },
-  { key: "dhuhr", en: "Dhuhr", ar: "الظهر", azan: "12:05", jamaat: "13:15", icon: "Sun" },
-  { key: "asr", en: "Asr", ar: "العصر", azan: "16:35", jamaat: "16:50", icon: "Sun" },
-  { key: "maghrib", en: "Maghrib", ar: "المغرب", azan: "18:50", jamaat: "18:53", icon: "Sunset" },
-  { key: "isha", en: "Isha", ar: "العشاء", azan: "20:15", jamaat: "20:45", icon: "Moon" },
-];
-export const JUMMAH = { key: "jummah", en: "Jummah", ar: "الجمعة", azan: "12:05", jamaat: "13:15", icon: "Users" };
+// Prayer times are live config now (public.prayer_times, seeded in 0023) — read
+// from the store via useApp().prayerTimes. Icons are a UI concern, mapped by key.
+export const PRAYER_ICONS = { fajr: "Sunrise", dhuhr: "Sun", asr: "Sun", maghrib: "Sunset", isha: "Moon", jummah: "Users" };
 
 // Forced on to showcase the strip; in production this is Hijri-date driven.
 export const SHOW_RAMADAN_STRIP = true;
@@ -47,10 +42,13 @@ export function isFridayDhaka() {
   return dhakaParts().weekday === "Fri";
 }
 
+// Builds the daily prayer list (with icons) + the Jummah row from live config.
 export function usePrayerSchedule() {
-  const [overrides, setOverrides] = useLocalState("fixit_prayer_jamaat", {});
-  const list = PRAYERS.map((p) => ({ ...p, jamaat: overrides[p.key] || p.jamaat }));
-  return [list, overrides, setOverrides];
+  const { prayerTimes } = useApp();
+  const withIcon = (p) => ({ ...p, icon: PRAYER_ICONS[p.key] || "Clock" });
+  const list = prayerTimes.filter((p) => p.key !== "jummah").map(withIcon);
+  const jummah = prayerTimes.find((p) => p.key === "jummah");
+  return { list, jummah: jummah ? withIcon(jummah) : null };
 }
 
 export function prayerState(list) {
@@ -96,7 +94,9 @@ export function PrayerRow({ prayer, state, isNext }) {
 }
 
 // --- Month table ------------------------------------------------------------
-export function monthRows() {
+// Computed client-side from the live base Azan times (a tiny deterministic
+// drift so the month reads realistically). `base` maps key -> 'HH:MM'.
+export function monthRows(base) {
   const p = dhakaParts();
   const year = parseInt(p.year, 10);
   const monthIdx = new Date(`${p.month} 1, ${year}`).getMonth();
@@ -104,38 +104,51 @@ export function monthRows() {
   const days = new Date(year, monthIdx + 1, 0).getDate();
   const rows = [];
   for (let d = 1; d <= days; d++) {
-    // tiny deterministic drift so the month looks real
     const drift = Math.round(Math.sin(d / 5) * 3);
     rows.push({
       day: d,
       isToday: d === today,
-      fajr: minutesToHHMM(toMinutes("03:50") + Math.round(drift / 2)),
-      dhuhr: minutesToHHMM(toMinutes("12:05") + (d > 15 ? 1 : 0)),
-      asr: minutesToHHMM(toMinutes("16:35") + drift),
-      maghrib: minutesToHHMM(toMinutes("18:50") + Math.round(drift / 2) + (d > 15 ? 2 : 0)),
-      isha: minutesToHHMM(toMinutes("20:15") + Math.round(drift / 2)),
+      fajr: minutesToHHMM(toMinutes(base.fajr) + Math.round(drift / 2)),
+      dhuhr: minutesToHHMM(toMinutes(base.dhuhr) + (d > 15 ? 1 : 0)),
+      asr: minutesToHHMM(toMinutes(base.asr) + drift),
+      maghrib: minutesToHHMM(toMinutes(base.maghrib) + Math.round(drift / 2) + (d > 15 ? 2 : 0)),
+      isha: minutesToHHMM(toMinutes(base.isha) + Math.round(drift / 2)),
     });
   }
   return rows;
 }
 
 export function PrayerTimes() {
-  const { currentUser } = useApp();
-  const [list, overrides, setOverrides] = usePrayerSchedule();
+  const { currentUser, dataLoading, updatePrayerJamaat } = useApp();
+  const { list, jummah } = usePrayerSchedule();
   const toast = useToast();
   const [view, setView] = React.useState("today");
   const [adjust, setAdjust] = React.useState(null); // prayer being edited
   const [adjVal, setAdjVal] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
   useTick();
 
+  if (dataLoading || list.length === 0) {
+    return (
+      <AppShell activeKey="prayer" title="Prayer Times">
+        <PageHeader title="Prayer Times" subtitle="Daily salah schedule for the campus musallah, Dhaka." />
+        {dataLoading ? <Loading /> : <EmptyState icon="Moon" title="Prayer times not set" message="The campus prayer schedule will appear here once configured." />}
+      </AppShell>
+    );
+  }
+
   const friday = isFridayDhaka();
-  const displayList = friday ? list.map((p) => (p.key === "dhuhr" ? { ...JUMMAH, jamaat: overrides.jummah || JUMMAH.jamaat } : p)) : list;
+  const displayList = friday && jummah ? list.map((p) => (p.key === "dhuhr" ? jummah : p)) : list;
   const st = prayerState(displayList);
   const fajr = list[0], maghrib = list[3];
+  const base = Object.fromEntries(list.map((p) => [p.key, p.azan]));
 
   function openAdjust(p) { setAdjust(p); setAdjVal(p.jamaat); }
-  function saveAdjust() {
-    setOverrides((o) => ({ ...o, [adjust.key]: adjVal }));
+  async function saveAdjust() {
+    setSaving(true);
+    const r = await updatePrayerJamaat(adjust.key, adjVal);
+    setSaving(false);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
     toast({ type: "success", title: "Jamaat time updated", message: `${adjust.en} jamaat set to ${fmtTime(adjVal)}.` });
     setAdjust(null);
   }
@@ -187,7 +200,7 @@ export function PrayerTimes() {
             ))}
             {!friday && (
               <div className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
-                <Icon name="Users" size={14} className="text-slate-400" /> Jummah jamaat is at {fmtTime(JUMMAH.jamaat)} every Friday (replaces Dhuhr).
+                <Icon name="Users" size={14} className="text-slate-400" /> Jummah jamaat is at {fmtTime(jummah?.jamaat || "13:15")} every Friday (replaces Dhuhr).
               </div>
             )}
           </div>
@@ -227,7 +240,7 @@ export function PrayerTimes() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {monthRows().map((r) => (
+                {monthRows(base).map((r) => (
                   <tr key={r.day} className={r.isToday ? "bg-emerald-50/60" : "hover:bg-slate-50"}>
                     <td className="px-4 py-2.5 font-medium text-slate-900">{r.day}{r.isToday && <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Today</span>}</td>
                     <td className="px-4 py-2.5 text-slate-600">{fmtTime(r.fajr)}</td>
@@ -252,7 +265,7 @@ export function PrayerTimes() {
         description="Set the congregation (jamaat) time for the campus musallah."
         footer={<>
           <Button variant="secondary" onClick={() => setAdjust(null)}>Cancel</Button>
-          <Button onClick={saveAdjust}>Save time</Button>
+          <Button onClick={saveAdjust} disabled={saving}>{saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Save time"}</Button>
         </>}
       >
         <Field label="Jamaat time" htmlFor="adj">
@@ -265,8 +278,9 @@ export function PrayerTimes() {
 
 // --- Dashboard widget -------------------------------------------------------
 export function PrayerWidget() {
-  const [list] = usePrayerSchedule();
+  const { list } = usePrayerSchedule();
   useTick();
+  if (list.length === 0) return null;
   const st = prayerState(list);
   return (
     <button onClick={() => navigate("/prayer")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50/40">
