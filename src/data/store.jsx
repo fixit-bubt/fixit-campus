@@ -246,35 +246,8 @@ function toAppointment(a) {
   };
 }
 
-// ============================================================================
-// ⚠️ PHASE-1 MOCK — campus-feature slices (localStorage, not Supabase).
-// These ship the new UI on seed data while the screens are built one by one.
-// Phase 2 replaces each slice with real tables + RLS, keeping the same `value`
-// keys so the screens don't change. Replace this block, not the screens.
-// ----------------------------------------------------------------------------
-const isoOffset = (n) => {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
-};
-
-function loadMock(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-// Next "PREFIX-<n>" code from the current max suffix, so deletes can't dup an id.
-function nextMockId(list, prefix, floor) {
-  const max = list.reduce((m, x) => {
-    const n = parseInt(String(x.id).replace(/\D/g, ""), 10);
-    return isNaN(n) ? m : Math.max(m, n);
-  }, floor);
-  return `${prefix}-${max + 1}`;
-}
+// All eight campus-life features are now backed by Supabase (Phase 2 complete);
+// the Phase-1 localStorage mock slices + their seed data have been removed.
 
 export function AppProvider({ children }) {
   // ---- auth / profiles (real Supabase) ----
@@ -317,6 +290,9 @@ export function AppProvider({ children }) {
   // ---- bus schedule (LIVE Supabase) ----
   const [busRoutes, setBusRoutes] = useState([]);
   const [savedBusRoutes, setSavedBusRoutes] = useState([]); // route ids this user starred
+
+  // ---- prayer times (LIVE Supabase) ----
+  const [prayerTimes, setPrayerTimes] = useState([]);
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -471,14 +447,21 @@ export function AppProvider({ children }) {
     setSavedBusRoutes((saved || []).map((s) => s.route_id));
   }, [currentUser]);
 
+  // Prayer times config (Azan + Jamaat per prayer), ordered by `sort`.
+  const loadPrayer = useCallback(async () => {
+    if (!currentUser) { setPrayerTimes([]); return; }
+    const { data } = await supabase.from("prayer_times").select("*").order("sort");
+    setPrayerTimes(data || []);
+  }, [currentUser]);
+
   useEffect(() => {
     let active = true;
     if (currentUser) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus]);
+  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -1258,6 +1241,15 @@ export function AppProvider({ children }) {
     return { ok: true, id };
   }
 
+  // ---- prayer times (LIVE Supabase) ----
+  // Admin-only (RLS): set the jamaat (congregation) time for one prayer.
+  async function updatePrayerJamaat(key, jamaat) {
+    const { error } = await supabase.from("prayer_times").update({ jamaat }).eq("key", key);
+    if (error) return { ok: false, error: error.message };
+    await loadPrayer();
+    return { ok: true };
+  }
+
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
@@ -1267,6 +1259,7 @@ export function AppProvider({ children }) {
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor, getDonorContact, getBloodRequesterContact,
     doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
     busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
+    prayerTimes, updatePrayerJamaat,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
