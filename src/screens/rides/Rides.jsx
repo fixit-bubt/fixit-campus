@@ -2,13 +2,13 @@ import React from "react";
 import { Icon } from "../../components/Icon.jsx";
 import {
   Button, Card, Badge, StatusBadge, Field, Input, Textarea, Select, FileUpload,
-  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, useToast,
+  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
   AccentTile, CountdownBanner, SegmentToggle, RevealContact, SectionTitle,
-  taka, phoneFor, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
+  taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
   nowDhakaMinutes, dhakaParts, useTick, useLocalState,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
@@ -83,7 +83,7 @@ export function RideCard({ ride, driver, mine, onOpen }) {
 
 // --- Browse -----------------------------------------------------------------
 export function RideShare() {
-  const { currentUser, rides, userById } = useApp();
+  const { currentUser, rides, userById, dataLoading } = useApp();
   const [intent, setIntent] = React.useState("find");
   const [direction, setDirection] = React.useState("All");
   const [area, setArea] = React.useState("");
@@ -125,7 +125,9 @@ export function RideShare() {
         )}
       </div>
 
-      {intent === "find" ? (
+      {dataLoading ? (
+        <Loading />
+      ) : intent === "find" ? (
         findRides.length === 0 ? (
           <EmptyState icon="Car" title="No rides match" message="Try clearing filters, or offer a ride yourself." action={<Button variant="secondary" onClick={() => { setArea(""); setDirection("All"); }}>Clear filters</Button>} />
         ) : (
@@ -141,6 +143,81 @@ export function RideShare() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+// Driver's contact, shown to a requester after they request a seat. Offering a
+// ride is consent, so the driver's number is always revealed (via the
+// ride_contact RPC) — unless the driver never saved one.
+function DriverContact({ code, driverId, driverName }) {
+  const { getRideContact } = useApp();
+  const [phase, setPhase] = React.useState("idle"); // idle | loading | done
+  const [contact, setContact] = React.useState(null);
+
+  async function reveal() {
+    setPhase("loading");
+    setContact(await getRideContact(code, driverId));
+    setPhase("done");
+  }
+
+  if (phase !== "done") {
+    return (
+      <button onClick={reveal} disabled={phase === "loading"}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-60">
+        <Icon name="MessageCircle" size={16} /> {phase === "loading" ? "Getting contact…" : "Show driver's WhatsApp"}
+      </button>
+    );
+  }
+
+  const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
+  return (
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+      <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+        <Icon name="CircleCheck" size={16} /> {contact?.name || driverName || "Driver"}
+      </div>
+      {wa ? (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
+          <p className="truncate text-sm text-slate-600">{contact.whatsapp}</p>
+          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700">
+            <Icon name="MessageCircle" size={16} /> WhatsApp
+          </a>
+        </div>
+      ) : (
+        <p className="mt-1 text-xs text-slate-500">This driver hasn't shared a WhatsApp number yet.</p>
+      )}
+      <p className="mt-2 text-xs text-slate-400">Coordinate pickup and fare with the driver on WhatsApp.</p>
+    </div>
+  );
+}
+
+// A requester's contact, shown to the ride's driver — but only if that requester
+// opted in via show_whatsapp (gated inside the ride_contact RPC).
+function RequesterContact({ code, requesterId }) {
+  const { getRideContact } = useApp();
+  const [phase, setPhase] = React.useState("idle"); // idle | loading | done
+  const [contact, setContact] = React.useState(null);
+
+  async function reveal() {
+    setPhase("loading");
+    setContact(await getRideContact(code, requesterId));
+    setPhase("done");
+  }
+
+  if (phase === "done") {
+    const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
+    return wa ? (
+      <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-medium text-white hover:bg-emerald-700">
+        <Icon name="MessageCircle" size={14} /> Chat
+      </a>
+    ) : (
+      <span className="shrink-0 text-xs text-slate-400">No number shared</span>
+    );
+  }
+  return (
+    <button onClick={reveal} disabled={phase === "loading"}
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-60">
+      <Icon name="MessageCircle" size={14} /> {phase === "loading" ? "…" : "Contact"}
+    </button>
   );
 }
 
@@ -230,7 +307,7 @@ export function RideDetail({ id }) {
                       return (
                         <div key={uid} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
                           <div className="flex items-center gap-2 min-w-0"><Avatar name={u?.name || "?"} size={26} /><span className="truncate text-sm text-slate-700">{u?.name}</span></div>
-                          <a href={`https://wa.me/${phoneFor(uid).replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-medium text-white hover:bg-emerald-700"><Icon name="MessageCircle" size={14} /> Chat</a>
+                          <RequesterContact code={ride.id} requesterId={uid} />
                         </div>
                       );
                     })}
@@ -242,14 +319,14 @@ export function RideDetail({ id }) {
                 <h3 className="text-sm font-semibold text-slate-900">{requested ? "Seat requested" : "Request a seat"}</h3>
                 {requested ? (
                   <div className="mt-3">
-                    <RevealContact name={driver?.name} phone={phoneFor(ride.driverId)} note="Coordinate pickup and fare with the driver on WhatsApp." confirmLabel="Show driver's WhatsApp" />
+                    <DriverContact code={ride.id} driverId={ride.driverId} driverName={driver?.name} />
                   </div>
                 ) : left <= 0 ? (
                   <p className="mt-2 text-sm text-red-600">This ride is full.</p>
                 ) : (
                   <>
                     <p className="mt-1 text-sm text-slate-500">Request a seat to get the driver's WhatsApp and confirm.</p>
-                    <Button className="mt-3" full icon="Check" onClick={() => { requestSeat(ride.id); toast({ type: "success", title: "Seat requested", message: "Driver's contact is now available." }); }}>Request a seat</Button>
+                    <Button className="mt-3" full icon="Check" onClick={async () => { const r = await requestSeat(ride.id); if (!r.ok) { toast({ type: "error", title: "Couldn't request seat", message: r.error }); return; } toast({ type: "success", title: "Seat requested", message: "Driver's contact is now available." }); }}>Request a seat</Button>
                   </>
                 )}
               </Card>
@@ -261,7 +338,7 @@ export function RideDetail({ id }) {
       <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} icon="Trash2" tone="red"
         title="Delete this ride?" description="Your offered ride will be removed and requesters will no longer see it."
         footer={<><Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          <Button variant="destructive" onClick={() => { deleteRide(id); toast({ type: "success", title: "Ride deleted" }); navigate("/rides"); }}>Delete ride</Button></>} />
+          <Button variant="destructive" onClick={async () => { const r = await deleteRide(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Ride deleted" }); navigate("/rides"); }}>Delete ride</Button></>} />
     </AppShell>
   );
 }
@@ -284,17 +361,16 @@ export function OfferRide() {
     if (!form.seatsTotal || Number(form.seatsTotal) < 1) er.seatsTotal = "At least 1 seat.";
     return er;
   }
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     const er = validate();
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    setTimeout(() => {
-      const ride = addRide({ origin: form.origin.trim(), destination: form.destination.trim(), direction: form.direction, date: form.date, time: form.time, seatsTotal: Number(form.seatsTotal), fare: Number(form.fare), vehicle: form.vehicle, recurring: form.recurring, notes: form.notes.trim() });
-      toast({ type: "success", title: "Ride posted", message: `${ride.origin} → ${ride.destination} is now live.` });
-      navigate(`/rides/${ride.id}`);
-    }, 450);
+    const r = await addRide({ origin: form.origin.trim(), destination: form.destination.trim(), direction: form.direction, date: form.date, time: form.time, seatsTotal: Number(form.seatsTotal), fare: Number(form.fare), vehicle: form.vehicle, recurring: form.recurring, notes: form.notes.trim() });
+    if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't post ride", message: r.error }); return; }
+    toast({ type: "success", title: "Ride posted", message: `${form.origin.trim()} → ${form.destination.trim()} is now live.` });
+    navigate(`/rides/${r.id}`);
   }
 
   return (
