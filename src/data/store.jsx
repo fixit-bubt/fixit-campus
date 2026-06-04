@@ -148,6 +148,27 @@ function toEvent(r, attendeeIds) {
   };
 }
 
+// DB ride row -> screen shape. requesterIds aggregates the ride_requests join
+// rows (the screen reads `requesterIds` as an array of user ids).
+function toRide(r, requesterIds) {
+  return {
+    id: r.code,
+    uuid: r.id,
+    driverId: r.driver_id,
+    direction: r.direction,
+    vehicle: r.vehicle,
+    origin: r.origin,
+    destination: r.destination,
+    date: r.date,
+    time: r.time,
+    seatsTotal: r.seats_total,
+    fare: r.fare,
+    recurring: r.recurring || [],
+    notes: r.notes || "",
+    requesterIds: requesterIds || [],
+  };
+}
+
 // ============================================================================
 // ⚠️ PHASE-1 MOCK — campus-feature slices (localStorage, not Supabase).
 // These ship the new UI on seed data while the screens are built one by one.
@@ -177,16 +198,6 @@ function nextMockId(list, prefix, floor) {
   }, floor);
   return `${prefix}-${max + 1}`;
 }
-
-// Ride Share — offered rides + seat requests. Seed driver/requester ids are
-// demo-only; real offers/requests use the real user id.
-const SEED_RIDES = [
-  { id: "RD-301", driverId: "u-stu-1", origin: "Uttara", destination: "BUBT Campus", direction: "To Campus", date: isoOffset(1), time: "07:30", seatsTotal: 3, fare: 80, vehicle: "Car", recurring: ["Sat", "Sun", "Mon", "Tue", "Wed"], notes: "AC car, leaves sharp from Uttara Sector 7. Drop near main gate.", requesterIds: ["u-stu-3"] },
-  { id: "RD-298", driverId: "u-stu-2", origin: "BUBT Campus", destination: "Mirpur-10", direction: "From Campus", date: isoOffset(0), time: "17:00", seatsTotal: 2, fare: 40, vehicle: "CNG", recurring: [], notes: "Sharing a CNG after class, splitting fare.", requesterIds: [] },
-  { id: "RD-295", driverId: "u-stu-3", origin: "Dhanmondi", destination: "BUBT Campus", direction: "To Campus", date: isoOffset(1), time: "08:00", seatsTotal: 4, fare: 70, vehicle: "Car", recurring: ["Sat", "Mon", "Wed"], notes: "Pickup from Dhanmondi 27, room for 4.", requesterIds: ["u-stu-1", "u-stu-2"] },
-  { id: "RD-290", driverId: "u-stu-1", origin: "BUBT Campus", destination: "Gulshan-1", direction: "From Campus", date: isoOffset(2), time: "18:15", seatsTotal: 1, fare: 120, vehicle: "Bike", recurring: [], notes: "One pillion seat, helmet provided.", requesterIds: [] },
-  { id: "RD-286", driverId: "u-stu-2", origin: "Savar", destination: "BUBT Campus", direction: "To Campus", date: isoOffset(1), time: "07:00", seatsTotal: 3, fare: 90, vehicle: "Car", recurring: ["Sat", "Sun", "Mon", "Tue", "Wed"], notes: "Daily commute from Savar, comfortable and on time.", requesterIds: [] },
-];
 
 // Blood donation — urgent requests + donor registry. Seed ids are demo-only.
 const SEED_BLOOD_REQUESTS = [
@@ -242,12 +253,10 @@ export function AppProvider({ children }) {
   // gate the "Create event" UI; RLS enforces the same via can_create_events().
   const [eventOrganizers, setEventOrganizers] = useState([]);
 
-  // ---- campus features still on PHASE-1 MOCK (localStorage) ----
-  const [rides, setRides] = useState(() => loadMock("fixit_rides", SEED_RIDES));
-  useEffect(() => {
-    try { localStorage.setItem("fixit_rides", JSON.stringify(rides)); } catch {}
-  }, [rides]);
+  // ---- ride share (LIVE Supabase) ----
+  const [rides, setRides] = useState([]);
 
+  // ---- campus features still on PHASE-1 MOCK (localStorage) ----
   const [bloodRequests, setBloodRequests] = useState(() => loadMock("fixit_blood_requests", SEED_BLOOD_REQUESTS));
   useEffect(() => {
     try { localStorage.setItem("fixit_blood_requests", JSON.stringify(bloodRequests)); } catch {}
@@ -366,14 +375,26 @@ export function AppProvider({ children }) {
     setEventOrganizers((orgs || []).map((o) => o.user_id));
   }, [currentUser]);
 
+  // Rides + seat requests (aggregated into each ride's `requesterIds` array).
+  const loadRides = useCallback(async () => {
+    if (!currentUser) { setRides([]); return; }
+    const [{ data: rows }, { data: reqs }] = await Promise.all([
+      supabase.from("rides").select("*").order("date", { ascending: true }),
+      supabase.from("ride_requests").select("ride_id, requester_id"),
+    ]);
+    const byRide = {};
+    (reqs || []).forEach((r) => { (byRide[r.ride_id] ||= []).push(r.requester_id); });
+    setRides((rows || []).map((r) => toRide(r, byRide[r.id])));
+  }, [currentUser]);
+
   useEffect(() => {
     let active = true;
     if (currentUser) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents]);
+  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -946,25 +967,58 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // ---- ride share (PHASE-1 MOCK) ----
-  function addRide(data) {
-    const ride = { requesterIds: [], ...data, id: nextMockId(rides, "RD", 301), driverId: currentUser?.id };
-    setRides((r) => [ride, ...r]);
-    return ride; // screen navigates to /rides/:id immediately
-  }
-  function requestSeat(id) {
-    if (!currentUser) return;
-    setRides((rs) =>
-      rs.map((r) => {
-        if (r.id !== id) return r;
-        const reqs = r.requesterIds || [];
-        if (reqs.includes(currentUser.id)) return r;
-        return { ...r, requesterIds: [...reqs, currentUser.id] };
+  // ---- ride share (LIVE Supabase) ----
+  async function addRide(data) {
+    const { data: row, error } = await supabase
+      .from("rides")
+      .insert({
+        driver_id: currentUser.id,
+        direction: data.direction,
+        vehicle: data.vehicle,
+        origin: data.origin,
+        destination: data.destination,
+        date: data.date,
+        time: data.time,
+        seats_total: data.seatsTotal,
+        fare: data.fare,
+        recurring: data.recurring || [],
+        notes: data.notes || null,
       })
-    );
+      .select("*")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    await loadRides();
+    return { ok: true, id: row.code }; // screen navigates to /rides/:id
   }
-  function deleteRide(id) {
-    setRides((rs) => rs.filter((r) => r.id !== id));
+  // Request a seat as yourself (idempotent; RLS blocks requesting your own ride).
+  async function requestSeat(id) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const ride = rides.find((r) => r.id === id);
+    if (!ride) return { ok: false, error: "Ride not found." };
+    if (ride.requesterIds.includes(currentUser.id)) return { ok: true };
+    const { error } = await supabase
+      .from("ride_requests")
+      .upsert(
+        { ride_id: ride.uuid, requester_id: currentUser.id },
+        { onConflict: "ride_id,requester_id", ignoreDuplicates: true }
+      );
+    if (error) return { ok: false, error: error.message };
+    await loadRides();
+    return { ok: true };
+  }
+  async function deleteRide(id) {
+    const { error } = await supabase.from("rides").delete().eq("code", id);
+    if (error) return { ok: false, error: error.message };
+    await loadRides();
+    return { ok: true };
+  }
+  // Name + WhatsApp of a party on a ride (driver always to requesters; a
+  // requester only if they opted in via show_whatsapp — enforced in the
+  // ride_contact RPC). Returns null whatsapp when not shared.
+  async function getRideContact(code, targetId) {
+    const { data } = await supabase.rpc("ride_contact", { p_code: code, p_target: targetId });
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
   }
 
   // ---- blood donation (PHASE-1 MOCK) ----
@@ -1016,7 +1070,7 @@ export function AppProvider({ children }) {
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
     listings, addListing, updateListing, deleteListing, markListingSold, getListingContact,
     events, canCreateEvents, addEvent, toggleRSVP, deleteEvent,
-    rides, addRide, requestSeat, deleteRide,
+    rides, addRide, requestSeat, deleteRide, getRideContact,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor,
     appointments, addAppointment, cancelAppointment, setAppointmentStatus,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
