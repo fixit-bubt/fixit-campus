@@ -166,7 +166,7 @@ function SellerContact({ code, sellerName }) {
 
 // --- Detail -----------------------------------------------------------------
 export function ListingDetail({ id }) {
-  const { currentUser, listings, userById, markListingSold, deleteListing } = useApp();
+  const { currentUser, listings, userById, markListingSold, deleteListing, dataLoading } = useApp();
   const toast = useToast();
   const listing = listings.find((l) => l.id === id);
   const [confirmSold, setConfirmSold] = React.useState(false);
@@ -175,7 +175,7 @@ export function ListingDetail({ id }) {
   if (!listing) {
     return (
       <AppShell activeKey="marketplace" title="Listing">
-        <EmptyState icon="PackageX" title="Listing not found" message="This item may have been removed." action={<Button onClick={() => navigate("/marketplace")}>Back to Marketplace</Button>} />
+        {dataLoading ? <Loading /> : <EmptyState icon="PackageX" title="Listing not found" message="This item may have been removed." action={<Button onClick={() => navigate("/marketplace")}>Back to Marketplace</Button>} />}
       </AppShell>
     );
   }
@@ -247,15 +247,32 @@ export function ListingDetail({ id }) {
 }
 
 // --- Post / Edit form -------------------------------------------------------
+// Wrapper: wait for the listing to load (so a deep-link/refresh of the edit
+// route never seeds a blank form that Save would write back), and redirect a
+// non-owner before the editor mounts.
 export function ListingForm({ id }) {
-  const { currentUser, listings, addListing, updateListing } = useApp();
-  const toast = useToast();
+  const { currentUser, listings, dataLoading } = useApp();
   const editing = !!id;
   const existing = editing ? listings.find((l) => l.id === id) : null;
+  const denied = editing && existing && existing.sellerId !== currentUser.id;
 
-  React.useEffect(() => {
-    if (editing && existing && existing.sellerId !== currentUser.id) navigate(`/marketplace/${id}`);
-  }, [editing, existing]);
+  React.useEffect(() => { if (denied) navigate(`/marketplace/${id}`); }, [denied, id]);
+
+  if (editing && (dataLoading || !existing)) {
+    return (
+      <AppShell activeKey="marketplace" title="Edit Listing">
+        {dataLoading ? <Loading /> : <EmptyState icon="PackageX" title="Listing not found" message="This item may have been removed." action={<Button onClick={() => navigate("/marketplace")}>Back to Marketplace</Button>} />}
+      </AppShell>
+    );
+  }
+  if (denied) return null;
+  return <ListingEditor id={id} existing={existing} />;
+}
+
+function ListingEditor({ id, existing }) {
+  const { addListing, updateListing } = useApp();
+  const toast = useToast();
+  const editing = !!id;
 
   const [form, setForm] = React.useState(
     existing

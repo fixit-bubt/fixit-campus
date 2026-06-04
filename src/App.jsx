@@ -68,15 +68,32 @@ function RequireRole({ role, children }) {
 
 export default function App() {
   const path = useHashRoute();
-  const { currentUser, dashboardPath, sessionUserId, loading } = useApp();
+  const { currentUser, dashboardPath, sessionUserId, loading, profileError, retryProfile, logout } = useApp();
 
   // Hold off routing while either the session check is running OR a known
   // session's profile is still loading — otherwise a refresh while signed in
   // briefly sees currentUser=null and flashes/bounces to /login.
-  if (loading || (sessionUserId && !currentUser)) {
+  if (loading || (sessionUserId && !currentUser && !profileError)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <Spinner size={28} />
+      </div>
+    );
+  }
+
+  // Profile read failed for a valid session — recoverable, never an endless
+  // spinner. Offer a retry and a way out (sign out).
+  if (sessionUserId && !currentUser && profileError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-6 text-center">
+        <div className="max-w-sm">
+          <h1 className="text-lg font-semibold text-slate-900">Couldn't load your profile</h1>
+          <p className="mt-1 text-sm text-slate-500">Something went wrong fetching your account. Check your connection and try again.</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={retryProfile} className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700">Retry</button>
+          <button onClick={() => logout()} className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50">Sign out</button>
+        </div>
       </div>
     );
   }

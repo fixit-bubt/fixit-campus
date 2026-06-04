@@ -103,7 +103,7 @@ export function Announcements() {
 
 // --- Detail -----------------------------------------------------------------
 export function AnnouncementDetail({ id }) {
-  const { currentUser, announcements, markAnnouncementRead, deleteAnnouncement } = useApp();
+  const { currentUser, announcements, markAnnouncementRead, deleteAnnouncement, dataLoading } = useApp();
   const toast = useToast();
   const note = announcements.find((a) => a.id === id);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -115,7 +115,7 @@ export function AnnouncementDetail({ id }) {
   if (!note) {
     return (
       <AppShell activeKey="announcements" title="Notice">
-        <EmptyState icon="Megaphone" title="Notice not found" action={<Button onClick={() => navigate("/announcements")}>Back to Announcements</Button>} />
+        {dataLoading ? <Loading /> : <EmptyState icon="Megaphone" title="Notice not found" action={<Button onClick={() => navigate("/announcements")}>Back to Announcements</Button>} />}
       </AppShell>
     );
   }

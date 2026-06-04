@@ -330,9 +330,11 @@ function BusRouteEditor({ id, existing }) {
     const splitLines = (s) => s.split("\n").map((x) => x.trim()).filter(Boolean);
     const stops = splitLines(form.stops);
     const toDepartures = splitList(form.toDepartures);
-    // Guard: never let an empty/blank form overwrite a real route.
-    if (!form.name.trim() || stops.length < 2 || toDepartures.length === 0 || (!editing && !form.code.trim())) {
-      toast({ type: "error", title: "Missing details", message: "Add a name, a route code, at least 2 stops, and a departure time." });
+    const fromDepartures = splitList(form.fromDepartures);
+    // Guard: never let an empty/blank form overwrite a real route, and require
+    // departures in BOTH directions (an empty list crashes buildSchedule).
+    if (!form.name.trim() || stops.length < 2 || toDepartures.length === 0 || fromDepartures.length === 0 || (!editing && !form.code.trim())) {
+      toast({ type: "error", title: "Missing details", message: "Add a name, a route code, at least 2 stops, and at least one departure time each way." });
       return;
     }
     const payload = {
@@ -347,7 +349,7 @@ function BusRouteEditor({ id, existing }) {
       legMins: form.legMins,
       stops,
       toDepartures,
-      fromDepartures: splitList(form.fromDepartures),
+      fromDepartures,
     };
     setSaving(true);
     const r = editing ? await updateBusRoute(id, payload) : await addBusRoute(payload);

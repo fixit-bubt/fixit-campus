@@ -275,7 +275,8 @@ export function EventForm() {
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await addEvent({ title: form.title.trim(), category: form.category, organizer: form.organizer.trim(), date: form.date, time: form.time, endTime: form.endTime, venue: form.venue.trim(), description: form.description.trim(), capacity: form.capacity ? Number(form.capacity) : null, banner: form.banner, bannerFile: form.bannerFile });
+    const cap = Number(form.capacity);
+    const r = await addEvent({ title: form.title.trim(), category: form.category, organizer: form.organizer.trim(), date: form.date, time: form.time, endTime: form.endTime, venue: form.venue.trim(), description: form.description.trim(), capacity: form.capacity && cap > 0 ? cap : null, banner: form.banner, bannerFile: form.bannerFile });
     if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't create event", message: r.error }); return; }
     toast({ type: "success", title: "Event created", message: `"${form.title.trim()}" is now live.` });
     navigate(`/events/${r.id}`);
@@ -312,7 +313,7 @@ export function EventForm() {
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Venue" htmlFor="ev-venue" required error={errors.venue}><Input id="ev-venue" placeholder="e.g. Auditorium, Main Building" value={form.venue} error={!!errors.venue} onChange={(e) => set("venue", e.target.value)} /></Field>
-              <Field label="Capacity" htmlFor="ev-cap" hint="Optional"><Input id="ev-cap" type="number" min="0" placeholder="e.g. 200" value={form.capacity} onChange={(e) => set("capacity", e.target.value)} /></Field>
+              <Field label="Capacity" htmlFor="ev-cap" hint="Optional"><Input id="ev-cap" type="number" min="1" placeholder="e.g. 200" value={form.capacity} onChange={(e) => set("capacity", e.target.value)} /></Field>
             </div>
             <Field label="Description" htmlFor="ev-desc" required error={errors.description}><Textarea id="ev-desc" rows={4} placeholder="What's the event about?" value={form.description} error={!!errors.description} onChange={(e) => set("description", e.target.value)} /></Field>
           </Card>
