@@ -199,6 +199,26 @@ function toDonor(d) {
   };
 }
 
+// DB bus_routes row -> screen shape. `days` is stored as a one-element text[]
+// holding the display string (see migration 0022); join it back. snake_case
+// columns map to the camelCase keys the screen reads.
+function toBusRoute(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    area: r.area,
+    busNo: r.bus_no || "",
+    helperName: r.helper_name || "",
+    helperPhone: r.helper_phone || "",
+    days: (r.days || []).join(", "),
+    fridayNote: r.friday_note || "",
+    stops: r.stops || [],
+    legMins: r.leg_mins || [],
+    toDepartures: r.to_departures || [],
+    fromDepartures: r.from_departures || [],
+  };
+}
+
 // DB doctors row -> screen shape (start_time/end_time -> start/end).
 function toDoctor(d) {
   return {
@@ -293,6 +313,10 @@ export function AppProvider({ children }) {
   // ---- medical center (LIVE Supabase) ----
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
+
+  // ---- bus schedule (LIVE Supabase) ----
+  const [busRoutes, setBusRoutes] = useState([]);
+  const [savedBusRoutes, setSavedBusRoutes] = useState([]); // route ids this user starred
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -436,14 +460,25 @@ export function AppProvider({ children }) {
     setAppointments((appts || []).map(toAppointment));
   }, [currentUser]);
 
+  // Bus routes (active reference data) + this user's saved (starred) route ids.
+  const loadBus = useCallback(async () => {
+    if (!currentUser) { setBusRoutes([]); setSavedBusRoutes([]); return; }
+    const [{ data: routes }, { data: saved }] = await Promise.all([
+      supabase.from("bus_routes").select("*").eq("active", true).order("id"),
+      supabase.from("saved_bus_routes").select("route_id"),
+    ]);
+    setBusRoutes((routes || []).map(toBusRoute));
+    setSavedBusRoutes((saved || []).map((s) => s.route_id));
+  }, [currentUser]);
+
   useEffect(() => {
     let active = true;
     if (currentUser) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical]);
+  }, [currentUser, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -513,6 +548,7 @@ export function AppProvider({ children }) {
   // ---- lookups ----
   const userById = (id) => users.find((u) => u.id === id);
   const doctorById = (id) => doctors.find((d) => d.id === id);
+  const busById = (id) => busRoutes.find((r) => r.id === id);
   const dashboardPath = (role) =>
     role === "Admin" ? "/admin" : role === "Staff" ? "/staff" : "/dashboard";
   const staffList = users
@@ -1175,6 +1211,53 @@ export function AppProvider({ children }) {
     return (data || []).map((r) => (typeof r === "string" ? r : Object.values(r)[0]));
   }
 
+  // ---- bus schedule (LIVE Supabase) ----
+  // Star / unstar a route for this user (saved_bus_routes join table).
+  async function toggleBusSave(routeId) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const saved = savedBusRoutes.includes(routeId);
+    const { error } = saved
+      ? await supabase.from("saved_bus_routes").delete().eq("user_id", currentUser.id).eq("route_id", routeId)
+      : await supabase.from("saved_bus_routes").insert({ user_id: currentUser.id, route_id: routeId });
+    if (error) return { ok: false, error: error.message };
+    setSavedBusRoutes((s) => (saved ? s.filter((x) => x !== routeId) : [...s, routeId]));
+    return { ok: true };
+  }
+  // Build the bus_routes column payload from the admin form. The form collects
+  // stops + departures but not per-leg minutes, so default each leg to 10 min;
+  // `days` is stored as a one-element array (opaque display string).
+  function busRouteCols(data) {
+    const stops = (data.stops || []).filter(Boolean);
+    return {
+      name: data.name,
+      area: data.area,
+      bus_no: data.busNo || null,
+      helper_name: data.helperName || null,
+      helper_phone: data.helperPhone || null,
+      days: data.days ? [data.days] : [],
+      friday_note: data.fridayNote || "No service on Friday & government holidays.",
+      stops,
+      leg_mins: stops.length > 1 ? Array(stops.length - 1).fill(10) : [],
+      to_departures: data.toDepartures || [],
+      from_departures: data.fromDepartures || [],
+    };
+  }
+  async function addBusRoute(data) {
+    // id is an admin-entered code (e.g. 'BR-12'); fall back to a slug of bus_no.
+    const id = (data.id || data.busNo || "").trim();
+    if (!id) return { ok: false, error: "Enter a route/bus code." };
+    const { error } = await supabase.from("bus_routes").insert({ id, ...busRouteCols(data) });
+    if (error) return { ok: false, error: error.message };
+    await loadBus();
+    return { ok: true, id };
+  }
+  async function updateBusRoute(id, data) {
+    const { error } = await supabase.from("bus_routes").update(busRouteCols(data)).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    await loadBus();
+    return { ok: true, id };
+  }
+
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
@@ -1183,6 +1266,7 @@ export function AppProvider({ children }) {
     rides, addRide, requestSeat, deleteRide, getRideContact,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor, getDonorContact, getBloodRequesterContact,
     doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
+    busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
     currentUser, setCurrentUser, sessionUserId, loading, dataLoading,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
