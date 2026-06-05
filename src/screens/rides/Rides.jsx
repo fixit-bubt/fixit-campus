@@ -113,7 +113,7 @@ export function RideShare() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative w-full sm:w-56">
               <Icon name="MapPin" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Filter by area…"
+              <input value={area} onChange={(e) => setArea(e.target.value)} aria-label="Filter rides by area" placeholder="Filter by area…"
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30" />
             </div>
             <Select value={direction} onChange={(e) => setDirection(e.target.value)} className="sm:w-44">

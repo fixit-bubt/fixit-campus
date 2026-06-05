@@ -37,7 +37,7 @@ export default function StudentDirectory() {
 
   useEffect(() => {
     let active = true;
-    if (hidden) { setList([]); return; }
+    if (hidden) { setList([]); setLoadError(false); return; }
     setLoadError(false);
     getStudentDirectory()
       .then((rows) => { if (active) setList(rows); })

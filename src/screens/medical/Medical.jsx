@@ -271,10 +271,11 @@ export function DoctorBooking({ id }) {
 
 // --- My Appointments --------------------------------------------------------
 export function MyAppointments() {
-  const { currentUser, appointments, cancelAppointment, doctorById } = useApp();
+  const { currentUser, appointments, cancelAppointment, doctorById, dataLoading } = useApp();
   const toast = useToast();
   const [tab, setTab] = React.useState("Upcoming");
   const [toCancel, setToCancel] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
 
   const mine = appointments.filter((a) => a.studentId === currentUser.id);
   const today = dhakaISO(0);
@@ -283,7 +284,10 @@ export function MyAppointments() {
   const rows = tab === "Upcoming" ? upcoming : past;
 
   async function doCancel() {
+    if (busy) return;
+    setBusy(true);
     const r = await cancelAppointment(toCancel.id);
+    setBusy(false);
     if (!r.ok) { toast({ type: "error", title: "Couldn't cancel", message: r.error }); return; }
     toast({ type: "success", title: "Appointment cancelled", message: `Token ${toCancel.token} released.` });
     setToCancel(null);
@@ -296,7 +300,9 @@ export function MyAppointments() {
 
       <div className="mb-5"><FilterTabs options={["Upcoming", "Past"]} value={tab} onChange={setTab} counts={{ Upcoming: upcoming.length, Past: past.length }} /></div>
 
-      {rows.length === 0 ? (
+      {dataLoading ? (
+        <Loading />
+      ) : rows.length === 0 ? (
         <EmptyState icon="CalendarDays" title={`No ${tab.toLowerCase()} appointments`}
           message={tab === "Upcoming" ? "Book a doctor to see your appointments here." : "Your past visits will appear here."}
           action={tab === "Upcoming" ? <Button icon="Stethoscope" onClick={() => navigate("/medical")}>Find a doctor</Button> : null} />
@@ -327,8 +333,8 @@ export function MyAppointments() {
         title="Cancel this appointment?"
         description={toCancel ? `${doctorById(toCancel.doctorId)?.name} · ${fmtDate(toCancel.date)} at ${fmtTime(toCancel.slot)}. The slot will be released.` : ""}
         footer={<>
-          <Button variant="secondary" onClick={() => setToCancel(null)}>Keep it</Button>
-          <Button variant="destructive" onClick={doCancel}>Cancel appointment</Button>
+          <Button variant="secondary" onClick={() => setToCancel(null)} disabled={busy}>Keep it</Button>
+          <Button variant="destructive" onClick={doCancel} disabled={busy}>Cancel appointment</Button>
         </>} />
     </AppShell>
   );
@@ -336,16 +342,20 @@ export function MyAppointments() {
 
 // --- Staff: today's queue ---------------------------------------------------
 export function DoctorQueue() {
-  const { currentUser, appointments, userById, setAppointmentStatus, doctorById } = useApp();
+  const { currentUser, appointments, userById, setAppointmentStatus, doctorById, dataLoading } = useApp();
   const toast = useToast();
+  const [busyId, setBusyId] = React.useState(null);
   React.useEffect(() => { if (currentUser.role !== "Admin") navigate("/medical"); }, [currentUser]);
   const today = dhakaISO(0);
   const queue = appointments.filter((a) => a.date === today && a.status !== "Cancelled")
     .sort((a, b) => a.slot.localeCompare(b.slot));
 
   async function advance(a) {
+    if (busyId) return;
+    setBusyId(a.id);
     const next = a.status === "Booked" ? "Confirmed" : a.status === "Confirmed" ? "Completed" : "Completed";
     const r = await setAppointmentStatus(a.id, next);
+    setBusyId(null);
     if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
     toast({ type: "success", title: `Marked ${next}`, message: `Token ${a.token}.` });
   }
@@ -354,7 +364,9 @@ export function DoctorQueue() {
     <AppShell activeKey="medical" title="Today's Queue">
       <PageHeader title="Today's queue" subtitle={`${fmtDate(today)} · ${queue.length} appointments at the medical center.`}
         action={<Button variant="secondary" icon="ArrowLeft" onClick={() => navigate("/medical")}>Back</Button>} />
-      {queue.length === 0 ? (
+      {dataLoading ? (
+        <Loading />
+      ) : queue.length === 0 ? (
         <EmptyState icon="ClipboardCheck" title="No appointments today" message="Booked appointments for today will appear here." />
       ) : (
         <Card className="divide-y divide-slate-200 overflow-hidden">
@@ -370,7 +382,7 @@ export function DoctorQueue() {
                 </div>
                 <ApptBadge status={a.status} />
                 {a.status !== "Completed" && (
-                  <Button size="sm" variant="secondary" icon={a.status === "Booked" ? "Check" : "CheckCheck"} onClick={() => advance(a)}>
+                  <Button size="sm" variant="secondary" icon={a.status === "Booked" ? "Check" : "CheckCheck"} onClick={() => advance(a)} disabled={busyId === a.id}>
                     {a.status === "Booked" ? "Confirm" : "Complete"}
                   </Button>
                 )}

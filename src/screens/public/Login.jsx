@@ -27,8 +27,11 @@ export default function Login() {
         setError(res.error);
         return;
       }
-      toast({ type: "success", title: `Welcome back, ${(res.user.name || "").split(" ")[0]}` });
-      navigate(dashboardPath(res.user.role));
+      if (res.user) {
+        toast({ type: "success", title: `Welcome back, ${(res.user.name || "").split(" ")[0]}` });
+        navigate(dashboardPath(res.user.role));
+      }
+      // else: the profile read hiccuped — the session effect reloads it and the route guards redirect.
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
