@@ -29,6 +29,7 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
   const [uploading, setUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(f.photo || null);
   const [photoFile, setPhotoFile] = useState(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const fileRef = useRef(null);
   const toast = useToast();
 
@@ -45,6 +46,7 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
     }
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
+    setRemovePhoto(false);
   }
 
   async function handleSave() {
@@ -68,7 +70,9 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
       }
     }
 
-    const result = await onSave(f.id, { linkedin_url: trimmedLinkedin || null });
+    const updates = { linkedin_url: trimmedLinkedin || null };
+    if (removePhoto && !photoFile) updates.photo_url = null; // persist a photo removal
+    const result = await onSave(f.id, updates);
     setSaving(false);
     if (result.ok) {
       toast({ type: "success", title: "Saved", message: `${f.name}'s profile updated.` });
@@ -79,7 +83,7 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
   }
 
   return (
-    <Modal title="Edit Faculty Profile" onClose={onClose}>
+    <Modal open onClose={onClose} title="Edit Faculty Profile">
       <div className="mb-5 flex items-center gap-3">
         <Avatar name={f.name} src={photoPreview} size={44} />
         <div>
@@ -107,7 +111,7 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
               )}
               {photoPreview && (
                 <button
-                  onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                  onClick={() => { setPhotoFile(null); setPhotoPreview(null); setRemovePhoto(!!f.photo); }}
                   className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-white hover:bg-red-600"
                   title="Remove photo"
                 >
@@ -150,8 +154,8 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
 
       <div className="mt-6 flex justify-end gap-3">
         <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button onClick={handleSave} loading={saving}>
-          {uploading ? "Uploading…" : "Save changes"}
+        <Button onClick={handleSave} disabled={saving}>
+          {uploading ? "Uploading…" : saving ? "Saving…" : "Save changes"}
         </Button>
       </div>
     </Modal>
@@ -238,6 +242,7 @@ export default function ManageFaculty() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search faculty"
           placeholder="Search by name, designation, or department…"
           className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
         />
