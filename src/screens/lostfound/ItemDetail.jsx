@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
-import { Card, Button, Field, Textarea, FileUpload, Modal, Avatar, Badge, EmptyState, StatusBadge, Spinner, useToast } from "../../components/ui.jsx";
+import { Card, Button, Field, Textarea, FileUpload, Modal, Avatar, Badge, EmptyState, StatusBadge, Spinner, Loading, useToast } from "../../components/ui.jsx";
 import { AppShell } from "../../components/AppShell.jsx";
 import { ItemPhoto, ItemTypeBadge } from "../../components/ItemBits.jsx";
 import { ITEM_CATEGORY_ICON, fmtDate } from "../../lib/helpers.js";
@@ -145,7 +145,7 @@ function ContactCard({ user, label }) {
 }
 
 // One incoming claim, shown to the poster with Approve / Reject.
-function PosterClaimRow({ claim, claimant, onDecide, busy, proofUrl }) {
+function PosterClaimRow({ claim, claimant, onDecide, busy, proofUrl, itemResolved }) {
   return (
     <div className="border-t border-slate-100 pt-4 first:border-t-0 first:pt-0">
       <div className="flex items-center justify-between gap-2">
@@ -161,9 +161,10 @@ function PosterClaimRow({ claim, claimant, onDecide, busy, proofUrl }) {
       <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">{claim.message}</p>
       {claim.proof && proofUrl && <img src={proofUrl} alt="proof" className="mt-3 max-h-40 rounded-lg border border-slate-200 object-cover" />}
       {claim.status === "Pending" && (
-        <div className="mt-3 flex justify-end gap-2">
+        <div className="mt-3 flex items-center justify-end gap-2">
+          {itemResolved && <span className="mr-auto text-xs text-slate-400">Item already resolved</span>}
           <Button size="sm" variant="secondary" icon={X} className="text-red-600" disabled={busy} onClick={() => onDecide(claim, "Rejected")}>Reject</Button>
-          <Button size="sm" icon={Check} disabled={busy} onClick={() => onDecide(claim, "Approved")}>Approve</Button>
+          {!itemResolved && <Button size="sm" icon={Check} disabled={busy} onClick={() => onDecide(claim, "Approved")}>Approve</Button>}
         </div>
       )}
     </div>
@@ -173,7 +174,7 @@ function PosterClaimRow({ claim, claimant, onDecide, busy, proofUrl }) {
 // Lost & Found item detail (students only). The POSTER approves/rejects claims;
 // contact between the two students unlocks once a claim is approved.
 export default function ItemDetail({ id }) {
-  const { currentUser, items, claims, userById, deleteItem, setClaimStatus, getContact, getProofUrl } = useApp();
+  const { currentUser, items, claims, userById, deleteItem, setClaimStatus, getContact, getProofUrl, dataLoading } = useApp();
   const toast = useToast();
   const item = items.find((i) => i.id === id);
   const [claimOpen, setClaimOpen] = useState(false);
@@ -213,7 +214,7 @@ export default function ItemDetail({ id }) {
   if (!item) {
     return (
       <AppShell activeKey="lost-found" title="Item">
-        <EmptyState icon={PackageX} title="Item not found" message="This item may have been removed." action={<Button onClick={() => navigate("/lost-found")}>Back to Lost &amp; Found</Button>} />
+        {dataLoading ? <Loading /> : <EmptyState icon={PackageX} title="Item not found" message="This item may have been removed." action={<Button onClick={() => navigate("/lost-found")}>Back to Lost &amp; Found</Button>} />}
       </AppShell>
     );
   }
@@ -357,7 +358,7 @@ export default function ItemDetail({ id }) {
                 <EmptyState icon={Inbox} title="No claims yet" message="When someone claims this item, it'll appear here for you to review." />
               ) : (
                 itemClaims.map((c) => (
-                  <PosterClaimRow key={c.id} claim={c} claimant={userById(c.claimantId)} onDecide={decide} busy={busyClaim === c.id} proofUrl={proofUrls[c.id]} />
+                  <PosterClaimRow key={c.id} claim={c} claimant={userById(c.claimantId)} onDecide={decide} busy={busyClaim === c.id} proofUrl={proofUrls[c.id]} itemResolved={item.status === "Resolved"} />
                 ))
               )}
             </div>
