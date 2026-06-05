@@ -6,10 +6,12 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  // Helpful error during development if the .env file is missing or misnamed.
-  console.error(
+  // Fail fast with a clear message instead of letting createClient(undefined,…)
+  // produce a cryptic runtime error deep in the app.
+  throw new Error(
     "Missing Supabase env vars. Copy .env.example to .env and fill in VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
   );
 }
 
+// Session persistence (localStorage) is left to the supabase-js SDK defaults by design.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

@@ -21,6 +21,7 @@ import AdminDashboard from "./screens/admin/AdminDashboard.jsx";
 import AllReports from "./screens/admin/AllReports.jsx";
 import ManageUsers from "./screens/admin/ManageUsers.jsx";
 import ManageFaculty from "./screens/admin/ManageFaculty.jsx";
+import ManageStudyHub from "./screens/admin/ManageStudyHub.jsx";
 
 import LostFoundBrowse from "./screens/lostfound/LostFoundBrowse.jsx";
 import PostItem from "./screens/lostfound/PostItem.jsx";
@@ -39,6 +40,7 @@ import { Events, EventDetail, EventForm } from "./screens/events/Events.jsx";
 import { RideShare, RideDetail, OfferRide } from "./screens/rides/Rides.jsx";
 import { BloodDonation, RegisterDonor, RequestBlood } from "./screens/blood/Blood.jsx";
 import { MedicalCenter, DoctorBooking, MyAppointments, DoctorQueue } from "./screens/medical/Medical.jsx";
+import { StudyHub, StudyHubBrowse, StudyHubDept, StudyHubIntake, StudyHubSection, StudyHubCourse, StudyHubManage } from "./screens/studyhub/StudyHub.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -56,14 +58,13 @@ function RequireAuth({ children }) {
   return children;
 }
 
-// Lost & Found is students-only; send staff/admins to their own dashboard.
 // Restrict a route to a single role; others are redirected to their own dashboard.
 function RequireRole({ role, children }) {
   const { currentUser, dashboardPath } = useApp();
   useEffect(() => {
     if (!currentUser) navigate("/login");
     else if (currentUser.role !== role) navigate(dashboardPath(currentUser.role));
-  }, [currentUser]);
+  }, [currentUser, dashboardPath]);
   if (!currentUser || currentUser.role !== role) return null;
   return children;
 }
@@ -130,6 +131,7 @@ export default function App() {
   if (path === "/admin/reports") return <RequireRole role="Admin"><AllReports /></RequireRole>;
   if (path === "/admin/users") return <RequireRole role="Admin"><ManageUsers /></RequireRole>;
   if (path === "/admin/faculty") return <RequireRole role="Admin"><ManageFaculty /></RequireRole>;
+  if (path === "/admin/study-hub") return <RequireRole role="Admin"><ManageStudyHub /></RequireRole>;
 
   // ---- Profile (any signed-in user) ----
   if (path === "/profile") return <RequireAuth><Profile /></RequireAuth>;
@@ -150,6 +152,18 @@ export default function App() {
   if (path === "/bus/new") return <RequireAuth><BusRouteForm /></RequireAuth>;
   if ((m = matchRoute("/bus/:id/edit", path))) return <RequireAuth><BusRouteForm id={m.id} /></RequireAuth>;
   if ((m = matchRoute("/bus/:id", path))) return <RequireAuth><BusDetail id={m.id} /></RequireAuth>;
+
+  // ---- Campus Life: Study Hub (students only) ----
+  // Section content (notes / question bank / books) is student-owned; staff and
+  // admins don't get a section. More routes (browse / intake / section / course
+  // / manage) are added as those screens ship.
+  if (path === "/study-hub") return <RequireRole role="Student"><StudyHub /></RequireRole>;
+  if (path === "/study-hub/browse") return <RequireRole role="Student"><StudyHubBrowse /></RequireRole>;
+  if ((m = matchRoute("/study-hub/dept/:deptId", path))) return <RequireRole role="Student"><StudyHubDept deptId={m.deptId} /></RequireRole>;
+  if ((m = matchRoute("/study-hub/intake/:intakeId", path))) return <RequireRole role="Student"><StudyHubIntake intakeId={m.intakeId} /></RequireRole>;
+  if ((m = matchRoute("/study-hub/section/:sectionId/course/:courseId", path))) return <RequireRole role="Student"><StudyHubCourse sectionId={m.sectionId} courseId={m.courseId} /></RequireRole>;
+  if ((m = matchRoute("/study-hub/section/:sectionId/manage", path))) return <RequireRole role="Student"><StudyHubManage sectionId={m.sectionId} /></RequireRole>;
+  if ((m = matchRoute("/study-hub/section/:sectionId", path))) return <RequireRole role="Student"><StudyHubSection sectionId={m.sectionId} /></RequireRole>;
 
   // ---- Campus Life: Faculty Directory (any signed-in user) ----
   // Order matters: literal /faculty/saved and /faculty/dept/:n precede /faculty/:id.

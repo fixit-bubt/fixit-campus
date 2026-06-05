@@ -99,6 +99,7 @@ export default function ManageUsers() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search users"
             placeholder="Search by name or email…"
             className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30"
           />

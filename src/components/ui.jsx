@@ -195,7 +195,17 @@ export function FileUpload({ value, onChange, error, label = "Upload photo", id 
   if (preview) {
     return (
       <div className="relative overflow-hidden rounded-lg border border-slate-200">
-        <img src={preview} alt="preview" className="h-44 w-full object-cover" />
+        <img
+          src={preview}
+          alt="preview"
+          onError={() => {
+            if (objectUrl.current) { URL.revokeObjectURL(objectUrl.current); objectUrl.current = null; }
+            setPreview(null);
+            setLocalErr("That image couldn't be loaded — please choose another.");
+            onChange && onChange(null, null);
+          }}
+          className="h-44 w-full object-cover"
+        />
         <button
           type="button"
           onClick={clear}
@@ -302,11 +312,13 @@ export function Card({ className = "", children, ...rest }) {
 // Avatar — initials only, no photos
 // ---------------------------------------------------------------------------
 export function Avatar({ name = "", src, size = 36, className = "" }) {
-  if (src) {
+  const [failed, setFailed] = useState(false);
+  if (src && !failed) {
     return (
       <img
         src={src}
         alt={name}
+        onError={() => setFailed(true)}
         className={`inline-block shrink-0 rounded-full object-cover ${className}`}
         style={{ width: size, height: size }}
       />
@@ -504,6 +516,7 @@ export function StatCard({ label, value, icon, tone = "blue" }) {
     amber: "bg-amber-100 text-amber-700",
     emerald: "bg-emerald-100 text-emerald-700",
     red: "bg-red-100 text-red-700",
+    teal: "bg-teal-100 text-teal-700",
     slate: "bg-slate-100 text-slate-600",
   };
   return (

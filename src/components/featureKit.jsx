@@ -84,6 +84,7 @@ export function fmtCountdown(mins) {
 }
 
 export function nextDeparture(times) {
+  if (!times || times.length === 0) return null; // no departures → caller renders a fallback
   const now = nowDhakaMinutes();
   const sorted = [...times].map(toMinutes).sort((a, b) => a - b);
   for (const t of sorted) {

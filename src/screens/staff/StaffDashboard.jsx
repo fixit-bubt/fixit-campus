@@ -13,7 +13,7 @@ export default function StaffDashboard() {
   const count = (s) => mine.filter((r) => r.status === s).length;
   const active = mine
     .filter((r) => r.status === "Open" || r.status === "In Progress")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
   const recent = active.slice(0, 5);
 
   return (

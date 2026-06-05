@@ -23,7 +23,8 @@ export function useHashRoute() {
 }
 
 export function navigate(path) {
-  if ("#" + path === window.location.hash) return;
+  // Re-tapping the active route still scrolls to top (the hashchange won't fire).
+  if ("#" + path === window.location.hash) { window.scrollTo(0, 0); return; }
   window.location.hash = path;
 }
 

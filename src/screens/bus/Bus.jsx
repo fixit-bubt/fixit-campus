@@ -41,7 +41,6 @@ export function buildSchedule(route, direction, departIndex = 0) {
 export function BusRouteCard({ route, direction, saved, onToggleSave, onOpen }) {
   const departures = direction === "to" ? route.toDepartures : route.fromDepartures;
   const next = nextDeparture(departures);
-  const sched = buildSchedule(route, direction, departures.findIndex((d) => toMinutes(d) === next.mins) >= 0 ? departures.findIndex((d) => toMinutes(d) === next.mins) : 0);
   const timeline = direction === "to" ? route.stops : [...route.stops].reverse();
 
   return (
@@ -66,11 +65,17 @@ export function BusRouteCard({ route, direction, saved, onToggleSave, onOpen }) 
       </div>
 
       <div className="mt-4 flex items-end justify-between rounded-lg bg-slate-50 px-3 py-2.5">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Next departure</p>
-          <p className="text-lg font-bold text-slate-900">{fmtTime(minutesToHHMM(next.mins))}</p>
-        </div>
-        <Badge tone="sky">{next.tomorrow ? "tomorrow" : `in ${fmtCountdown(next.wait)}`}</Badge>
+        {next ? (
+          <>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Next departure</p>
+              <p className="text-lg font-bold text-slate-900">{fmtTime(minutesToHHMM(next.mins))}</p>
+            </div>
+            <Badge tone="sky">{next.tomorrow ? "tomorrow" : `in ${fmtCountdown(next.wait)}`}</Badge>
+          </>
+        ) : (
+          <p className="text-sm text-slate-400">No departures scheduled</p>
+        )}
       </div>
 
       {/* compact stops timeline */}
@@ -114,8 +119,9 @@ export function BusSchedule() {
     .map((r) => {
       const deps = direction === "to" ? r.toDepartures : r.fromDepartures;
       const n = nextDeparture(deps);
-      return { route: r, ...n };
+      return n ? { route: r, ...n } : null;
     })
+    .filter(Boolean)
     .sort((a, b) => a.wait - b.wait)[0];
 
   const sortedRoutes = [...busRoutes].sort((a, b) => {
@@ -124,22 +130,24 @@ export function BusSchedule() {
     return as - bs;
   });
 
-  const heroStops = direction === "to" ? hero.route.stops : [...hero.route.stops].reverse();
+  const heroStops = hero ? (direction === "to" ? hero.route.stops : [...hero.route.stops].reverse()) : [];
 
   return (
     <AppShell activeKey="bus" title="Bus Schedule">
       <PageHeader title="Bus Schedule" subtitle="Campus shuttle routes, live departures, and timetables." />
 
-      <CountdownBanner
-        tone="sky"
-        icon="Bus"
-        eyebrow={direction === "to" ? "Next bus to campus" : "Next bus from campus"}
-        title={hero.route.name}
-        time={fmtTime(minutesToHHMM(hero.mins))}
-        waitMins={hero.wait}
-        tomorrow={hero.tomorrow}
-        meta={`${hero.route.busNo} · from ${heroStops[0]}`}
-      />
+      {hero && (
+        <CountdownBanner
+          tone="sky"
+          icon="Bus"
+          eyebrow={direction === "to" ? "Next bus to campus" : "Next bus from campus"}
+          title={hero.route.name}
+          time={fmtTime(minutesToHHMM(hero.mins))}
+          waitMins={hero.wait}
+          tomorrow={hero.tomorrow}
+          meta={`${hero.route.busNo} · from ${heroStops[0]}`}
+        />
+      )}
 
       <div className="mt-6 flex items-center justify-between">
         <SegmentToggle
@@ -406,7 +414,8 @@ export function BusWidget() {
   const { busRoutes, savedBusRoutes } = useApp();
   const pool = savedBusRoutes.length ? busRoutes.filter((r) => savedBusRoutes.includes(r.id)) : busRoutes;
   const next = pool
-    .map((r) => ({ route: r, ...nextDeparture(r.toDepartures) }))
+    .map((r) => { const n = nextDeparture(r.toDepartures); return n ? { route: r, ...n } : null; })
+    .filter(Boolean)
     .sort((a, b) => a.wait - b.wait)[0];
   if (!next) return null;
   return (

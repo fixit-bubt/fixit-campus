@@ -25,7 +25,7 @@ export default function AllReports() {
       if (!q) return true;
       return r.category.toLowerCase().includes(q) || r.description.toLowerCase().includes(q) || r.building.toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
     })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
 
   return (
     <AppShell activeKey="all-reports" title="All Reports">

@@ -95,7 +95,7 @@ export function Marketplace() {
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-xs">
           <Icon name="Search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search listings…"
+          <input value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search listings" placeholder="Search listings…"
             className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30" />
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

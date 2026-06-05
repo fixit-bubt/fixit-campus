@@ -69,7 +69,7 @@ export default function MyReports() {
         r.id.toLowerCase().includes(q)
       );
     })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
 
   async function confirmDelete() {
     if (busy) return;
