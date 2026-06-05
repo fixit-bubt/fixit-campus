@@ -13,6 +13,10 @@ import { Logo } from "./Brand.jsx";
 // that actually exist are listed — Campus Life / Community grow per release.
 // ============================================================================
 
+// Study Hub is students-only (staff/admins don't have a section), so it's added
+// to the Student nav explicitly rather than to the shared CAMPUS_LIFE group.
+const STUDY_HUB = { key: "study-hub", label: "Study Hub", icon: "BookMarked", path: "/study-hub" };
+
 // Shared "Campus Life" group (grows as features ship: prayer, events…).
 const CAMPUS_LIFE = [
   { key: "faculty", label: "Faculty", icon: "GraduationCap", path: "/faculty" },
@@ -34,7 +38,7 @@ const NAV_BY_ROLE = {
       { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/dashboard" },
       { key: "reports", label: "My Reports", icon: "FileText", path: "/reports" },
     ]},
-    { section: "Campus Life", items: CAMPUS_LIFE },
+    { section: "Campus Life", items: [STUDY_HUB, ...CAMPUS_LIFE] },
     { section: "Services", items: [
       { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
       { key: "report-new", label: "Report an Issue", icon: "CirclePlus", path: "/reports/new" },
@@ -68,6 +72,7 @@ const NAV_BY_ROLE = {
       { key: "all-reports", label: "All Reports", icon: "FileText", path: "/admin/reports" },
       { key: "users", label: "Manage Users", icon: "Users", path: "/admin/users" },
       { key: "faculty-admin", label: "Faculty Profiles", icon: "GraduationCap", path: "/admin/faculty" },
+      { key: "studyhub-admin", label: "Study Hub", icon: "BookMarked", path: "/admin/study-hub" },
     ]},
     { section: "Campus Life", items: CAMPUS_LIFE },
     { section: "Services", items: [
@@ -126,8 +131,15 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
 }
 
 export function AppShell({ activeKey, title, actions, children }) {
-  const { currentUser, logout } = useApp();
+  const { currentUser, logout, dataError, retryData } = useApp();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Close the mobile drawer on Escape (it's an aria-modal dialog).
+  React.useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") setDrawerOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
   if (!currentUser) return null;
   const nav = NAV_BY_ROLE[currentUser.role] || [];
 
@@ -147,7 +159,7 @@ export function AppShell({ activeKey, title, actions, children }) {
       {drawerOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-slate-900/40" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-64 bg-white shadow-xl">
+          <div role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 w-64 bg-white shadow-xl">
             <button
               onClick={() => setDrawerOpen(false)}
               aria-label="Close menu"
@@ -202,6 +214,16 @@ export function AppShell({ activeKey, title, actions, children }) {
             </button>
           </div>
         </header>
+
+        {/* A background load failed — offer a retry instead of silently showing empty lists. */}
+        {dataError && (
+          <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 sm:px-6">
+            <span>Some data couldn't be loaded. Check your connection and try again.</span>
+            <button onClick={retryData} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-amber-600 px-3 text-xs font-medium text-white hover:bg-amber-700">
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase.js";
 import { navigate } from "../lib/router.jsx";
@@ -288,6 +288,36 @@ function toFaculty(f) {
 // All eight campus-life features are now backed by Supabase (Phase 2 complete);
 // the Phase-1 localStorage mock slices + their seed data have been removed.
 
+// ---- Study Hub mappers (snake_case DB -> camelCase screen shape) ----
+const bytesToMB = (b) => (b == null ? null : b / (1024 * 1024));
+// Short, headline department code, e.g. "Computer Science & Engineering" -> "CSE".
+function deptAcronym(name) {
+  const s = (name || "").replace(/^Department of\s+/i, "");
+  const words = s.split(/\s+/).filter((w) => /[A-Za-z]/.test(w) && !/^(&|and|of|the|in|for)$/i.test(w));
+  return words.length >= 2 ? words.map((w) => w[0].toUpperCase()).join("") : s;
+}
+const toStudyIntake  = (r) => ({ id: r.id, deptId: r.department_id, number: r.number, years: r.years || "" });
+const toStudySection = (r) => ({ id: r.id, intakeId: r.intake_id, number: r.number });
+const toStudyMember  = (r) => ({ id: r.id, sectionId: r.section_id, userId: r.user_id, role: r.role, status: r.status });
+const toStudyCourse  = (r) => ({ id: r.id, sectionId: r.section_id, code: r.code, name: r.name, createdBy: r.created_by, createdAt: day(r.created_at) });
+const toStudyMaterial = (r) => ({ id: r.id, courseId: r.course_id, title: r.title, type: r.type, kind: r.file_kind || "", sizeMB: bytesToMB(r.size_bytes), path: r.storage_path, byId: r.uploaded_by, createdAt: day(r.created_at) });
+const toStudyQB      = (r) => ({ id: r.id, sectionId: r.section_id, exam: r.exam, title: r.title, kind: r.file_kind || "", sizeMB: bytesToMB(r.size_bytes), path: r.storage_path, verified: !!r.verified, byId: r.uploaded_by, createdAt: day(r.created_at) });
+const toStudyBook    = (r) => ({ id: r.id, intakeId: r.intake_id, title: r.title, author: r.author || "", edition: r.edition || "", kind: r.kind, courseCode: r.course_code || "", path: r.storage_path || null, url: r.url || null, byId: r.added_by, createdAt: day(r.created_at) });
+const toStudyPin     = (r) => ({ id: r.id, sectionId: r.section_id, kind: r.kind, message: r.message, fileName: r.file_name || null, path: r.storage_path || null, byId: r.pinned_by, createdAt: day(r.created_at) });
+const toStudyAccessRequest = (r) => ({ id: r.id, fromSectionId: r.from_section_id, toSectionId: r.to_section_id, requestedBy: r.requested_by, message: r.message || "", status: r.status, createdAt: day(r.created_at) });
+const toStudyGrant   = (r) => ({ id: r.id, fromSectionId: r.from_section_id, toSectionId: r.to_section_id });
+
+// Map a chosen file's extension to the screen's file-kind glyph key.
+function fileKindFromName(name) {
+  const e = (String(name || "").split(".").pop() || "").toLowerCase();
+  if (e === "pdf") return "pdf";
+  if (["doc", "docx"].includes(e)) return "docx";
+  if (["ppt", "pptx"].includes(e)) return "ppt";
+  if (["png", "jpg", "jpeg", "gif", "webp"].includes(e)) return "img";
+  if (["zip", "rar", "7z"].includes(e)) return "zip";
+  return e || "file";
+}
+
 export function AppProvider({ children }) {
   // ---- auth / profiles (real Supabase) ----
   const [sessionUserId, setSessionUserId] = useState(null);
@@ -340,6 +370,28 @@ export function AppProvider({ children }) {
   const [faculty, setFaculty] = useState([]);
   const [facultyBookmarks, setFacultyBookmarks] = useState([]); // faculty ids this user saved
 
+  // ---- study hub (LIVE Supabase, migration 0046). RLS scopes every slice to
+  // what this user may see (own/granted sections' content; rosters they can view).
+  const [studyIntakes, setStudyIntakes] = useState([]);
+  const [studySections, setStudySections] = useState([]);
+  const [studyMembers, setStudyMembers] = useState([]);
+  const [studyCourses, setStudyCourses] = useState([]);
+  const [studyMaterials, setStudyMaterials] = useState([]);
+  const [studyQuestionBank, setStudyQuestionBank] = useState([]);
+  const [studyBooks, setStudyBooks] = useState([]);
+  const [studyPins, setStudyPins] = useState([]);
+  const [studyAccessRequests, setStudyAccessRequests] = useState([]);
+  const [studyGrants, setStudyGrants] = useState([]);
+  const [studyCRSections, setStudyCRSections] = useState([]); // section ids with an approved CR (RLS-safe, via RPC)
+
+  // Latest signed-in user id — loaders compare against this after their await so a
+  // slow response from a previous account can't overwrite the new account's data.
+  const currentUidRef = useRef(null);
+  const stillCurrent = (uid) => currentUidRef.current === uid;
+  const [dataError, setDataError] = useState(false); // a background load failed (network/RLS) — show a retry banner
+  const [dataTry, setDataTry] = useState(0);
+  const retryData = useCallback(() => { setDataError(false); setDataTry((n) => n + 1); }, []);
+
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
     let active = true;
@@ -379,62 +431,86 @@ export function AppProvider({ children }) {
   // Retry a failed profile load (from the App error screen).
   const retryProfile = useCallback(() => { setProfileError(false); setProfileTry((n) => n + 1); }, []);
 
+  // Track the current user id for the loaders' stale-response guard.
+  useEffect(() => { currentUidRef.current = currentUser?.id ?? null; }, [currentUser?.id]);
+
   const refreshUsers = useCallback(async () => {
     if (!currentUser) { setUsers([]); return; }
+    const uid = currentUser.id;
     const src = currentUser.role === "Admin" ? "profiles" : "public_profiles";
-    const { data } = await supabase.from(src).select("*").order("full_name");
+    const { data, error } = await supabase.from(src).select("*").order("full_name");
+    if (!stillCurrent(uid)) return;
+    if (error) { setDataError(true); return; }
     setUsers((data || []).map(toUser));
   }, [currentUser?.id, currentUser?.role]);
 
   // ---- reports: load (RLS returns only rows this user may see) ----
   const loadReports = useCallback(async () => {
     if (!currentUser) { setReports([]); return; }
-    const { data: rows } = await supabase
+    const uid = currentUser.id;
+    const { data: rows, error } = await supabase
       .from("reports").select("*").order("created_at", { ascending: false });
+    if (!stillCurrent(uid)) return;
+    if (error) { setDataError(true); return; }
     const ids = (rows || []).map((r) => r.id);
     const byReport = {};
     if (ids.length) {
-      const { data: evs } = await supabase
+      const { data: evs, error: e2 } = await supabase
         .from("report_events").select("*").in("report_id", ids)
         .order("created_at", { ascending: true });
+      if (!stillCurrent(uid)) return;
+      if (e2) { setDataError(true); return; }
       (evs || []).forEach((e) => {
         (byReport[e.report_id] ||= []).push({ status: e.status, date: day(e.created_at) });
       });
     }
+    if (!stillCurrent(uid)) return;
     setReports((rows || []).map((r) => toReport(r, byReport[r.id])));
   }, [currentUser?.id]);
 
   const loadItems = useCallback(async () => {
     if (!currentUser) { setItems([]); return; }
-    const { data } = await supabase
+    const uid = currentUser.id;
+    const { data, error } = await supabase
       .from("lost_found_items").select("*").order("item_date", { ascending: false });
+    if (!stillCurrent(uid)) return;
+    if (error) { setDataError(true); return; }
     setItems((data || []).map(toItem));
   }, [currentUser?.id]);
 
   const loadClaims = useCallback(async () => {
     if (!currentUser) { setClaims([]); return; }
-    const { data } = await supabase
+    const uid = currentUser.id;
+    const { data, error } = await supabase
       .from("claims")
       .select("*, item:lost_found_items(code)")
       .order("created_at", { ascending: false });
+    if (!stillCurrent(uid)) return;
+    if (error) { setDataError(true); return; }
     setClaims((data || []).map(toClaim));
   }, [currentUser?.id]);
 
   // Announcements + this user's read receipts (RLS returns only my own reads).
   const loadAnnouncements = useCallback(async () => {
     if (!currentUser) { setAnnouncements([]); return; }
-    const [{ data: rows }, { data: reads }] = await Promise.all([
+    const uid = currentUser.id;
+    const [{ data: rows, error: e1 }, { data: reads, error: e2 }] = await Promise.all([
       supabase.from("announcements").select("*").order("created_at", { ascending: false }),
       supabase.from("announcement_reads").select("announcement_id"),
     ]);
+    if (!stillCurrent(uid)) return;
+    if (e1 || e2) { setDataError(true); return; }
     const readSet = new Set((reads || []).map((r) => r.announcement_id));
     setAnnouncements((rows || []).map((r) => toAnnouncement(r, readSet.has(r.id), currentUser.id)));
   }, [currentUser?.id]);
 
   const loadListings = useCallback(async () => {
     if (!currentUser) { setListings([]); return; }
-    const { data } = await supabase
+    const uid = currentUser.id;
+    const { data, error } = await supabase
       .from("listings").select("*").order("created_at", { ascending: false });
+    if (!stillCurrent(uid)) return;
+    if (error) { setDataError(true); return; }
     setListings((data || []).map(toListing));
   }, [currentUser?.id]);
 
@@ -442,11 +518,14 @@ export function AppProvider({ children }) {
   // organizer allowlist (to gate the "Create event" button; RLS enforces it).
   const loadEvents = useCallback(async () => {
     if (!currentUser) { setEvents([]); setEventOrganizers([]); return; }
-    const [{ data: rows }, { data: rsvps }, { data: orgs }] = await Promise.all([
+    const uid = currentUser.id;
+    const [{ data: rows, error: e1 }, { data: rsvps, error: e2 }, { data: orgs, error: e3 }] = await Promise.all([
       supabase.from("events").select("*").order("date", { ascending: true }),
       supabase.from("event_rsvps").select("event_id, user_id"),
       supabase.from("event_organizers").select("user_id"),
     ]);
+    if (!stillCurrent(uid)) return;
+    if (e1 || e2 || e3) { setDataError(true); return; }
     const byEvent = {};
     (rsvps || []).forEach((r) => { (byEvent[r.event_id] ||= []).push(r.user_id); });
     setEvents((rows || []).map((r) => toEvent(r, byEvent[r.id])));
@@ -456,10 +535,13 @@ export function AppProvider({ children }) {
   // Rides + seat requests (aggregated into each ride's `requesterIds` array).
   const loadRides = useCallback(async () => {
     if (!currentUser) { setRides([]); return; }
-    const [{ data: rows }, { data: reqs }] = await Promise.all([
+    const uid = currentUser.id;
+    const [{ data: rows, error: e1 }, { data: reqs, error: e2 }] = await Promise.all([
       supabase.from("rides").select("*").order("date", { ascending: true }),
       supabase.from("ride_requests").select("ride_id, requester_id"),
     ]);
+    if (!stillCurrent(uid)) return;
+    if (e1 || e2) { setDataError(true); return; }
     const byRide = {};
     (reqs || []).forEach((r) => { (byRide[r.ride_id] ||= []).push(r.requester_id); });
     setRides((rows || []).map((r) => toRide(r, byRide[r.id])));
@@ -469,11 +551,14 @@ export function AppProvider({ children }) {
   // and the donor registry.
   const loadBlood = useCallback(async () => {
     if (!currentUser) { setBloodRequests([]); setDonors([]); return; }
-    const [{ data: reqs }, { data: pledges }, { data: ds }] = await Promise.all([
+    const uid = currentUser.id;
+    const [{ data: reqs, error: e1 }, { data: pledges, error: e2 }, { data: ds, error: e3 }] = await Promise.all([
       supabase.from("blood_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("blood_pledges").select("request_id, donor_id"),
       supabase.from("donors").select("*"),
     ]);
+    if (!stillCurrent(uid)) return;
+    if (e1 || e2 || e3) { setDataError(true); return; }
     const byReq = {};
     (pledges || []).forEach((p) => { (byReq[p.request_id] ||= []).push(p.donor_id); });
     setBloodRequests((reqs || []).map((r) => toBloodRequest(r, byReq[r.id])));
@@ -484,10 +569,13 @@ export function AppProvider({ children }) {
   // own rows; admins see all).
   const loadMedical = useCallback(async () => {
     if (!currentUser) { setDoctors([]); setAppointments([]); return; }
-    const [{ data: docs }, { data: appts }] = await Promise.all([
+    const uid = currentUser.id;
+    const [{ data: docs, error: e1 }, { data: appts, error: e2 }] = await Promise.all([
       supabase.from("doctors").select("*").eq("active", true).order("id"),
       supabase.from("appointments").select("*").order("date", { ascending: false }),
     ]);
+    if (!stillCurrent(uid)) return;
+    if (e1 || e2) { setDataError(true); return; }
     setDoctors((docs || []).map(toDoctor));
     setAppointments((appts || []).map(toAppointment));
   }, [currentUser?.id]);
@@ -495,10 +583,13 @@ export function AppProvider({ children }) {
   // Bus routes (active reference data) + this user's saved (starred) route ids.
   const loadBus = useCallback(async () => {
     if (!currentUser) { setBusRoutes([]); setSavedBusRoutes([]); return; }
-    const [{ data: routes }, { data: saved }] = await Promise.all([
+    const uid = currentUser.id;
+    const [{ data: routes, error: e1 }, { data: saved, error: e2 }] = await Promise.all([
       supabase.from("bus_routes").select("*").eq("active", true).order("id"),
       supabase.from("saved_bus_routes").select("route_id"),
     ]);
+    if (!stillCurrent(uid)) return;
+    if (e1 || e2) { setDataError(true); return; }
     setBusRoutes((routes || []).map(toBusRoute));
     setSavedBusRoutes((saved || []).map((s) => s.route_id));
   }, [currentUser?.id]);
@@ -506,7 +597,10 @@ export function AppProvider({ children }) {
   // Prayer times config (Azan + Jamaat per prayer), ordered by `sort`.
   const loadPrayer = useCallback(async () => {
     if (!currentUser) { setPrayerTimes([]); return; }
-    const { data } = await supabase.from("prayer_times").select("*").order("sort");
+    const uid = currentUser.id;
+    const { data, error } = await supabase.from("prayer_times").select("*").order("sort");
+    if (!stillCurrent(uid)) return;
+    if (error) { setDataError(true); return; }
     setPrayerTimes(data || []);
   }, [currentUser?.id]);
 
@@ -514,34 +608,76 @@ export function AppProvider({ children }) {
   // signed-in user reads) + this user's saved (bookmarked) faculty ids.
   const loadFaculty = useCallback(async () => {
     if (!currentUser) { setDepartments([]); setFaculty([]); setFacultyBookmarks([]); return; }
-    const [{ data: depts }, { data: fac }, { data: marks }] = await Promise.all([
+    const uid = currentUser.id;
+    const [{ data: depts, error: e1 }, { data: fac, error: e2 }, { data: marks, error: e3 }] = await Promise.all([
       supabase.from("departments").select("*").order("name"),
       supabase.from("faculty").select("*").order("name"),
       supabase.from("faculty_bookmarks").select("faculty_id"),
     ]);
+    if (!stillCurrent(uid)) return;
+    if (e1 || e2 || e3) { setDataError(true); return; }
     setDepartments((depts || []).map(toDepartment));
     setFaculty((fac || []).map(toFaculty));
     setFacultyBookmarks((marks || []).map((m) => m.faculty_id));
   }, [currentUser?.id]);
 
+  // Study Hub: catalogue (intakes/sections — reference) + memberships + content.
+  // RLS returns only viewable content; admins get the catalogue + rosters (for
+  // CR assignment) but no content. Staff don't use Study Hub, so skip the load.
+  const loadStudyHub = useCallback(async () => {
+    const clear = () => {
+      setStudyIntakes([]); setStudySections([]); setStudyMembers([]); setStudyCourses([]);
+      setStudyMaterials([]); setStudyQuestionBank([]); setStudyBooks([]); setStudyPins([]);
+      setStudyAccessRequests([]); setStudyGrants([]); setStudyCRSections([]);
+    };
+    if (!currentUser || (currentUser.role !== "Student" && currentUser.role !== "Admin")) { clear(); return; }
+    const uid = currentUser.id;
+    const [ints, secs, mems, crs, mats, qb, bks, pins, reqs, grants, crSecs] = await Promise.all([
+      supabase.from("study_intakes").select("*"),
+      supabase.from("study_sections").select("*"),
+      supabase.from("study_section_members").select("*"),
+      supabase.from("study_courses").select("*").order("created_at", { ascending: false }),
+      supabase.from("study_materials").select("*").order("created_at", { ascending: false }),
+      supabase.from("study_question_bank").select("*").order("created_at", { ascending: false }),
+      supabase.from("study_books").select("*").order("created_at", { ascending: false }),
+      supabase.from("study_pins").select("*").order("created_at", { ascending: false }),
+      supabase.from("study_access_requests").select("*"),
+      supabase.from("study_section_grants").select("*"),
+      supabase.rpc("study_sections_with_cr"),
+    ]);
+    if (!stillCurrent(uid)) return;
+    if ([ints, secs, mems, crs, mats, qb, bks, pins, reqs, grants, crSecs].some((r) => r.error)) { setDataError(true); return; }
+    setStudyCRSections((crSecs.data || []).map((r) => r.section_id));
+    setStudyIntakes((ints.data || []).map(toStudyIntake));
+    setStudySections((secs.data || []).map(toStudySection));
+    setStudyMembers((mems.data || []).map(toStudyMember));
+    setStudyCourses((crs.data || []).map(toStudyCourse));
+    setStudyMaterials((mats.data || []).map(toStudyMaterial));
+    setStudyQuestionBank((qb.data || []).map(toStudyQB));
+    setStudyBooks((bks.data || []).map(toStudyBook));
+    setStudyPins((pins.data || []).map(toStudyPin));
+    setStudyAccessRequests((reqs.data || []).map(toStudyAccessRequest));
+    setStudyGrants((grants.data || []).map(toStudyGrant));
+  }, [currentUser?.id, currentUser?.role]);
+
   useEffect(() => {
     let active = true;
-    if (currentUser?.id) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty()]).finally(() => {
+    if (currentUser?.id) { setDataLoading(true); setDataError(false); }
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser?.id, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty]);
+  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub]);
 
   // ---- auth actions ----
   async function login(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return { ok: false, error: "Incorrect email or password. Try again." };
     const { data: p } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
-    // Don't fabricate a role if the profile read hiccuped — omit it so the
-    // post-login redirect lands on a safe default and the route guards (driven
-    // by the real currentUser loaded separately) correct it.
-    return { ok: true, user: toUser(p) || { name: email.split("@")[0] } };
+    // If the profile read hiccuped, return no user — the session effect reloads it
+    // (or shows the recoverable profile-error screen). Don't fabricate a partial,
+    // role-less user that would drive an initial wrong-dashboard redirect.
+    return { ok: true, user: toUser(p) };
   }
 
   async function register({ name, email, password }) {
@@ -1108,7 +1244,8 @@ export function AppProvider({ children }) {
     const { error } = going
       ? await supabase.from("event_rsvps").delete().eq("event_id", ev.uuid).eq("user_id", currentUser.id)
       : await supabase.from("event_rsvps").insert({ event_id: ev.uuid, user_id: currentUser.id });
-    if (error) return { ok: false, error: error.message };
+    // A racing duplicate RSVP (23505) just means we're already going — reconcile, don't error.
+    if (error && error.code !== "23505") return { ok: false, error: error.message };
     await loadEvents();
     return { ok: true, going: !going };
   }
@@ -1148,6 +1285,7 @@ export function AppProvider({ children }) {
     const ride = rides.find((r) => r.id === id);
     if (!ride) return { ok: false, error: "Ride not found." };
     if (ride.requesterIds.includes(currentUser.id)) return { ok: true };
+    if (ride.requesterIds.length >= ride.seatsTotal) return { ok: false, error: "This ride is full." };
     const { error } = await supabase
       .from("ride_requests")
       .upsert(
@@ -1338,7 +1476,9 @@ export function AppProvider({ children }) {
       .from("photos")
       .upload(path, file, { cacheControl: "3600", upsert: true });
     if (upErr) return { ok: false, error: upErr.message };
-    const publicUrl = supabase.storage.from("photos").getPublicUrl(path).data.publicUrl;
+    // Deterministic path + upsert overwrites the object, so add a cache-buster —
+    // otherwise a re-uploaded same-name photo keeps showing the old cached image.
+    const publicUrl = `${supabase.storage.from("photos").getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
     const { error: dbErr } = await supabase.from("faculty").update({ photo_url: publicUrl }).eq("id", facultyId);
     if (dbErr) return { ok: false, error: dbErr.message };
     setFaculty((prev) => prev.map((f) => f.id === facultyId ? { ...f, photo: publicUrl } : f));
@@ -1347,7 +1487,10 @@ export function AppProvider({ children }) {
 
   // Admin-only: update editable fields on a faculty row (linkedin_url, photo_url, etc.).
   async function updateFaculty(id, updates) {
-    const { error } = await supabase.from("faculty").update(updates).eq("id", id);
+    // Allowlist the columns the admin editor may write — never trust a raw object.
+    const patch = {};
+    for (const k of ["linkedin_url", "photo_url"]) if (k in updates) patch[k] = updates[k];
+    const { error } = await supabase.from("faculty").update(patch).eq("id", id);
     if (error) return { ok: false, error: error.message };
     setFaculty((prev) => prev.map((f) => {
       if (f.id !== id) return f;
@@ -1383,6 +1526,283 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // Study Hub (LIVE Supabase, migration 0046)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // --- selectors (derive the screen shapes from the loaded, RLS-scoped slices)
+  const studyCoursesIn = (sectionId) => studyCourses.filter((c) => c.sectionId === sectionId);
+  const studyCourseById = (id) => studyCourses.find((c) => c.id === id);
+  const studyFilesIn = (courseId) => studyMaterials.filter((m) => m.courseId === courseId);
+  const studyQuestionBankIn = (sectionId) => studyQuestionBank.filter((q) => q.sectionId === sectionId);
+  const studyBooksIn = (intakeId) => studyBooks.filter((b) => b.intakeId === intakeId);
+  const studyPinsIn = (sectionId) => studyPins.filter((p) => p.sectionId === sectionId);
+  const studyIntakesIn = (deptId) => studyIntakes.filter((i) => i.deptId === deptId).sort((a, b) => b.number - a.number);
+  const studyAccessRequestsFor = (sectionId) => studyAccessRequests.filter((r) => r.toSectionId === sectionId && r.status === "pending");
+  const studyPersonName = (id) => users.find((u) => u.id === id)?.name || "A classmate";
+  const studyAllFilesInSection = (sectionId) => studyCoursesIn(sectionId).flatMap((c) => studyFilesIn(c.id));
+  const studySectionFileCount = (section) => studyAllFilesInSection(section.id).length;
+
+  const myStudyMemberships = () => studyMembers.filter((m) => m.userId === currentUser?.id && m.status === "approved");
+
+  // Enrich a raw section row with the view-derived fields the screens expect.
+  // crIds/editorIds are only populated for sections whose roster RLS exposes
+  // (your own + admin); locked sections come back with empty rosters/counts.
+  const studyCRSet = new Set(studyCRSections);
+  function studyDeriveSection(sec) {
+    if (!sec) return sec;
+    const mems = studyMembers.filter((m) => m.sectionId === sec.id && m.status === "approved");
+    const myApproved = new Set(myStudyMemberships().map((m) => m.sectionId));
+    return {
+      ...sec,
+      deptId: studyIntakes.find((i) => i.id === sec.intakeId)?.deptId,
+      crIds: mems.filter((m) => m.role === "cr").map((m) => m.userId), // only populated for rosters you can see
+      editorIds: mems.filter((m) => m.role === "editor").map((m) => m.userId),
+      hasCR: studyCRSet.has(sec.id), // roster-independent: true even when the roster is RLS-hidden
+      isMine: myApproved.has(sec.id),
+      accessGranted: studyGrants.some((g) => g.toSectionId === sec.id && myApproved.has(g.fromSectionId)),
+      fileCount: studyAllFilesInSection(sec.id).length,
+    };
+  }
+  const studySectionsIn = (intakeId) =>
+    studySections.filter((s) => s.intakeId === intakeId).sort((a, b) => a.number - b.number).map(studyDeriveSection);
+  const studySectionById = (id) => studyDeriveSection(studySections.find((s) => s.id === id));
+
+  const studySectionStats = (section) => ({
+    courses: studyCoursesIn(section.id).length,
+    files: studyAllFilesInSection(section.id).length,
+    questions: studyQuestionBankIn(section.id).length,
+    editors: (section.editorIds || []).length,
+  });
+
+  const studyRecentActivity = (section, limit = 5) => {
+    const byCourse = Object.fromEntries(studyCoursesIn(section.id).map((c) => [c.id, c]));
+    const files = studyAllFilesInSection(section.id).map((f) => ({ id: `act_${f.id}`, kind: "file", title: f.title, context: byCourse[f.courseId]?.code || "", byId: f.byId, createdAt: f.createdAt }));
+    const pins = studyPinsIn(section.id).map((p) => ({ id: `act_${p.id}`, kind: "pin", title: p.message, context: "Pinned", byId: p.byId, createdAt: p.createdAt }));
+    return [...files, ...pins].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, limit);
+  };
+
+  // The signed-in student's home section (their approved membership), or null
+  // (→ the first-run "request to join" state).
+  const resolveMySection = () => {
+    const mine = myStudyMemberships()[0];
+    if (!mine) return null;
+    const sec = studySections.find((s) => s.id === mine.sectionId);
+    const intake = sec && studyIntakes.find((i) => i.id === sec.intakeId);
+    const dept = intake && departments.find((d) => d.id === intake.deptId);
+    if (!sec || !intake || !dept) return null;
+    return {
+      section: studyDeriveSection(sec),
+      deptName: dept.name,
+      deptCode: deptAcronym(dept.name),
+      intakeNumber: intake.number,
+      sectionNumber: sec.number,
+      myRole: mine.role,
+    };
+  };
+
+  // --- file helpers (private 'study-materials' bucket; objects live under `${uid}/…`)
+  async function uploadStudyFile(file) {
+    const ext = (file.name?.split(".").pop() || "bin").toLowerCase();
+    const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("study-materials").upload(path, file, { cacheControl: "3600", upsert: false });
+    if (error) throw error;
+    return path;
+  }
+  async function getStudyFileUrl(pathOrUrl) {
+    if (!pathOrUrl) return null;
+    if (/^https?:\/\//.test(pathOrUrl)) return pathOrUrl;
+    const { data } = await supabase.storage.from("study-materials").createSignedUrl(pathOrUrl, 3600);
+    return data?.signedUrl || null;
+  }
+  async function removeStudyFile(path) {
+    if (!path || /^https?:\/\//.test(path)) return;
+    try { await supabase.storage.from("study-materials").remove([path]); } catch { /* best-effort */ }
+  }
+
+  // --- membership (student requests; CR approves/promotes/removes) ---
+  async function requestJoinSection(sectionId) {
+    const { error } = await supabase.from("study_section_members")
+      .insert({ section_id: sectionId, user_id: currentUser.id, role: "member", status: "pending" });
+    if (error) return { ok: false, error: error.code === "23505" ? "You've already requested to join this section." : error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function approveMember(memberId) {
+    const { error } = await supabase.from("study_section_members").update({ status: "approved" }).eq("id", memberId);
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function setMemberRole(memberId, role) {
+    // CRs may only set member/editor; the CR role is admin-assigned (DB guard enforces).
+    if (!["member", "editor"].includes(role)) return { ok: false, error: "Invalid role." };
+    const { error } = await supabase.from("study_section_members").update({ role }).eq("id", memberId);
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function removeMember(memberId) {
+    const { error } = await supabase.from("study_section_members").delete().eq("id", memberId);
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+
+  // --- courses ---
+  async function addStudyCourse(sectionId, { code, name }) {
+    const { error } = await supabase.from("study_courses")
+      .insert({ section_id: sectionId, code: code.trim(), name: name.trim(), created_by: currentUser.id });
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function deleteStudyCourse(courseId) {
+    // Cascade deletes the rows; best-effort remove the underlying files first.
+    const files = studyFilesIn(courseId);
+    const { error } = await supabase.from("study_courses").delete().eq("id", courseId);
+    if (error) return { ok: false, error: error.message };
+    await Promise.all(files.map((f) => removeStudyFile(f.path)));
+    await loadStudyHub();
+    return { ok: true };
+  }
+
+  // --- materials (upload to bucket, then insert the row; roll back on failure) ---
+  async function uploadStudyMaterial(courseId, { title, type, file }) {
+    let path;
+    try { path = await uploadStudyFile(file); } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
+    const { error } = await supabase.from("study_materials").insert({
+      course_id: courseId, title: title.trim(), type, storage_path: path,
+      file_kind: fileKindFromName(file.name), size_bytes: file.size, uploaded_by: currentUser.id,
+    });
+    if (error) { await removeStudyFile(path); return { ok: false, error: error.message }; }
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function deleteStudyMaterial(materialId) {
+    const m = studyMaterials.find((x) => x.id === materialId);
+    const { error } = await supabase.from("study_materials").delete().eq("id", materialId);
+    if (error) return { ok: false, error: error.message };
+    if (m?.path) await removeStudyFile(m.path);
+    await loadStudyHub();
+    return { ok: true };
+  }
+
+  // --- question bank ---
+  async function uploadStudyQB(sectionId, { exam, title, file }) {
+    let path;
+    try { path = await uploadStudyFile(file); } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
+    const { error } = await supabase.from("study_question_bank").insert({
+      section_id: sectionId, exam, title: title.trim(), storage_path: path,
+      file_kind: fileKindFromName(file.name), size_bytes: file.size, uploaded_by: currentUser.id,
+    });
+    if (error) { await removeStudyFile(path); return { ok: false, error: error.message }; }
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function setQBVerified(qbId, verified) {
+    const { error } = await supabase.from("study_question_bank").update({ verified }).eq("id", qbId);
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function deleteStudyQB(qbId) {
+    const q = studyQuestionBank.find((x) => x.id === qbId);
+    const { error } = await supabase.from("study_question_bank").delete().eq("id", qbId);
+    if (error) return { ok: false, error: error.message };
+    if (q?.path) await removeStudyFile(q.path);
+    await loadStudyHub();
+    return { ok: true };
+  }
+
+  // --- books (intake-wide; file OR url) ---
+  async function addStudyBook(intakeId, { title, kind, author, courseCode, file, url }) {
+    let path = null;
+    if (file) { try { path = await uploadStudyFile(file); } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; } }
+    const { error } = await supabase.from("study_books").insert({
+      intake_id: intakeId, title: title.trim(), kind, author: author?.trim() || null,
+      course_code: courseCode?.trim() || null, storage_path: path, url: url?.trim() || null, added_by: currentUser.id,
+    });
+    if (error) { if (path) await removeStudyFile(path); return { ok: false, error: error.message }; }
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function deleteStudyBook(bookId) {
+    const b = studyBooks.find((x) => x.id === bookId);
+    const { error } = await supabase.from("study_books").delete().eq("id", bookId);
+    if (error) return { ok: false, error: error.message };
+    if (b?.path) await removeStudyFile(b.path);
+    await loadStudyHub();
+    return { ok: true };
+  }
+
+  // --- pins (CR only; text or file) ---
+  async function addStudyPin(sectionId, { kind, message, file }) {
+    let path = null, fileName = null;
+    if (kind === "file" && file) {
+      try { path = await uploadStudyFile(file); } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
+      fileName = file.name;
+    }
+    const { error } = await supabase.from("study_pins").insert({
+      section_id: sectionId, kind, message: message.trim(), storage_path: path, file_name: fileName, pinned_by: currentUser.id,
+    });
+    if (error) { if (path) await removeStudyFile(path); return { ok: false, error: error.message }; }
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function deleteStudyPin(pinId) {
+    const p = studyPins.find((x) => x.id === pinId);
+    const { error } = await supabase.from("study_pins").delete().eq("id", pinId);
+    if (error) return { ok: false, error: error.message };
+    if (p?.path) await removeStudyFile(p.path);
+    await loadStudyHub();
+    return { ok: true };
+  }
+
+  // --- cross-section access (CR of `from` requests; CR of `to` decides) ---
+  async function requestSectionAccess(fromSectionId, toSectionId, message) {
+    const { error } = await supabase.from("study_access_requests").insert({
+      from_section_id: fromSectionId, to_section_id: toSectionId, requested_by: currentUser.id,
+      message: message?.trim() || null, status: "pending",
+    });
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function decideSectionAccess(requestId, approve) {
+    const { error } = await supabase.from("study_access_requests").update({ status: approve ? "approved" : "denied" }).eq("id", requestId);
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function revokeSectionGrant(grantId) {
+    const { error } = await supabase.from("study_section_grants").delete().eq("id", grantId);
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+
+  // --- admin: catalogue + CR assignment ---
+  async function addStudyIntake(deptId, number, years) {
+    const { error } = await supabase.from("study_intakes").insert({ department_id: deptId, number, years: years || null });
+    if (error) return { ok: false, error: error.code === "23505" ? "That intake already exists." : error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function addStudySection(intakeId, number) {
+    const { error } = await supabase.from("study_sections").insert({ intake_id: intakeId, number });
+    if (error) return { ok: false, error: error.code === "23505" ? "That section already exists." : error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  async function assignSectionCR(sectionId, userId) {
+    const { error } = await supabase.from("study_section_members")
+      .upsert({ section_id: sectionId, user_id: userId, role: "cr", status: "approved" }, { onConflict: "section_id,user_id" });
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
@@ -1394,7 +1814,20 @@ export function AppProvider({ children }) {
     busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
     prayerTimes, updatePrayerJamaat,
     departments, faculty, facultyBookmarks, facultyById, departmentByNumber, departmentById, toggleFacultyBookmark, updateFaculty, uploadFacultyPhoto,
-    currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile,
+    // study hub (data)
+    studyIntakes, studySections, studyMembers, studyCourses, studyMaterials, studyQuestionBank, studyBooks, studyPins, studyAccessRequests, studyGrants,
+    // study hub (selectors)
+    studyCoursesIn, studyCourseById, studyFilesIn, studyQuestionBankIn, studyBooksIn, studyPinsIn, studyIntakesIn,
+    studySectionsIn, studySectionById, studyAccessRequestsFor, studyPersonName, studySectionFileCount, studySectionStats, studyRecentActivity, resolveMySection,
+    // study hub (files)
+    getStudyFileUrl,
+    // study hub (actions)
+    requestJoinSection, approveMember, setMemberRole, removeMember,
+    addStudyCourse, deleteStudyCourse, uploadStudyMaterial, deleteStudyMaterial,
+    uploadStudyQB, setQBVerified, deleteStudyQB, addStudyBook, deleteStudyBook, addStudyPin, deleteStudyPin,
+    requestSectionAccess, decideSectionAccess, revokeSectionGrant,
+    addStudyIntake, addStudySection, assignSectionCR,
+    currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile, dataError, retryData,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
