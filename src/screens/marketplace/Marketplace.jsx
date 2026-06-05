@@ -371,13 +371,15 @@ function ListingEditor({ id, existing }) {
 
 // --- My Listings ------------------------------------------------------------
 export function MyListings() {
-  const { currentUser, listings, userById } = useApp();
+  const { currentUser, listings, userById, dataLoading } = useApp();
   const mine = listings.filter((l) => l.sellerId === currentUser.id).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   return (
     <AppShell activeKey="marketplace" title="My Listings">
       <PageHeader title="My Listings" subtitle="Items you're selling."
         action={<Button icon="Plus" onClick={() => navigate("/marketplace/new")}>Post an Item</Button>} />
-      {mine.length === 0 ? (
+      {dataLoading ? (
+        <Loading />
+      ) : mine.length === 0 ? (
         <EmptyState icon="Tag" title="No listings yet" message="Post an item to start selling." action={<Button icon="Plus" onClick={() => navigate("/marketplace/new")}>Post an Item</Button>} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
