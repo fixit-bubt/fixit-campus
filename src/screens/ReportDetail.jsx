@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../data/store.jsx";
 import { navigate } from "../lib/router.jsx";
-import { Card, Button, Select, Modal, Avatar, EmptyState, StatusBadge, useToast } from "../components/ui.jsx";
+import { Card, Button, Select, Modal, Avatar, EmptyState, StatusBadge, Loading, useToast } from "../components/ui.jsx";
 import { AppShell } from "../components/AppShell.jsx";
 import { CATEGORY_ICON, fmtDate } from "../lib/helpers.js";
 
@@ -66,7 +66,7 @@ function DetailField({ label, children }) {
 // Role-aware: Student owner (read-only + edit/delete while Open) /
 // Staff assigned (advance status) / Admin (assign + reject/close).
 export default function ReportDetail({ id }) {
-  const { currentUser, reports, setReportStatus, assignReport, deleteReport, userById, staffList } = useApp();
+  const { currentUser, reports, setReportStatus, assignReport, deleteReport, userById, staffList, dataLoading } = useApp();
   const toast = useToast();
   const report = reports.find((r) => r.id === id);
   const [assignTo, setAssignTo] = useState("");
@@ -80,7 +80,7 @@ export default function ReportDetail({ id }) {
   if (!report) {
     return (
       <AppShell activeKey="" title="Report">
-        <EmptyState icon={FileQuestion} title="Report not found" message="This report may have been deleted." action={<Button onClick={() => navigate("/")}>Go back</Button>} />
+        {dataLoading ? <Loading /> : <EmptyState icon={FileQuestion} title="Report not found" message="This report may have been deleted." action={<Button onClick={() => navigate("/")}>Go back</Button>} />}
       </AppShell>
     );
   }

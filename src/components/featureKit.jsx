@@ -7,11 +7,6 @@ import { Icon } from "./Icon.jsx";
 // category badges. Chrome (blue-600 primary) stays identical everywhere.
 // ============================================================================
 
-export const FEATURE_ACCENT = {
-  bus: "sky", prayer: "emerald", medical: "teal", marketplace: "violet",
-  rideshare: "indigo", blood: "red", events: "fuchsia", announcements: "amber",
-};
-
 // Full class strings so Tailwind's scanner picks them up.
 export const ACCENT_TILE = {
   sky: "bg-sky-100 text-sky-700",
@@ -109,15 +104,6 @@ export function taka(n) {
   return "\u09F3" + Number(n).toLocaleString("en-US");
 }
 
-// Deterministic BD mobile number from an id (mock contact data).
-export function phoneFor(id) {
-  let h = 0;
-  const s = String(id);
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  const eight = String(h % 100000000).padStart(8, "0");
-  return `+88017${eight}`;
-}
-
 export function useTick(ms = 30000) {
   const [, setN] = React.useState(0);
   React.useEffect(() => {
@@ -126,21 +112,6 @@ export function useTick(ms = 30000) {
   }, [ms]);
 }
 
-// Persisted local UI state (per-user prefs like saved routes / favourites).
-export function useLocalState(key, initial) {
-  const [val, setVal] = React.useState(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : initial;
-    } catch (e) {
-      return initial;
-    }
-  });
-  React.useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
-  }, [key, val]);
-  return [val, setVal];
-}
 
 // CountdownBanner — hero "next X" banner used by Bus + Prayer.
 export function CountdownBanner({ tone = "sky", icon, eyebrow, title, time, waitMins, tomorrow, meta, right }) {
@@ -195,45 +166,3 @@ export function SegmentToggle({ options, value, onChange, className = "" }) {
   );
 }
 
-// RevealContact — WhatsApp contact gated behind a confirm step.
-export function RevealContact({ name, phone, note, confirmLabel = "Reveal WhatsApp contact" }) {
-  const [revealed, setRevealed] = React.useState(false);
-  const waLink = `https://wa.me/${(phone || "").replace(/[^0-9]/g, "")}`;
-  if (!revealed) {
-    return (
-      <button
-        onClick={() => setRevealed(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
-      >
-        <Icon name="MessageCircle" size={16} />
-        {confirmLabel}
-      </button>
-    );
-  }
-  return (
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-      <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
-        <Icon name="CircleCheck" size={16} /> Contact revealed
-      </div>
-      {note && <p className="mt-1 text-xs text-slate-500">{note}</p>}
-      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-slate-900">{name}</p>
-          <p className="truncate text-xs text-slate-500">{phone}</p>
-        </div>
-        <a href={waLink} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700">
-          <Icon name="MessageCircle" size={16} /> WhatsApp
-        </a>
-      </div>
-    </div>
-  );
-}
-
-export function SectionTitle({ children, action }) {
-  return (
-    <div className="mb-3 flex items-center justify-between">
-      <h3 className="text-sm font-semibold text-slate-900">{children}</h3>
-      {action}
-    </div>
-  );
-}

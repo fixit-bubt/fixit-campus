@@ -474,7 +474,7 @@ export function EmptyState({ icon, title, message, action, className = "" }) {
 }
 
 // ---------------------------------------------------------------------------
-// Loading — Spinner + Skeleton
+// Loading — Spinner
 // ---------------------------------------------------------------------------
 export function Spinner({ size = 20, className = "" }) {
   return (
@@ -483,10 +483,6 @@ export function Spinner({ size = 20, className = "" }) {
       style={{ width: size, height: size }}
     />
   );
-}
-
-export function Skeleton({ className = "" }) {
-  return <div className={`animate-pulse rounded-md bg-slate-200/70 ${className}`} />;
 }
 
 // Centered loading spinner for list/dashboard areas while data loads.

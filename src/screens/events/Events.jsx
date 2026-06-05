@@ -2,14 +2,14 @@ import React from "react";
 import { Icon } from "../../components/Icon.jsx";
 import {
   Button, Card, Badge, StatusBadge, Field, Input, Textarea, Select, FileUpload,
-  EmptyState, Modal, Avatar, Spinner, Skeleton, StatCard, Loading, useToast,
+  EmptyState, Modal, Avatar, Spinner, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
-  AccentTile, CountdownBanner, SegmentToggle, RevealContact, SectionTitle,
-  taka, phoneFor, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
-  nowDhakaMinutes, dhakaParts, useTick, useLocalState,
+  AccentTile, CountdownBanner, SegmentToggle,
+  taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
+  nowDhakaMinutes, dhakaParts, useTick,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
@@ -168,7 +168,7 @@ export function Events() {
 
 // --- Detail -----------------------------------------------------------------
 export function EventDetail({ id }) {
-  const { currentUser, events, toggleRSVP, deleteEvent } = useApp();
+  const { currentUser, events, toggleRSVP, deleteEvent, dataLoading } = useApp();
   const toast = useToast();
   const ev = events.find((e) => e.id === id);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -176,7 +176,7 @@ export function EventDetail({ id }) {
   if (!ev) {
     return (
       <AppShell activeKey="events" title="Event">
-        <EmptyState icon="CalendarDays" title="Event not found" action={<Button onClick={() => navigate("/events")}>Back to Events</Button>} />
+        {dataLoading ? <Loading /> : <EmptyState icon="CalendarDays" title="Event not found" action={<Button onClick={() => navigate("/events")}>Back to Events</Button>} />}
       </AppShell>
     );
   }

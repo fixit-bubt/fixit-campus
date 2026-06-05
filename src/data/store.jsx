@@ -1287,7 +1287,7 @@ export function AppProvider({ children }) {
     doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
     busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
     prayerTimes, updatePrayerJamaat,
-    currentUser, setCurrentUser, sessionUserId, loading, dataLoading, profileError, retryProfile,
+    currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
