@@ -1330,6 +1330,38 @@ export function AppProvider({ children }) {
   }
 
   // ---- faculty directory (LIVE Supabase) ----
+  // Admin-only: upload a photo file to storage and set photo_url on the faculty row.
+  async function uploadFacultyPhoto(facultyId, file) {
+    const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
+    const path = `faculty/${facultyId}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("photos")
+      .upload(path, file, { cacheControl: "3600", upsert: true });
+    if (upErr) return { ok: false, error: upErr.message };
+    const publicUrl = supabase.storage.from("photos").getPublicUrl(path).data.publicUrl;
+    const { error: dbErr } = await supabase.from("faculty").update({ photo_url: publicUrl }).eq("id", facultyId);
+    if (dbErr) return { ok: false, error: dbErr.message };
+    setFaculty((prev) => prev.map((f) => f.id === facultyId ? { ...f, photo: publicUrl } : f));
+    return { ok: true, url: publicUrl };
+  }
+
+  // Admin-only: update editable fields on a faculty row (linkedin_url, photo_url, etc.).
+  async function updateFaculty(id, updates) {
+    const { error } = await supabase.from("faculty").update(updates).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    setFaculty((prev) => prev.map((f) => {
+      if (f.id !== id) return f;
+      return {
+        ...f,
+        ...(updates.photo_url !== undefined && { photo: updates.photo_url || null }),
+        ...(updates.linkedin_url !== undefined && {
+          links: { ...f.links, linkedin: updates.linkedin_url || null },
+        }),
+      };
+    }));
+    return { ok: true };
+  }
+
   // Save / unsave a teacher for this user (faculty_bookmarks join table).
   async function toggleFacultyBookmark(facultyId) {
     if (!currentUser) return { ok: false, error: "Not signed in." };
@@ -1361,7 +1393,7 @@ export function AppProvider({ children }) {
     doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
     busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
     prayerTimes, updatePrayerJamaat,
-    departments, faculty, facultyBookmarks, facultyById, departmentByNumber, departmentById, toggleFacultyBookmark,
+    departments, faculty, facultyBookmarks, facultyById, departmentByNumber, departmentById, toggleFacultyBookmark, updateFaculty, uploadFacultyPhoto,
     currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
