@@ -67,6 +67,7 @@ const NAV_BY_ROLE = {
       { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/admin" },
       { key: "all-reports", label: "All Reports", icon: "FileText", path: "/admin/reports" },
       { key: "users", label: "Manage Users", icon: "Users", path: "/admin/users" },
+      { key: "faculty-admin", label: "Faculty Profiles", icon: "GraduationCap", path: "/admin/faculty" },
     ]},
     { section: "Campus Life", items: CAMPUS_LIFE },
     { section: "Services", items: [

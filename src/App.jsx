@@ -20,6 +20,7 @@ import AssignedToMe from "./screens/staff/AssignedToMe.jsx";
 import AdminDashboard from "./screens/admin/AdminDashboard.jsx";
 import AllReports from "./screens/admin/AllReports.jsx";
 import ManageUsers from "./screens/admin/ManageUsers.jsx";
+import ManageFaculty from "./screens/admin/ManageFaculty.jsx";
 
 import LostFoundBrowse from "./screens/lostfound/LostFoundBrowse.jsx";
 import PostItem from "./screens/lostfound/PostItem.jsx";
@@ -128,6 +129,7 @@ export default function App() {
   if (path === "/admin") return <RequireRole role="Admin"><AdminDashboard /></RequireRole>;
   if (path === "/admin/reports") return <RequireRole role="Admin"><AllReports /></RequireRole>;
   if (path === "/admin/users") return <RequireRole role="Admin"><ManageUsers /></RequireRole>;
+  if (path === "/admin/faculty") return <RequireRole role="Admin"><ManageFaculty /></RequireRole>;
 
   // ---- Profile (any signed-in user) ----
   if (path === "/profile") return <RequireAuth><Profile /></RequireAuth>;
