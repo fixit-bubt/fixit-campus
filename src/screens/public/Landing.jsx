@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight, GraduationCap, ClipboardList, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, GraduationCap, ClipboardList, Search, CalendarDays, Store, Stethoscope } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { Button, Badge, Card } from "../../components/ui.jsx";
@@ -7,8 +7,11 @@ import { Logo } from "../../components/Brand.jsx";
 
 const FEATURES = [
   { Icon: ClipboardList, title: "Report campus issues", body: "Flag a broken light, a leaking tap, or dead Wi-Fi in seconds — then track it from Open to Resolved." },
-  { Icon: Search, title: "Lost & Found", body: "Post what you've lost or found, browse the board, and claim items — contact details stay private until the poster approves your claim." },
-  { Icon: ShieldCheck, title: "Handled by the right people", body: "Reports route to campus staff and admins, so the people who can fix it actually see it." },
+  { Icon: Search, title: "Lost & Found", body: "Post what you've lost or found, browse the board, and claim items — contact stays private until the poster approves." },
+  { Icon: GraduationCap, title: "Faculty directory", body: "Browse 400+ BUBT teachers across all 13 departments, find a supervisor by research area, and save the ones you need." },
+  { Icon: CalendarDays, title: "Campus life", body: "Live bus schedules, daily prayer times, upcoming events, and official announcements — all in one place." },
+  { Icon: Store, title: "Student community", body: "Buy and sell in the marketplace, share rides, find blood donors, and connect with your classmates." },
+  { Icon: Stethoscope, title: "Medical center", body: "Book a doctor's appointment, get a queue token, and manage your visits without standing in line." },
 ];
 
 export default function Landing() {
@@ -40,13 +43,13 @@ export default function Landing() {
         <div className="mx-auto max-w-2xl text-center">
           <Badge tone="blue" icon={GraduationCap} className="mb-6">BUBT Campus</Badge>
           <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-            Report campus issues.
+            Your whole campus,
             <br />
-            Find what&apos;s lost.
+            in one app.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
-            FixIt is the single place for the BUBT community to report maintenance problems and reunite
-            with lost belongings — tracked end to end, handled by the right staff.
+            FixIt is the single place for the BUBT community — report issues, browse faculty, catch the
+            bus, buy and sell, donate blood, and book the medical center, all tracked end to end.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button size="md" className="h-11 px-6 text-base" onClick={() => navigate("/register")} iconRight={ArrowRight}>
