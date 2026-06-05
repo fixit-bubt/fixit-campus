@@ -15,6 +15,7 @@ import { Logo } from "./Brand.jsx";
 
 // Shared "Campus Life" group (grows as features ship: prayer, events…).
 const CAMPUS_LIFE = [
+  { key: "faculty", label: "Faculty", icon: "GraduationCap", path: "/faculty" },
   { key: "bus", label: "Bus Schedule", icon: "Bus", path: "/bus" },
   { key: "prayer", label: "Prayer Times", icon: "Moon", path: "/prayer" },
   { key: "events", label: "Events", icon: "CalendarDays", path: "/events" },

@@ -32,6 +32,7 @@ import NotFound from "./screens/NotFound.jsx";
 import { Announcements, AnnouncementDetail, AnnouncementForm } from "./screens/announcements/Announcements.jsx";
 import { Marketplace, ListingDetail, ListingForm, MyListings } from "./screens/marketplace/Marketplace.jsx";
 import { BusSchedule, BusDetail, BusRouteForm } from "./screens/bus/Bus.jsx";
+import { FacultyDirectory, DepartmentFaculty, FacultyProfile, SavedFaculty } from "./screens/faculty/Faculty.jsx";
 import { PrayerTimes } from "./screens/prayer/Prayer.jsx";
 import { Events, EventDetail, EventForm } from "./screens/events/Events.jsx";
 import { RideShare, RideDetail, OfferRide } from "./screens/rides/Rides.jsx";
@@ -147,6 +148,13 @@ export default function App() {
   if (path === "/bus/new") return <RequireAuth><BusRouteForm /></RequireAuth>;
   if ((m = matchRoute("/bus/:id/edit", path))) return <RequireAuth><BusRouteForm id={m.id} /></RequireAuth>;
   if ((m = matchRoute("/bus/:id", path))) return <RequireAuth><BusDetail id={m.id} /></RequireAuth>;
+
+  // ---- Campus Life: Faculty Directory (any signed-in user) ----
+  // Order matters: literal /faculty/saved and /faculty/dept/:n precede /faculty/:id.
+  if (path === "/faculty") return <RequireAuth><FacultyDirectory /></RequireAuth>;
+  if (path === "/faculty/saved") return <RequireAuth><SavedFaculty /></RequireAuth>;
+  if ((m = matchRoute("/faculty/dept/:deptNo", path))) return <RequireAuth><DepartmentFaculty deptNo={m.deptNo} /></RequireAuth>;
+  if ((m = matchRoute("/faculty/:id", path))) return <RequireAuth><FacultyProfile id={m.id} /></RequireAuth>;
 
   // ---- Campus Life: Prayer Times (any signed-in user) ----
   if (path === "/prayer") return <RequireAuth><PrayerTimes /></RequireAuth>;

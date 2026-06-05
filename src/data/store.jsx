@@ -246,6 +246,45 @@ function toAppointment(a) {
   };
 }
 
+// DB departments row -> screen shape (snake_case -> camelCase).
+function toDepartment(d) {
+  return {
+    id: d.id,
+    name: d.name,
+    branch: d.branch,
+    deptNumber: d.dept_number,
+    chairman: d.chairman || "",
+  };
+}
+
+// DB faculty row -> screen shape. `id` is the uuid PK (used for routing). Link
+// fields collapse to a single `links` map the profile screen iterates. The
+// `qualifications` jsonb is a flat array of degree strings (CSE only).
+function toFaculty(f) {
+  return {
+    id: f.id,
+    departmentId: f.department_id,
+    name: f.name,
+    designation: f.designation,
+    email: f.email || "",
+    phone: f.phone || "",
+    photo: f.photo_url || null,
+    interests: f.research_interests || [],
+    qualifications: Array.isArray(f.qualifications) ? f.qualifications : [],
+    onLeave: !!f.on_leave,
+    isChairman: !!f.is_chairman,
+    links: {
+      scholar: f.scholar_url || null,
+      researchgate: f.researchgate_url || null,
+      linkedin: f.linkedin_url || null,
+      orcid: f.orcid_url || null,
+      website: f.website_url || null,
+    },
+    profileUrl: f.profile_url || null,
+    dataSource: f.data_source,
+  };
+}
+
 // All eight campus-life features are now backed by Supabase (Phase 2 complete);
 // the Phase-1 localStorage mock slices + their seed data have been removed.
 
@@ -295,6 +334,11 @@ export function AppProvider({ children }) {
 
   // ---- prayer times (LIVE Supabase) ----
   const [prayerTimes, setPrayerTimes] = useState([]);
+
+  // ---- faculty directory (LIVE Supabase) ----
+  const [departments, setDepartments] = useState([]);
+  const [faculty, setFaculty] = useState([]);
+  const [facultyBookmarks, setFacultyBookmarks] = useState([]); // faculty ids this user saved
 
   // ---- session bootstrap + live auth changes ----
   useEffect(() => {
@@ -466,14 +510,28 @@ export function AppProvider({ children }) {
     setPrayerTimes(data || []);
   }, [currentUser?.id]);
 
+  // Faculty directory: departments + faculty (both reference data, RLS = any
+  // signed-in user reads) + this user's saved (bookmarked) faculty ids.
+  const loadFaculty = useCallback(async () => {
+    if (!currentUser) { setDepartments([]); setFaculty([]); setFacultyBookmarks([]); return; }
+    const [{ data: depts }, { data: fac }, { data: marks }] = await Promise.all([
+      supabase.from("departments").select("*").order("name"),
+      supabase.from("faculty").select("*").order("name"),
+      supabase.from("faculty_bookmarks").select("faculty_id"),
+    ]);
+    setDepartments((depts || []).map(toDepartment));
+    setFaculty((fac || []).map(toFaculty));
+    setFacultyBookmarks((marks || []).map((m) => m.faculty_id));
+  }, [currentUser?.id]);
+
   useEffect(() => {
     let active = true;
     if (currentUser?.id) setDataLoading(true);
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser?.id, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer]);
+  }, [currentUser?.id, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -551,6 +609,9 @@ export function AppProvider({ children }) {
   const userById = (id) => users.find((u) => u.id === id);
   const doctorById = (id) => doctors.find((d) => d.id === id);
   const busById = (id) => busRoutes.find((r) => r.id === id);
+  const facultyById = (id) => faculty.find((f) => f.id === id);
+  const departmentByNumber = (no) => departments.find((d) => d.deptNumber === String(no));
+  const departmentById = (id) => departments.find((d) => d.id === id);
   const dashboardPath = (role) =>
     role === "Admin" ? "/admin" : role === "Staff" ? "/staff" : "/dashboard";
   const staffList = users
@@ -1268,6 +1329,19 @@ export function AppProvider({ children }) {
     return { ok: true, id };
   }
 
+  // ---- faculty directory (LIVE Supabase) ----
+  // Save / unsave a teacher for this user (faculty_bookmarks join table).
+  async function toggleFacultyBookmark(facultyId) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const saved = facultyBookmarks.includes(facultyId);
+    const { error } = saved
+      ? await supabase.from("faculty_bookmarks").delete().eq("user_id", currentUser.id).eq("faculty_id", facultyId)
+      : await supabase.from("faculty_bookmarks").insert({ user_id: currentUser.id, faculty_id: facultyId });
+    if (error) return { ok: false, error: error.message };
+    setFacultyBookmarks((s) => (saved ? s.filter((x) => x !== facultyId) : [...s, facultyId]));
+    return { ok: true };
+  }
+
   // ---- prayer times (LIVE Supabase) ----
   // Admin-only (RLS): set the jamaat (congregation) time for one prayer.
   async function updatePrayerJamaat(key, jamaat) {
@@ -1287,6 +1361,7 @@ export function AppProvider({ children }) {
     doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
     busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
     prayerTimes, updatePrayerJamaat,
+    departments, faculty, facultyBookmarks, facultyById, departmentByNumber, departmentById, toggleFacultyBookmark,
     currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
