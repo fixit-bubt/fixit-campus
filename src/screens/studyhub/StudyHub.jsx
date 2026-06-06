@@ -182,7 +182,7 @@ export function StudyHub() {
     if (dataLoading && studySections.length === 0) {
       return <AppShell activeKey="study-hub" title="Study Hub"><Loading /></AppShell>;
     }
-    const myRow = studyMembers.find((m) => m.userId === currentUser.id);
+    const myRow = studyMembers.find((m) => m.userId === currentUser?.id);
     if (myRow && myRow.status === "pending") return <StudyHubPending />;
     return <StudyHubSetup />;
   }
@@ -296,12 +296,15 @@ function StudyHubSetup() {
 
   async function submit(e) {
     if (e) e.preventDefault();
-    if (!activeSectionId) return;
+    if (!activeSectionId || saving) return;
     setSaving(true);
-    const r = await requestJoinSection(activeSectionId);
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't send request", message: r.error }); return; }
-    toast({ type: "success", title: "Request sent", message: "Your CR will approve you shortly." });
+    try {
+      const r = await requestJoinSection(activeSectionId);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't send request", message: r.error }); return; }
+      toast({ type: "success", title: "Request sent", message: "Your CR will approve you shortly." });
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -551,17 +554,21 @@ function AddBookModal({ open, onClose, courseId, courseCode }) {
   React.useEffect(() => { if (!open) reset(); }, [open]);
   async function submit(e) {
     if (e) e.preventDefault();
+    if (saving) return;
     const er = {};
     if (!form.title.trim()) er.title = "Enter a title.";
     if (!form.file && !form.url.trim()) er.url = "Attach a file or add a link.";
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await addStudyBook(courseId, { title: form.title, kind: form.kind, author: form.author, courseCode, url: form.url, file: form.file });
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't add book", message: r.error }); return; }
-    toast({ type: "success", title: "Book added", message: form.title.trim() });
-    reset(); onClose();
+    try {
+      const r = await addStudyBook(courseId, { title: form.title, kind: form.kind, author: form.author, courseCode, url: form.url, file: form.file });
+      if (!r.ok) { toast({ type: "error", title: "Couldn't add book", message: r.error }); return; }
+      toast({ type: "success", title: "Book added", message: form.title.trim() });
+      reset(); onClose();
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <Modal
@@ -678,14 +685,18 @@ function PinModal({ open, onClose, sectionId }) {
   const [saving, setSaving] = React.useState(false);
   React.useEffect(() => { if (!open) { setMessage(""); setFile(null); setKind("text"); setError(""); } }, [open]);
   async function submit() {
+    if (saving) return;
     if (!message.trim()) { setError("Enter a message."); return; }
     if (kind === "file" && !file) { setError("Choose a file."); return; }
     setSaving(true);
-    const r = await addStudyPin(sectionId, { kind, message, file });
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't pin", message: r.error }); return; }
-    toast({ type: "success", title: "Pinned" });
-    setMessage(""); setFile(null); setKind("text"); setError(""); onClose();
+    try {
+      const r = await addStudyPin(sectionId, { kind, message, file });
+      if (!r.ok) { toast({ type: "error", title: "Couldn't pin", message: r.error }); return; }
+      toast({ type: "success", title: "Pinned" });
+      setMessage(""); setFile(null); setKind("text"); setError(""); onClose();
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <Modal
@@ -716,17 +727,21 @@ function AddCourseModal({ open, onClose, sectionId }) {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   async function submit(e) {
     if (e) e.preventDefault();
+    if (saving) return;
     const er = {};
     if (!form.code.trim()) er.code = "Enter a course code.";
     if (!form.name.trim()) er.name = "Enter a course name.";
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await addStudyCourse(sectionId, { code: form.code, name: form.name });
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't add course", message: r.error }); return; }
-    toast({ type: "success", title: "Course added", message: `${form.code.trim()} — ${form.name.trim()}` });
-    setForm({ code: "", name: "" }); setErrors({}); onClose();
+    try {
+      const r = await addStudyCourse(sectionId, { code: form.code, name: form.name });
+      if (!r.ok) { toast({ type: "error", title: "Couldn't add course", message: r.error }); return; }
+      toast({ type: "success", title: "Course added", message: `${form.code.trim()} — ${form.name.trim()}` });
+      setForm({ code: "", name: "" }); setErrors({}); onClose();
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <Modal
@@ -752,17 +767,21 @@ function UploadQBModal({ open, onClose, courseId }) {
   React.useEffect(() => { if (!open) { setForm({ exam: "CT 1", title: "", file: null }); setErrors({}); } }, [open]);
   async function submit(e) {
     if (e) e.preventDefault();
+    if (saving) return;
     const er = {};
     if (!form.title.trim()) er.title = "Enter a title.";
     if (!form.file) er.file = "Choose a file.";
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await uploadStudyQB(courseId, { exam: form.exam, title: form.title, file: form.file });
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Upload failed", message: r.error }); return; }
-    toast({ type: "success", title: "Uploaded", message: form.title.trim() });
-    setForm({ exam: "CT 1", title: "", file: null }); setErrors({}); onClose();
+    try {
+      const r = await uploadStudyQB(courseId, { exam: form.exam, title: form.title, file: form.file });
+      if (!r.ok) { toast({ type: "error", title: "Upload failed", message: r.error }); return; }
+      toast({ type: "success", title: "Uploaded", message: form.title.trim() });
+      setForm({ exam: "CT 1", title: "", file: null }); setErrors({}); onClose();
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <Modal
@@ -907,18 +926,24 @@ export function StudyHubSection({ sectionId }) {
   const mine = resolveMySection();
   const myDeptId = mine?.section.deptId;
   const myRole = section.isMine ? (mine?.myRole || "member") : "viewer";
-  const canView = section.isMine || section.deptId === myDeptId; // department-open
+  const canView = section.isMine || (myDeptId != null && section.deptId === myDeptId); // department-open
   const canAddCourse = section.isMine && canContribute(myRole);  // CR/Editor curate the subject list
   const manager = section.isMine && isCR(myRole);
   const back = () => navigate(section.isMine ? "/study-hub" : `/study-hub/intake/${section.intakeId}`);
 
   if (!canView) {
+    const noMembership = !mine;
     return (
       <AppShell activeKey="study-hub" title="Study Hub">
         <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
           <Icon name="ArrowLeft" size={16} /> Study Hub
         </button>
-        <EmptyState icon="Lock" title="Not available" message="These materials belong to another department." />
+        <EmptyState
+          icon="Lock"
+          title="Not available"
+          message={noMembership ? "Join a section first to browse Study Hub materials." : "These materials belong to another department."}
+          action={noMembership ? <Button onClick={() => navigate("/study-hub")}>Go to Study Hub</Button> : null}
+        />
       </AppShell>
     );
   }
@@ -1001,17 +1026,21 @@ function UploadFileModal({ open, onClose, courseId, courseCode }) {
   React.useEffect(() => { if (!open) { setForm({ type: "Class Note", title: "", file: null }); setErrors({}); } }, [open]);
   async function submit(e) {
     if (e) e.preventDefault();
+    if (saving) return;
     const er = {};
     if (!form.title.trim()) er.title = "Enter a title.";
     if (!form.file) er.file = "Choose a file.";
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await uploadStudyMaterial(courseId, { title: form.title, type: form.type, file: form.file });
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Upload failed", message: r.error }); return; }
-    toast({ type: "success", title: "Uploaded", message: form.title.trim() });
-    setForm({ type: "Class Note", title: "", file: null }); setErrors({}); onClose();
+    try {
+      const r = await uploadStudyMaterial(courseId, { title: form.title, type: form.type, file: form.file });
+      if (!r.ok) { toast({ type: "error", title: "Upload failed", message: r.error }); return; }
+      toast({ type: "success", title: "Uploaded", message: form.title.trim() });
+      setForm({ type: "Class Note", title: "", file: null }); setErrors({}); onClose();
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <Modal
@@ -1106,15 +1135,20 @@ export function StudyHubCourse({ sectionId, courseId }) {
   const mine = resolveMySection();
   const myDeptId = mine?.section.deptId;
   const myRole = section.isMine ? (mine?.myRole || "member") : "viewer";
-  const canView = section.isMine || section.deptId === myDeptId; // department-open
+  const canView = section.isMine || (myDeptId != null && section.deptId === myDeptId); // department-open
   const canUpload = section.isMine && canContribute(myRole);     // CR/Editor of THIS section
   const manager = section.isMine && isCR(myRole);
 
   if (!canView) {
+    const noMembership = !mine;
     return (
       <AppShell activeKey="study-hub" title="Study Hub">
-        <EmptyState icon="Lock" title="Not available" message="These materials belong to another department."
-          action={<Button onClick={() => navigate("/study-hub")}>Back to Study Hub</Button>} />
+        <EmptyState
+          icon="Lock"
+          title="Not available"
+          message={noMembership ? "Join a section first to browse Study Hub materials." : "These materials belong to another department."}
+          action={<Button onClick={() => navigate("/study-hub")}>Back to Study Hub</Button>}
+        />
       </AppShell>
     );
   }

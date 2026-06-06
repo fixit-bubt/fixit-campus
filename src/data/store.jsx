@@ -792,6 +792,7 @@ export function AppProvider({ children }) {
 
   // ---- photo upload (Supabase Storage) ----
   async function uploadPhoto(file, folder) {
+    if (!currentUser) throw new Error("Not signed in.");
     const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
     // Proofs go to a PRIVATE bucket (viewed via signed URL); everything else to
     // the public "photos" bucket (viewed via a permanent public URL).
@@ -828,6 +829,7 @@ export function AppProvider({ children }) {
 
   // ---- report mutations (real) ----
   async function createReport(form) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     let photo_url;
     try {
       photo_url = await resolvePhoto(form, "reports");
@@ -903,6 +905,7 @@ export function AppProvider({ children }) {
 
   // ---- lost & found mutations (real) ----
   async function addItem(form) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     let photo_url;
     try {
       photo_url = await resolvePhoto(form, "items");
@@ -963,6 +966,7 @@ export function AppProvider({ children }) {
 
   // itemUuid is the item's real id; proofFile is an optional File to upload.
   async function addClaim({ itemUuid, kind, message, proof, proofFile }) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     let proof_url;
     try {
       proof_url = await resolvePhoto({ photo: proof, photoFile: proofFile }, "proofs");
@@ -1012,6 +1016,7 @@ export function AppProvider({ children }) {
 
   // Send a connection request to another student.
   async function sendConnectionRequest(addresseeId) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const { error } = await supabase
       .from("connections")
       .insert({ requester_id: currentUser.id, addressee_id: addresseeId });
@@ -1028,6 +1033,7 @@ export function AppProvider({ children }) {
   // Accept -> mark accepted (contact unlocks). Decline -> delete the request,
   // so it leaves no trace and either student can start fresh later.
   async function respondConnection(requesterId, accept) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const match = (q) =>
       q.eq("requester_id", requesterId).eq("addressee_id", currentUser.id).eq("status", "pending").select("id");
     const { data, error } = accept
@@ -1040,6 +1046,7 @@ export function AppProvider({ children }) {
 
   // Cancel a pending request you sent to `addresseeId`.
   async function cancelConnectionRequest(addresseeId) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const { data, error } = await supabase
       .from("connections")
       .delete()
@@ -1080,6 +1087,7 @@ export function AppProvider({ children }) {
   // Insert is admin-only (RLS). Uploads the optional notice image + PDF first.
   // Returns { ok, id } where id is the new code.
   async function addAnnouncement(data) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     let image_url = null, attachment_url = null, attachment_name = null;
     try {
       image_url = await resolvePhoto({ photo: data.image, photoFile: data.imageFile }, "announcements");
@@ -1151,6 +1159,7 @@ export function AppProvider({ children }) {
     };
   }
   async function addListing(data) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     let cols;
     try { cols = await listingCols(data); }
     catch (e) { return { ok: false, error: "Photo upload failed: " + e.message }; }
@@ -1215,6 +1224,7 @@ export function AppProvider({ children }) {
     };
   }
   async function addEvent(data) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     let cols;
     try { cols = await eventCols(data); }
     catch (e) { return { ok: false, error: "Banner upload failed: " + e.message }; }
@@ -1250,6 +1260,7 @@ export function AppProvider({ children }) {
 
   // ---- ride share (LIVE Supabase) ----
   async function addRide(data) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const { data: row, error } = await supabase
       .from("rides")
       .insert({
@@ -1305,6 +1316,7 @@ export function AppProvider({ children }) {
 
   // ---- blood donation (LIVE Supabase) ----
   async function addBloodRequest(data) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const { data: row, error } = await supabase
       .from("blood_requests")
       .insert({
@@ -1376,6 +1388,7 @@ export function AppProvider({ children }) {
   // (a taken slot returns a friendly error). Returns the booked row so the
   // success modal can show the token.
   async function addAppointment({ doctorId, date, slot }) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const { data: row, error } = await supabase
       .from("appointments")
       .insert({ doctor_id: doctorId, student_id: currentUser.id, date, slot, status: "Booked" })
@@ -1596,6 +1609,7 @@ export function AppProvider({ children }) {
 
   // --- file helpers (private 'study-materials' bucket; objects live under `${uid}/…`)
   async function uploadStudyFile(file) {
+    if (!currentUser) throw new Error("Not signed in.");
     const ext = (file.name?.split(".").pop() || "bin").toLowerCase();
     const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage.from("study-materials").upload(path, file, { cacheControl: "3600", upsert: false });
@@ -1615,6 +1629,7 @@ export function AppProvider({ children }) {
 
   // --- membership (student requests; CR approves/promotes/removes) ---
   async function requestJoinSection(sectionId) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const { error } = await supabase.from("study_section_members")
       .insert({ section_id: sectionId, user_id: currentUser.id, role: "member", status: "pending" });
     if (error) return { ok: false, error: error.code === "23505" ? "You've already requested to join this section." : error.message };
@@ -1644,6 +1659,7 @@ export function AppProvider({ children }) {
 
   // --- courses ---
   async function addStudyCourse(sectionId, { code, name }) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const { error } = await supabase.from("study_courses")
       .insert({ section_id: sectionId, code: code.trim(), name: name.trim(), created_by: currentUser.id });
     if (error) return { ok: false, error: error.message };
@@ -1651,17 +1667,37 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
   async function deleteStudyCourse(courseId) {
-    // Cascade deletes the rows; best-effort remove the underlying files first.
-    const files = studyFilesIn(courseId);
+    // Fetch storage paths fresh from the DB before deleting, so we catch files
+    // uploaded by other users since the last data refresh (stale in-memory list
+    // would miss them and leave orphaned storage objects).
+    const [
+      { data: matRows, error: matErr },
+      { data: qbRows,  error: qbErr  },
+      { data: bookRows, error: bookErr },
+    ] = await Promise.all([
+      supabase.from("study_materials").select("storage_path").eq("course_id", courseId),
+      supabase.from("study_question_bank").select("storage_path").eq("course_id", courseId),
+      supabase.from("study_books").select("storage_path").eq("course_id", courseId),
+    ]);
+    if (matErr || qbErr || bookErr) {
+      return { ok: false, error: "Couldn't read course files before deleting. Try again." };
+    }
+    const paths = [
+      ...(matRows || []),
+      ...(qbRows  || []),
+      ...(bookRows || []),
+    ].map((r) => r.storage_path).filter(Boolean);
+
     const { error } = await supabase.from("study_courses").delete().eq("id", courseId);
     if (error) return { ok: false, error: error.message };
-    await Promise.all(files.map((f) => removeStudyFile(f.path)));
+    await Promise.all(paths.map((p) => removeStudyFile(p)));
     await loadStudyHub();
     return { ok: true };
   }
 
   // --- materials (upload to bucket, then insert the row; roll back on failure) ---
   async function uploadStudyMaterial(courseId, { title, type, file }) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     let path;
     try { path = await uploadStudyFile(file); } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
     const { error } = await supabase.from("study_materials").insert({
@@ -1683,6 +1719,7 @@ export function AppProvider({ children }) {
 
   // --- question bank (per-course; section_id derived from the course for integrity) ---
   async function uploadStudyQB(courseId, { exam, title, file }) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const sectionId = studyCourseById(courseId)?.sectionId;
     if (!sectionId) return { ok: false, error: "Course not found." };
     let path;
@@ -1712,6 +1749,7 @@ export function AppProvider({ children }) {
 
   // --- books (per-course; file OR url; intake_id derived from the course) ---
   async function addStudyBook(courseId, { title, kind, author, courseCode, file, url }) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     const course = studyCourseById(courseId);
     const intakeId = course && studySections.find((s) => s.id === course.sectionId)?.intakeId;
     if (!intakeId) return { ok: false, error: "Course not found." };
@@ -1736,6 +1774,7 @@ export function AppProvider({ children }) {
 
   // --- pins (CR only; text or file) ---
   async function addStudyPin(sectionId, { kind, message, file }) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
     let path = null, fileName = null;
     if (kind === "file" && file) {
       try { path = await uploadStudyFile(file); } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
