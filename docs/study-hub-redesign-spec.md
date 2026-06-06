@@ -31,7 +31,7 @@ SUBJECT VIEW   (one course; same screen everywhere)
 |--------|-------------|
 | **View** notes / questions / books of any section | Any **approved member** of **the same department** (across all its intakes) |
 | **Add a subject** (course) | **CR / Editor** of that section (keeps the subject list curated) |
-| **Upload** a note / question / book into a subject | Any **approved member** of **that subject's section** |
+| **Upload** a note / question / book into a subject | **CR / Editor** of that subject's section (migration 0052 — regular members are view/download only) |
 | **Delete** a note / question / book | Its **uploader**, or the section **CR** |
 | Mark a question **verified** | Section **CR** |
 | **Pin** a notice (private to the section) | Section **CR** |
