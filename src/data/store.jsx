@@ -301,11 +301,9 @@ const toStudySection = (r) => ({ id: r.id, intakeId: r.intake_id, number: r.numb
 const toStudyMember  = (r) => ({ id: r.id, sectionId: r.section_id, userId: r.user_id, role: r.role, status: r.status });
 const toStudyCourse  = (r) => ({ id: r.id, sectionId: r.section_id, code: r.code, name: r.name, createdBy: r.created_by, createdAt: day(r.created_at) });
 const toStudyMaterial = (r) => ({ id: r.id, courseId: r.course_id, title: r.title, type: r.type, kind: r.file_kind || "", sizeMB: bytesToMB(r.size_bytes), path: r.storage_path, byId: r.uploaded_by, createdAt: day(r.created_at) });
-const toStudyQB      = (r) => ({ id: r.id, sectionId: r.section_id, exam: r.exam, title: r.title, kind: r.file_kind || "", sizeMB: bytesToMB(r.size_bytes), path: r.storage_path, verified: !!r.verified, byId: r.uploaded_by, createdAt: day(r.created_at) });
-const toStudyBook    = (r) => ({ id: r.id, intakeId: r.intake_id, title: r.title, author: r.author || "", edition: r.edition || "", kind: r.kind, courseCode: r.course_code || "", path: r.storage_path || null, url: r.url || null, byId: r.added_by, createdAt: day(r.created_at) });
+const toStudyQB      = (r) => ({ id: r.id, sectionId: r.section_id, courseId: r.course_id || null, exam: r.exam, title: r.title, kind: r.file_kind || "", sizeMB: bytesToMB(r.size_bytes), path: r.storage_path, verified: !!r.verified, byId: r.uploaded_by, createdAt: day(r.created_at) });
+const toStudyBook    = (r) => ({ id: r.id, intakeId: r.intake_id, courseId: r.course_id || null, title: r.title, author: r.author || "", edition: r.edition || "", kind: r.kind, courseCode: r.course_code || "", path: r.storage_path || null, url: r.url || null, byId: r.added_by, createdAt: day(r.created_at) });
 const toStudyPin     = (r) => ({ id: r.id, sectionId: r.section_id, kind: r.kind, message: r.message, fileName: r.file_name || null, path: r.storage_path || null, byId: r.pinned_by, createdAt: day(r.created_at) });
-const toStudyAccessRequest = (r) => ({ id: r.id, fromSectionId: r.from_section_id, toSectionId: r.to_section_id, requestedBy: r.requested_by, message: r.message || "", status: r.status, createdAt: day(r.created_at) });
-const toStudyGrant   = (r) => ({ id: r.id, fromSectionId: r.from_section_id, toSectionId: r.to_section_id });
 
 // Map a chosen file's extension to the screen's file-kind glyph key.
 function fileKindFromName(name) {
@@ -380,8 +378,6 @@ export function AppProvider({ children }) {
   const [studyQuestionBank, setStudyQuestionBank] = useState([]);
   const [studyBooks, setStudyBooks] = useState([]);
   const [studyPins, setStudyPins] = useState([]);
-  const [studyAccessRequests, setStudyAccessRequests] = useState([]);
-  const [studyGrants, setStudyGrants] = useState([]);
   const [studyCRSections, setStudyCRSections] = useState([]); // section ids with an approved CR (RLS-safe, via RPC)
 
   // Latest signed-in user id — loaders compare against this after their await so a
@@ -628,11 +624,11 @@ export function AppProvider({ children }) {
     const clear = () => {
       setStudyIntakes([]); setStudySections([]); setStudyMembers([]); setStudyCourses([]);
       setStudyMaterials([]); setStudyQuestionBank([]); setStudyBooks([]); setStudyPins([]);
-      setStudyAccessRequests([]); setStudyGrants([]); setStudyCRSections([]);
+      setStudyCRSections([]);
     };
     if (!currentUser || (currentUser.role !== "Student" && currentUser.role !== "Admin")) { clear(); return; }
     const uid = currentUser.id;
-    const [ints, secs, mems, crs, mats, qb, bks, pins, reqs, grants, crSecs] = await Promise.all([
+    const [ints, secs, mems, crs, mats, qb, bks, pins, crSecs] = await Promise.all([
       supabase.from("study_intakes").select("*"),
       supabase.from("study_sections").select("*"),
       supabase.from("study_section_members").select("*"),
@@ -641,12 +637,10 @@ export function AppProvider({ children }) {
       supabase.from("study_question_bank").select("*").order("created_at", { ascending: false }),
       supabase.from("study_books").select("*").order("created_at", { ascending: false }),
       supabase.from("study_pins").select("*").order("created_at", { ascending: false }),
-      supabase.from("study_access_requests").select("*"),
-      supabase.from("study_section_grants").select("*"),
       supabase.rpc("study_sections_with_cr"),
     ]);
     if (!stillCurrent(uid)) return;
-    if ([ints, secs, mems, crs, mats, qb, bks, pins, reqs, grants, crSecs].some((r) => r.error)) { setDataError(true); return; }
+    if ([ints, secs, mems, crs, mats, qb, bks, pins, crSecs].some((r) => r.error)) { setDataError(true); return; }
     setStudyCRSections((crSecs.data || []).map((r) => r.section_id));
     setStudyIntakes((ints.data || []).map(toStudyIntake));
     setStudySections((secs.data || []).map(toStudySection));
@@ -656,8 +650,6 @@ export function AppProvider({ children }) {
     setStudyQuestionBank((qb.data || []).map(toStudyQB));
     setStudyBooks((bks.data || []).map(toStudyBook));
     setStudyPins((pins.data || []).map(toStudyPin));
-    setStudyAccessRequests((reqs.data || []).map(toStudyAccessRequest));
-    setStudyGrants((grants.data || []).map(toStudyGrant));
   }, [currentUser?.id, currentUser?.role]);
 
   useEffect(() => {
@@ -1534,11 +1526,14 @@ export function AppProvider({ children }) {
   const studyCoursesIn = (sectionId) => studyCourses.filter((c) => c.sectionId === sectionId);
   const studyCourseById = (id) => studyCourses.find((c) => c.id === id);
   const studyFilesIn = (courseId) => studyMaterials.filter((m) => m.courseId === courseId);
+  // Per-subject (course-scoped) — questions & books live inside a subject.
+  // studyQuestionBankIn stays section-scoped for the home "Question papers" stat
+  // (relies on uploadStudyQB back-filling section_id).
   const studyQuestionBankIn = (sectionId) => studyQuestionBank.filter((q) => q.sectionId === sectionId);
-  const studyBooksIn = (intakeId) => studyBooks.filter((b) => b.intakeId === intakeId);
+  const studyQuestionsIn = (courseId) => studyQuestionBank.filter((q) => q.courseId === courseId);
+  const studyBooksInCourse = (courseId) => studyBooks.filter((b) => b.courseId === courseId);
   const studyPinsIn = (sectionId) => studyPins.filter((p) => p.sectionId === sectionId);
   const studyIntakesIn = (deptId) => studyIntakes.filter((i) => i.deptId === deptId).sort((a, b) => b.number - a.number);
-  const studyAccessRequestsFor = (sectionId) => studyAccessRequests.filter((r) => r.toSectionId === sectionId && r.status === "pending");
   const studyPersonName = (id) => users.find((u) => u.id === id)?.name || "A classmate";
   const studyAllFilesInSection = (sectionId) => studyCoursesIn(sectionId).flatMap((c) => studyFilesIn(c.id));
   const studySectionFileCount = (section) => studyAllFilesInSection(section.id).length;
@@ -1547,7 +1542,8 @@ export function AppProvider({ children }) {
 
   // Enrich a raw section row with the view-derived fields the screens expect.
   // crIds/editorIds are only populated for sections whose roster RLS exposes
-  // (your own + admin); locked sections come back with empty rosters/counts.
+  // (your own); other sections come back with empty rosters but a roster-
+  // independent hasCR (via the study_sections_with_cr RPC).
   const studyCRSet = new Set(studyCRSections);
   function studyDeriveSection(sec) {
     if (!sec) return sec;
@@ -1560,8 +1556,6 @@ export function AppProvider({ children }) {
       editorIds: mems.filter((m) => m.role === "editor").map((m) => m.userId),
       hasCR: studyCRSet.has(sec.id), // roster-independent: true even when the roster is RLS-hidden
       isMine: myApproved.has(sec.id),
-      accessGranted: studyGrants.some((g) => g.toSectionId === sec.id && myApproved.has(g.fromSectionId)),
-      fileCount: studyAllFilesInSection(sec.id).length,
     };
   }
   const studySectionsIn = (intakeId) =>
@@ -1571,8 +1565,7 @@ export function AppProvider({ children }) {
   const studySectionStats = (section) => ({
     courses: studyCoursesIn(section.id).length,
     files: studyAllFilesInSection(section.id).length,
-    questions: studyQuestionBankIn(section.id).length,
-    editors: (section.editorIds || []).length,
+    questions: studyQuestionBankIn(section.id).length, // section-scoped via the back-filled section_id
   });
 
   const studyRecentActivity = (section, limit = 5) => {
@@ -1688,12 +1681,14 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // --- question bank ---
-  async function uploadStudyQB(sectionId, { exam, title, file }) {
+  // --- question bank (per-course; section_id derived from the course for integrity) ---
+  async function uploadStudyQB(courseId, { exam, title, file }) {
+    const sectionId = studyCourseById(courseId)?.sectionId;
+    if (!sectionId) return { ok: false, error: "Course not found." };
     let path;
     try { path = await uploadStudyFile(file); } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
     const { error } = await supabase.from("study_question_bank").insert({
-      section_id: sectionId, exam, title: title.trim(), storage_path: path,
+      course_id: courseId, section_id: sectionId, exam, title: title.trim(), storage_path: path,
       file_kind: fileKindFromName(file.name), size_bytes: file.size, uploaded_by: currentUser.id,
     });
     if (error) { await removeStudyFile(path); return { ok: false, error: error.message }; }
@@ -1715,12 +1710,15 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // --- books (intake-wide; file OR url) ---
-  async function addStudyBook(intakeId, { title, kind, author, courseCode, file, url }) {
+  // --- books (per-course; file OR url; intake_id derived from the course) ---
+  async function addStudyBook(courseId, { title, kind, author, courseCode, file, url }) {
+    const course = studyCourseById(courseId);
+    const intakeId = course && studySections.find((s) => s.id === course.sectionId)?.intakeId;
+    if (!intakeId) return { ok: false, error: "Course not found." };
     let path = null;
     if (file) { try { path = await uploadStudyFile(file); } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; } }
     const { error } = await supabase.from("study_books").insert({
-      intake_id: intakeId, title: title.trim(), kind, author: author?.trim() || null,
+      course_id: courseId, intake_id: intakeId, title: title.trim(), kind, author: author?.trim() || null,
       course_code: courseCode?.trim() || null, storage_path: path, url: url?.trim() || null, added_by: currentUser.id,
     });
     if (error) { if (path) await removeStudyFile(path); return { ok: false, error: error.message }; }
@@ -1759,29 +1757,6 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // --- cross-section access (CR of `from` requests; CR of `to` decides) ---
-  async function requestSectionAccess(fromSectionId, toSectionId, message) {
-    const { error } = await supabase.from("study_access_requests").insert({
-      from_section_id: fromSectionId, to_section_id: toSectionId, requested_by: currentUser.id,
-      message: message?.trim() || null, status: "pending",
-    });
-    if (error) return { ok: false, error: error.message };
-    await loadStudyHub();
-    return { ok: true };
-  }
-  async function decideSectionAccess(requestId, approve) {
-    const { error } = await supabase.from("study_access_requests").update({ status: approve ? "approved" : "denied" }).eq("id", requestId);
-    if (error) return { ok: false, error: error.message };
-    await loadStudyHub();
-    return { ok: true };
-  }
-  async function revokeSectionGrant(grantId) {
-    const { error } = await supabase.from("study_section_grants").delete().eq("id", grantId);
-    if (error) return { ok: false, error: error.message };
-    await loadStudyHub();
-    return { ok: true };
-  }
-
   // --- admin: catalogue + CR assignment ---
   async function addStudyIntake(deptId, number, years) {
     const { error } = await supabase.from("study_intakes").insert({ department_id: deptId, number, years: years || null });
@@ -1815,17 +1790,16 @@ export function AppProvider({ children }) {
     prayerTimes, updatePrayerJamaat,
     departments, faculty, facultyBookmarks, facultyById, departmentByNumber, departmentById, toggleFacultyBookmark, updateFaculty, uploadFacultyPhoto,
     // study hub (data)
-    studyIntakes, studySections, studyMembers, studyCourses, studyMaterials, studyQuestionBank, studyBooks, studyPins, studyAccessRequests, studyGrants,
+    studyIntakes, studySections, studyMembers, studyCourses, studyMaterials, studyQuestionBank, studyBooks, studyPins,
     // study hub (selectors)
-    studyCoursesIn, studyCourseById, studyFilesIn, studyQuestionBankIn, studyBooksIn, studyPinsIn, studyIntakesIn,
-    studySectionsIn, studySectionById, studyAccessRequestsFor, studyPersonName, studySectionFileCount, studySectionStats, studyRecentActivity, resolveMySection,
+    studyCoursesIn, studyCourseById, studyFilesIn, studyQuestionBankIn, studyQuestionsIn, studyBooksInCourse, studyPinsIn, studyIntakesIn,
+    studySectionsIn, studySectionById, studyPersonName, studySectionFileCount, studySectionStats, studyRecentActivity, resolveMySection,
     // study hub (files)
     getStudyFileUrl,
     // study hub (actions)
     requestJoinSection, approveMember, setMemberRole, removeMember,
     addStudyCourse, deleteStudyCourse, uploadStudyMaterial, deleteStudyMaterial,
     uploadStudyQB, setQBVerified, deleteStudyQB, addStudyBook, deleteStudyBook, addStudyPin, deleteStudyPin,
-    requestSectionAccess, decideSectionAccess, revokeSectionGrant,
     addStudyIntake, addStudySection, assignSectionCR,
     currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile, dataError, retryData,
     login, register, logout, createUser,
