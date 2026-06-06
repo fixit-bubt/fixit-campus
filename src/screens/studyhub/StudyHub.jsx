@@ -1107,7 +1107,7 @@ export function StudyHubCourse({ sectionId, courseId }) {
   const myDeptId = mine?.section.deptId;
   const myRole = section.isMine ? (mine?.myRole || "member") : "viewer";
   const canView = section.isMine || section.deptId === myDeptId; // department-open
-  const canUpload = section.isMine;                              // approved member of THIS section
+  const canUpload = section.isMine && canContribute(myRole);     // CR/Editor of THIS section
   const manager = section.isMine && isCR(myRole);
 
   if (!canView) {
