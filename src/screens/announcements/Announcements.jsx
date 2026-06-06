@@ -63,14 +63,14 @@ export function Announcements() {
   const { currentUser, announcements, dataLoading } = useApp();
   const [dept, setDept] = React.useState("All");
   const [priority, setPriority] = React.useState("All");
-  const canCreate = currentUser.role === "Admin";
+  const canCreate = currentUser?.role === "Admin";
 
   const filtered = announcements
     .filter((a) => dept === "All" || a.department === dept)
     .filter((a) => priority === "All" || a.priority === priority)
     .sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || b.date.localeCompare(a.date));
 
-  const unreadCount = announcements.filter((a) => !a.readBy.includes(currentUser.id)).length;
+  const unreadCount = announcements.filter((a) => !a.readBy.includes(currentUser?.id)).length;
 
   return (
     <AppShell activeKey="announcements" title="Announcements">
@@ -93,7 +93,7 @@ export function Announcements() {
       ) : (
         <div className="grid gap-3">
           {filtered.map((a) => (
-            <NoticeCard key={a.id} note={a} unread={!a.readBy.includes(currentUser.id)} onOpen={() => navigate(`/announcements/${a.id}`)} />
+            <NoticeCard key={a.id} note={a} unread={!a.readBy.includes(currentUser?.id)} onOpen={() => navigate(`/announcements/${a.id}`)} />
           ))}
         </div>
       )}
@@ -119,7 +119,7 @@ export function AnnouncementDetail({ id }) {
       </AppShell>
     );
   }
-  const canManage = currentUser.role === "Admin";
+  const canManage = currentUser?.role === "Admin";
 
   return (
     <AppShell activeKey="announcements" title="Notice">
@@ -178,7 +178,7 @@ export function AnnouncementForm() {
   const { currentUser, addAnnouncement } = useApp();
   const toast = useToast();
   const fileRef = React.useRef(null);
-  React.useEffect(() => { if (currentUser.role !== "Admin") navigate("/announcements"); }, [currentUser]);
+  React.useEffect(() => { if (currentUser?.role !== "Admin") navigate("/announcements"); }, [currentUser]);
   const [form, setForm] = React.useState({ title: "", body: "", department: "", priority: "General", pinned: false, image: null, imageFile: null, attachment: null, attachmentFile: null });
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);
@@ -258,7 +258,7 @@ export function AnnouncementForm() {
 // --- Dashboard widget -------------------------------------------------------
 export function AnnouncementsWidget() {
   const { currentUser, announcements } = useApp();
-  const unread = announcements.filter((a) => !a.readBy.includes(currentUser.id)).length;
+  const unread = announcements.filter((a) => !a.readBy.includes(currentUser?.id)).length;
   const latest = [...announcements].sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || b.date.localeCompare(a.date))[0];
   return (
     <button onClick={() => navigate("/announcements")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50/40">

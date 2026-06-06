@@ -144,13 +144,13 @@ export default function App() {
 
   // ---- Campus Life: Announcements (any signed-in user; compose is admin/staff) ----
   if (path === "/announcements") return <RequireAuth><Announcements /></RequireAuth>;
-  if (path === "/announcements/new") return <RequireAuth><AnnouncementForm /></RequireAuth>;
+  if (path === "/announcements/new") return <RequireRole role="Admin"><AnnouncementForm /></RequireRole>;
   if ((m = matchRoute("/announcements/:id", path))) return <RequireAuth><AnnouncementDetail id={m.id} /></RequireAuth>;
 
   // ---- Campus Life: Bus Schedule (any signed-in user; add/edit is admin) ----
   if (path === "/bus") return <RequireAuth><BusSchedule /></RequireAuth>;
-  if (path === "/bus/new") return <RequireAuth><BusRouteForm /></RequireAuth>;
-  if ((m = matchRoute("/bus/:id/edit", path))) return <RequireAuth><BusRouteForm id={m.id} /></RequireAuth>;
+  if (path === "/bus/new") return <RequireRole role="Admin"><BusRouteForm /></RequireRole>;
+  if ((m = matchRoute("/bus/:id/edit", path))) return <RequireRole role="Admin"><BusRouteForm id={m.id} /></RequireRole>;
   if ((m = matchRoute("/bus/:id", path))) return <RequireAuth><BusDetail id={m.id} /></RequireAuth>;
 
   // ---- Campus Life: Study Hub (students only) ----
