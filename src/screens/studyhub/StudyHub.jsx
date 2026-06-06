@@ -11,11 +11,12 @@ import { navigate } from "../../lib/router.jsx";
 import { relativeDate, downloadFile } from "../../lib/helpers.js";
 
 // ============================================================================
-// FEATURE — Study Hub  (signature accent: teal)  — LIVE on Supabase (0046)
-// Per-section academic workspace: pinned notes, course materials, a question
-// bank, and an intake-level book library. CR (admin-assigned) runs a section;
-// CR + Editors contribute; approved members view & download. Membership is
-// CR-approved (students request to join). All data flows through useApp().
+// FEATURE — Study Hub  (signature accent: teal)  — LIVE on Supabase (0046, 0051)
+// An OPEN, department-wide study library. Each subject (course) holds Notes,
+// Questions, and Books. VIEW is open to any approved student in the department
+// (across all intakes, so juniors can study seniors' materials); UPLOAD is
+// limited to approved members of your own section; pinned notices stay private
+// to a section. Admins assign CRs but never see content. All data via useApp().
 // ============================================================================
 
 const ACCENT = "teal";
@@ -148,8 +149,8 @@ function CourseRow({ course, sectionId, onDelete }) {
 
 // --- CR quick-actions banner ------------------------------------------------
 function CRBanner({ section, sectionNumber }) {
-  const { studyAccessRequestsFor } = useApp();
-  const pending = studyAccessRequestsFor(section.id).length;
+  const { studyMembers } = useApp();
+  const pending = studyMembers.filter((m) => m.sectionId === section.id && m.status === "pending").length;
   const editors = (section.editorIds || []).length;
   return (
     <div className="mb-6 flex flex-col gap-3 rounded-lg border border-teal-200 bg-teal-50 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -158,7 +159,7 @@ function CRBanner({ section, sectionNumber }) {
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">You're the CR of Section {sectionNumber}</p>
           <p className="text-xs text-slate-600">
-            {pending} access request{pending === 1 ? "" : "s"} pending · {editors} editor{editors === 1 ? "" : "s"}
+            {pending} join request{pending === 1 ? "" : "s"} pending · {editors} editor{editors === 1 ? "" : "s"}
           </p>
         </div>
       </div>
@@ -173,7 +174,7 @@ function CRBanner({ section, sectionNumber }) {
 // Landing — your section overview / pending / first-run setup
 // ============================================================================
 export function StudyHub() {
-  const { currentUser, studyMembers, studySections, resolveMySection, studySectionStats, studyRecentActivity, studyCoursesIn, studyBooksIn, dataLoading } = useApp();
+  const { currentUser, studyMembers, studySections, resolveMySection, studySectionStats, studyRecentActivity, studyCoursesIn, studyBooksInCourse, dataLoading } = useApp();
 
   const mine = resolveMySection();
 
@@ -190,7 +191,7 @@ export function StudyHub() {
   const stats = studySectionStats(section);
   const activity = studyRecentActivity(section, 5);
   const courses = studyCoursesIn(section.id);
-  const books = studyBooksIn(section.intakeId);
+  const books = courses.flatMap((c) => studyBooksInCourse(c.id)); // section-scoped, like the other home stats
   const shownCourses = courses.slice(0, 4);
 
   return (
@@ -220,7 +221,7 @@ export function StudyHub() {
           <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-teal-100 text-teal-700"><Icon name="FolderOpen" size={22} /></span>
           <div className="flex-1">
             <p className="text-sm font-semibold text-slate-900">Open my section</p>
-            <p className="text-xs text-slate-500">Pinned items, courses, and the question bank.</p>
+            <p className="text-xs text-slate-500">Pinned notices and your subjects.</p>
           </div>
           <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-teal-500" />
         </button>
@@ -230,8 +231,8 @@ export function StudyHub() {
         >
           <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-600"><Icon name="Library" size={22} /></span>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-900">Books — Intake {intakeNumber}</p>
-            <p className="text-xs text-slate-500">Shared textbooks, references, and the syllabus.</p>
+            <p className="text-sm font-semibold text-slate-900">Study Materials</p>
+            <p className="text-xs text-slate-500">Notes, questions & books from every section — and senior intakes.</p>
           </div>
           <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-teal-500" />
         </button>
@@ -312,7 +313,7 @@ function StudyHubSetup() {
             <AccentTile icon="BookMarked" tone={ACCENT} size={48} />
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-slate-900">Join your section</h3>
-              <p className="mt-1 text-sm text-slate-500">Pick your section to request access. Your CR approves the request, then you'll see your class materials, question bank, and books.</p>
+              <p className="mt-1 text-sm text-slate-500">Pick your section to request access. Your CR approves the request, then you can share and study notes, questions, and books.</p>
             </div>
           </div>
 
@@ -478,129 +479,51 @@ export function StudyHubDept({ deptId }) {
 // ============================================================================
 // Sections + Books — one intake (tabbed)
 // ============================================================================
-function sectionState(section) {
-  if (section.isMine) return "mine";
-  if (section.accessGranted) return "granted";
-  if (section.hasCR) return "locked"; // hasCR is roster-independent (RLS hides other sections' rosters)
-  return "nocr";
-}
-
-function SectionCard({ section, viewerIsCR, pending, onRequest }) {
+// Open browse: every section in the department is viewable. Your own section's
+// roster is RLS-visible (so we can show the CR's name); others show only the
+// roster-independent hasCR signal. Content (material count) loads for the whole
+// department, so the count is always meaningful.
+function SectionCard({ section }) {
   const { studyPersonName, studySectionFileCount } = useApp();
-  const state = sectionState(section);
   const crName = section.crIds[0] ? studyPersonName(section.crIds[0]) : null;
-  const editors = section.editorIds.length;
-  const knowable = state === "mine" || state === "granted"; // roster/content visible only here
   const materials = studySectionFileCount(section);
-  // Non-mine rosters are RLS-hidden, so only claim "No CR yet" when we truly know there's none.
-  const subtitle = crName
-    ? `CR: ${crName}${editors > 0 ? ` · ${editors} editor${editors === 1 ? "" : "s"}` : ""}`
-    : section.hasCR ? null : "No CR yet";
+  const subtitle = crName ? `CR: ${crName}` : section.hasCR ? null : "No CR yet";
   const open = () => navigate(`/study-hub/section/${section.id}`);
-
   return (
-    <div className={`flex flex-col rounded-lg border bg-white p-5 shadow-sm ${state === "mine" ? "border-teal-300" : "border-slate-200"}`}>
+    <div className={`flex flex-col rounded-lg border bg-white p-5 shadow-sm ${section.isMine ? "border-teal-300" : "border-slate-200"}`}>
       <div className="flex items-start gap-3">
         <AccentTile icon="Users" tone={ACCENT} size={40} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-semibold text-slate-900">Section {section.number}</p>
-            {state === "mine" && <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-medium text-teal-700">You</span>}
+            {section.isMine && <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-medium text-teal-700">You</span>}
           </div>
           {subtitle && <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>}
         </div>
       </div>
-      {state !== "nocr" && (
-        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-          {knowable ? (
-            <span className="text-xs text-slate-400">{materials} material{materials === 1 ? "" : "s"}</span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs text-slate-400"><Icon name="Lock" size={13} /> Private</span>
-          )}
-          {state === "mine" && <Button size="sm" iconRight="ArrowRight" onClick={open}>Open</Button>}
-          {state === "granted" && <Button size="sm" variant="secondary" iconRight="ArrowRight" onClick={open}>Browse</Button>}
-          {state === "locked" && (
-            pending
-              ? <span className="inline-flex items-center gap-1.5 text-xs text-slate-400"><Icon name="Clock" size={13} /> Request pending</span>
-              : viewerIsCR
-                ? <Button size="sm" variant="secondary" icon="Lock" onClick={() => onRequest(section)}>Request access</Button>
-                : <span className="inline-flex items-center gap-1.5 text-xs text-slate-400"><Icon name="Lock" size={13} /> Locked</span>
-          )}
-        </div>
-      )}
+      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+        <span className="text-xs text-slate-400">{materials} material{materials === 1 ? "" : "s"}</span>
+        {section.isMine
+          ? <Button size="sm" iconRight="ArrowRight" onClick={open}>Open</Button>
+          : <Button size="sm" variant="secondary" iconRight="ArrowRight" onClick={open}>Browse</Button>}
+      </div>
     </div>
   );
 }
 
-function RequestAccessModal({ section, fromSectionId, onClose }) {
-  const { requestSectionAccess } = useApp();
-  const toast = useToast();
-  const [message, setMessage] = React.useState("");
-  const [saving, setSaving] = React.useState(false);
-  React.useEffect(() => { if (!section) setMessage(""); }, [section]);
-  async function send() {
-    setSaving(true);
-    const r = await requestSectionAccess(fromSectionId, section.id, message);
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't send request", message: r.error }); return; }
-    toast({ type: "success", title: "Request sent", message: `Section ${section.number}'s CR will review it.` });
-    setMessage(""); onClose();
-  }
-  return (
-    <Modal
-      open={!!section} onClose={onClose} icon="Lock" tone="blue"
-      title={section ? `Request access to Section ${section.number}` : ""}
-      description="Send a request to this section's CR. If approved, your whole section can browse it."
-      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button icon="Send" onClick={send} disabled={saving}>Send request</Button></>}
-    >
-      <Field label="Message" hint="Optional — add a reason.">
-        <Textarea rows={3} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="e.g. We missed a few classes and want to catch up." />
-      </Field>
-    </Modal>
-  );
-}
-
-function SectionsTab({ sections, viewerIsCR, myHomeSectionId }) {
-  const { studyAccessRequests } = useApp();
-  const [requestSection, setRequestSection] = React.useState(null);
-  const pendingTo = new Set(
-    studyAccessRequests.filter((r) => r.fromSectionId === myHomeSectionId && r.status === "pending").map((r) => r.toSectionId)
-  );
-  const groups = [
-    { key: "mine", label: "Your section", list: sections.filter((s) => sectionState(s) === "mine") },
-    { key: "granted", label: "Sections you can browse", list: sections.filter((s) => sectionState(s) === "granted") },
-    { key: "others", label: "All sections", list: sections.filter((s) => ["locked", "nocr"].includes(sectionState(s))) },
-  ].filter((g) => g.list.length);
-
-  return (
-    <div className="space-y-8">
-      {groups.map((g) => (
-        <section key={g.key}>
-          {groups.length > 1 && <h3 className="mb-3 text-sm font-semibold text-slate-900">{g.label}</h3>}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {g.list.map((s) => <SectionCard key={s.id} section={s} viewerIsCR={viewerIsCR} pending={pendingTo.has(s.id)} onRequest={setRequestSection} />)}
-          </div>
-        </section>
-      ))}
-      {requestSection && (
-        <RequestAccessModal section={requestSection} fromSectionId={myHomeSectionId} onClose={() => setRequestSection(null)} />
-      )}
-    </div>
-  );
-}
-
-function BookRow({ book, canEdit, onDelete }) {
-  const { studyPersonName } = useApp();
+function BookRow({ book, isManager, onDelete }) {
+  const { studyPersonName, currentUser } = useApp();
+  const canDelete = isManager || book.byId === currentUser?.id; // RLS: own add or CR
   return (
     <div className="flex items-center gap-3 p-4">
       <AccentTile icon={BOOK_KIND_ICON[book.kind] || "BookOpen"} tone={ACCENT} size={40} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-slate-900">{book.title}</p>
         <p className="truncate text-xs text-slate-500">{book.kind}{book.author ? ` · ${book.author}` : ""}{book.edition ? ` · ${book.edition}` : ""}</p>
-        <p className="truncate text-xs text-slate-400">{book.courseCode ? `${book.courseCode} · ` : ""}{studyPersonName(book.byId)} · {relativeDate(book.createdAt)}</p>
+        <p className="truncate text-xs text-slate-400">{studyPersonName(book.byId)} · {relativeDate(book.createdAt)}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        {canEdit && <DeleteIcon onClick={() => onDelete(book)} title="Remove book" />}
+        {canDelete && <DeleteIcon onClick={() => onDelete(book)} title="Remove book" />}
         {book.url
           ? <a href={book.url} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"><Icon name="ExternalLink" size={15} /> Open link</a>
           : <DownloadButton path={book.path} name={book.title} />}
@@ -617,14 +540,14 @@ function DeleteIcon({ onClick, title }) {
   );
 }
 
-function AddBookModal({ open, onClose, intakeId, intakeNumber }) {
+function AddBookModal({ open, onClose, courseId, courseCode }) {
   const { addStudyBook } = useApp();
   const toast = useToast();
-  const [form, setForm] = React.useState({ title: "", kind: "Textbook", author: "", courseCode: "", url: "", file: null });
+  const [form, setForm] = React.useState({ title: "", kind: "Textbook", author: "", url: "", file: null });
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  function reset() { setForm({ title: "", kind: "Textbook", author: "", courseCode: "", url: "", file: null }); setErrors({}); }
+  function reset() { setForm({ title: "", kind: "Textbook", author: "", url: "", file: null }); setErrors({}); }
   React.useEffect(() => { if (!open) reset(); }, [open]);
   async function submit(e) {
     if (e) e.preventDefault();
@@ -634,7 +557,7 @@ function AddBookModal({ open, onClose, intakeId, intakeNumber }) {
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await addStudyBook(intakeId, { title: form.title, kind: form.kind, author: form.author, courseCode: form.courseCode, url: form.url, file: form.file });
+    const r = await addStudyBook(courseId, { title: form.title, kind: form.kind, author: form.author, courseCode, url: form.url, file: form.file });
     setSaving(false);
     if (!r.ok) { toast({ type: "error", title: "Couldn't add book", message: r.error }); return; }
     toast({ type: "success", title: "Book added", message: form.title.trim() });
@@ -643,7 +566,7 @@ function AddBookModal({ open, onClose, intakeId, intakeNumber }) {
   return (
     <Modal
       open={open} onClose={onClose} icon="BookPlus" tone="blue" title="Add a book"
-      description={intakeNumber ? `Shared with all sections of Intake ${intakeNumber}.` : ""}
+      description={courseCode ? `Added to ${courseCode}.` : ""}
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button icon="Plus" onClick={() => submit()} disabled={saving}>Add book</Button></>}
     >
       <form onSubmit={submit} className="space-y-4">
@@ -654,9 +577,8 @@ function AddBookModal({ open, onClose, intakeId, intakeNumber }) {
           <Field label="Type" htmlFor="ab-kind">
             <Select id="ab-kind" value={form.kind} onChange={set("kind")}>{BOOK_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}</Select>
           </Field>
-          <Field label="Course code" htmlFor="ab-course" hint="Optional"><Input id="ab-course" value={form.courseCode} onChange={set("courseCode")} placeholder="e.g. CSE 309" /></Field>
+          <Field label="Author" htmlFor="ab-author" hint="Optional"><Input id="ab-author" value={form.author} onChange={set("author")} placeholder="e.g. Cormen et al." /></Field>
         </div>
-        <Field label="Author" htmlFor="ab-author" hint="Optional"><Input id="ab-author" value={form.author} onChange={set("author")} placeholder="e.g. Cormen et al." /></Field>
         <Field label="File" hint="Optional — attach a PDF, or leave empty to add a link below.">
           <DocField file={form.file} onChange={(f) => setForm((x) => ({ ...x, file: f }))} />
         </Field>
@@ -669,10 +591,10 @@ function AddBookModal({ open, onClose, intakeId, intakeNumber }) {
   );
 }
 
-function BooksTab({ books, canAdd, canEdit, onAdd, onDelete }) {
+function BooksTab({ books, canAdd, isManager, onAdd, onDelete }) {
   const [filter, setFilter] = React.useState("All");
   if (books.length === 0) {
-    return <EmptyState icon="Library" title="No books yet" message={canAdd ? "Add shared textbooks, references, and the syllabus for this intake." : "No books have been shared for this intake yet."} action={canAdd ? <Button icon="Plus" onClick={onAdd}>Add book</Button> : null} />;
+    return <EmptyState icon="Library" title="No books yet" message={canAdd ? "Add textbooks, references, or the syllabus for this subject." : "No books have been shared for this subject yet."} action={canAdd ? <Button icon="Plus" onClick={onAdd}>Add book</Button> : null} />;
   }
   const counts = { All: books.length };
   BOOK_FILTERS.slice(1).forEach((k) => { counts[k] = books.filter((b) => b.kind === k).length; });
@@ -687,19 +609,16 @@ function BooksTab({ books, canAdd, canEdit, onAdd, onDelete }) {
         <EmptyState icon="Library" title="Nothing here" message="No books in this category yet." />
       ) : (
         <Card className="divide-y divide-slate-200 overflow-hidden">
-          {shown.map((b) => <BookRow key={b.id} book={b} canEdit={canEdit} onDelete={onDelete} />)}
+          {shown.map((b) => <BookRow key={b.id} book={b} isManager={isManager} onDelete={onDelete} />)}
         </Card>
       )}
     </div>
   );
 }
 
+// Study Materials — browse a department's intakes → sections → subjects.
 export function StudyHubIntake({ intakeId }) {
-  const { studyIntakes, departments, studySectionsIn, studyBooksIn, resolveMySection, deleteStudyBook, dataLoading } = useApp();
-  const toast = useToast();
-  const [tab, setTab] = React.useState("Sections");
-  const [addOpen, setAddOpen] = React.useState(false);
-  const [deleteBook, setDeleteBook] = React.useState(null);
+  const { studyIntakes, departments, studySectionsIn, studyIntakesIn, dataLoading } = useApp();
 
   const intake = studyIntakes.find((i) => i.id === intakeId);
   const dept = intake && departments.find((d) => d.id === intake.deptId);
@@ -709,53 +628,45 @@ export function StudyHubIntake({ intakeId }) {
       <AppShell activeKey="study-hub" title="Study Hub">
         {dataLoading ? <Loading /> : (
           <EmptyState icon="Users" title="Intake not found" message="This intake may have changed."
-            action={<Button onClick={() => navigate("/study-hub/browse")}>Browse departments</Button>} />
+            action={<Button onClick={() => navigate("/study-hub")}>Back to Study Hub</Button>} />
         )}
       </AppShell>
     );
   }
 
   const sections = studySectionsIn(intake.id);
-  const books = studyBooksIn(intake.id);
-  const mine = resolveMySection();
-  const inThisIntake = !!(mine && mine.section.intakeId === intake.id);
-  const canAdd = inThisIntake && canContribute(mine.myRole);
-  const viewerIsCR = inThisIntake && isCR(mine.myRole);
-
-  async function doDeleteBook() {
-    const r = await deleteStudyBook(deleteBook.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't remove book", message: r.error }); return; }
-    toast({ type: "success", title: "Book removed", message: deleteBook.title });
-    setDeleteBook(null);
-  }
+  const intakes = studyIntakesIn(dept.id); // same-department intakes → the switcher
+  const switchIntake = (e) => { const id = e.target.value; if (id && id !== intake.id) navigate(`/study-hub/intake/${id}`); };
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
-      <button onClick={() => navigate(`/study-hub/dept/${dept.id}`)} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
-        <Icon name="ArrowLeft" size={16} /> {shortDept(dept.name)}
+      <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <Icon name="ArrowLeft" size={16} /> Study Hub
       </button>
-      <PageHeader title={`${deptCode(dept.name)} · Intake ${intake.number}`} subtitle={intake.years || ""} />
+      <PageHeader title="Study Materials" subtitle={`${shortDept(dept.name)} — notes, questions & books shared across the intake`} />
 
-      <div className="mb-5">
-        <FilterTabs options={["Sections", "Books"]} value={tab} onChange={setTab} counts={{ Sections: sections.length, Books: books.length }} />
-      </div>
+      <Card className="mb-6 p-4">
+        <Field label="Intake" hint="Switch to a senior or junior intake to study their materials.">
+          <Select value={intake.id} onChange={switchIntake}>
+            {intakes.map((i) => <option key={i.id} value={i.id}>Intake {i.number}{i.years ? ` · ${i.years}` : ""}</option>)}
+          </Select>
+        </Field>
+      </Card>
 
-      {tab === "Sections"
-        ? <SectionsTab sections={sections} viewerIsCR={viewerIsCR} myHomeSectionId={mine?.section.id} />
-        : <BooksTab books={books} canAdd={canAdd} canEdit={canAdd} onAdd={() => setAddOpen(true)} onDelete={setDeleteBook} />}
-
-      <AddBookModal open={addOpen} onClose={() => setAddOpen(false)} intakeId={intake.id} intakeNumber={intake.number} />
-      <Modal
-        open={!!deleteBook} onClose={() => setDeleteBook(null)} icon="Trash2" tone="red"
-        title="Remove this book?" description={deleteBook ? `"${deleteBook.title}" will be removed for this intake.` : ""}
-        footer={<><Button variant="secondary" onClick={() => setDeleteBook(null)}>Cancel</Button><Button variant="destructive" onClick={doDeleteBook}>Remove</Button></>}
-      />
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">Sections · Intake {intake.number}</h3>
+      {sections.length === 0 ? (
+        <EmptyState icon="Users" title="No sections yet" message="This intake has no sections on Study Hub yet." />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {sections.map((s) => <SectionCard key={s.id} section={s} />)}
+        </div>
+      )}
     </AppShell>
   );
 }
 
 // ============================================================================
-// Section home — pinned / courses / question bank
+// Section home — pinned notices / subjects (courses)
 // ============================================================================
 function PinModal({ open, onClose, sectionId }) {
   const { addStudyPin } = useApp();
@@ -832,7 +743,7 @@ function AddCourseModal({ open, onClose, sectionId }) {
   );
 }
 
-function UploadQBModal({ open, onClose, sectionId }) {
+function UploadQBModal({ open, onClose, courseId }) {
   const { uploadStudyQB } = useApp();
   const toast = useToast();
   const [form, setForm] = React.useState({ exam: "CT 1", title: "", file: null });
@@ -847,7 +758,7 @@ function UploadQBModal({ open, onClose, sectionId }) {
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await uploadStudyQB(sectionId, { exam: form.exam, title: form.title, file: form.file });
+    const r = await uploadStudyQB(courseId, { exam: form.exam, title: form.title, file: form.file });
     setSaving(false);
     if (!r.ok) { toast({ type: "error", title: "Upload failed", message: r.error }); return; }
     toast({ type: "success", title: "Uploaded", message: form.title.trim() });
@@ -969,16 +880,14 @@ function QuestionBankTab({ qb, canEdit, isManager, onUpload, onVerify, onDelete 
 
 export function StudyHubSection({ sectionId }) {
   const {
-    departments, studyIntakes, studySectionById, resolveMySection, studyPinsIn, studyCoursesIn, studyQuestionBankIn,
-    deleteStudyPin, setQBVerified, deleteStudyQB, deleteStudyCourse, dataLoading,
+    departments, studyIntakes, studySectionById, resolveMySection, studyPinsIn, studyCoursesIn,
+    deleteStudyPin, deleteStudyCourse, dataLoading,
   } = useApp();
   const toast = useToast();
   const [tab, setTab] = React.useState("Courses");
   const [pinOpen, setPinOpen] = React.useState(false);
   const [courseOpen, setCourseOpen] = React.useState(false);
-  const [qbOpen, setQbOpen] = React.useState(false);
-  const [requestSection, setRequestSection] = React.useState(null);
-  const [confirm, setConfirm] = React.useState(null); // { kind, item }
+  const [confirm, setConfirm] = React.useState(null); // { item } — subject (course) delete
 
   const section = studySectionById(sectionId);
   const intake = section && studyIntakes.find((i) => i.id === section.intakeId);
@@ -996,80 +905,65 @@ export function StudyHubSection({ sectionId }) {
   }
 
   const mine = resolveMySection();
+  const myDeptId = mine?.section.deptId;
   const myRole = section.isMine ? (mine?.myRole || "member") : "viewer";
-  const canView = section.isMine || section.accessGranted;
-  const canEdit = section.isMine && canContribute(myRole);
+  const canView = section.isMine || section.deptId === myDeptId; // department-open
+  const canAddCourse = section.isMine && canContribute(myRole);  // CR/Editor curate the subject list
   const manager = section.isMine && isCR(myRole);
-  const viewerIsCR = !!(mine && isCR(mine.myRole));
-  const backToIntake = () => navigate(`/study-hub/intake/${section.intakeId}`);
+  const back = () => navigate(section.isMine ? "/study-hub" : `/study-hub/intake/${section.intakeId}`);
 
   if (!canView) {
-    const noCR = sectionState(section) === "nocr";
     return (
       <AppShell activeKey="study-hub" title="Study Hub">
-        <button onClick={backToIntake} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
-          <Icon name="ArrowLeft" size={16} /> Intake {intake.number}
+        <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+          <Icon name="ArrowLeft" size={16} /> Study Hub
         </button>
-        {noCR ? (
-          <EmptyState icon="Users" title={`Section ${section.number} isn't set up yet`} message="No CR has been assigned to this section on Study Hub yet." />
-        ) : viewerIsCR ? (
-          <EmptyState icon="Lock" title={`Section ${section.number} is private`} message="Ask to browse this section — its CR will approve or deny the request."
-            action={<Button icon="Lock" onClick={() => setRequestSection(section)}>Request access</Button>} />
-        ) : (
-          <EmptyState icon="Lock" title={`Section ${section.number} is private`} message="Only your section's CR can request access to another section." />
-        )}
-        {requestSection && <RequestAccessModal section={requestSection} fromSectionId={mine?.section.id} onClose={() => setRequestSection(null)} />}
+        <EmptyState icon="Lock" title="Not available" message="These materials belong to another department." />
       </AppShell>
     );
   }
 
   const pins = studyPinsIn(section.id);
   const courses = studyCoursesIn(section.id);
-  const qb = studyQuestionBankIn(section.id);
 
   async function unpin(pin) {
     const r = await deleteStudyPin(pin.id);
     if (!r.ok) { toast({ type: "error", title: "Couldn't unpin", message: r.error }); return; }
     toast({ type: "success", title: "Unpinned" });
   }
-  async function verifyQB(paper) {
-    const r = await setQBVerified(paper.id, !paper.verified);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
-    toast({ type: "success", title: paper.verified ? "Marked unverified" : "Marked verified" });
-  }
   async function doConfirm() {
     if (!confirm) return;
-    const isCourse = confirm.kind === "course";
-    const r = isCourse ? await deleteStudyCourse(confirm.item.id) : await deleteStudyQB(confirm.item.id);
+    const r = await deleteStudyCourse(confirm.item.id);
     if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); setConfirm(null); return; }
-    toast({ type: "success", title: isCourse ? "Course removed" : "Paper removed", message: isCourse ? confirm.item.code : confirm.item.title });
+    toast({ type: "success", title: "Subject removed", message: confirm.item.code });
     setConfirm(null);
   }
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
-      <button onClick={backToIntake} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
-        <Icon name="ArrowLeft" size={16} /> Intake {intake.number}
+      <button onClick={back} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <Icon name="ArrowLeft" size={16} /> {section.isMine ? "Study Hub" : `Intake ${intake.number}`}
       </button>
       <SectionHeader section={section} dept={dept} intake={intake} manager={manager} />
 
-      <div className="mb-5">
-        <FilterTabs options={["Pinned", "Courses", "Question Bank"]} value={tab} onChange={setTab} counts={{ Pinned: pins.length, Courses: courses.length, "Question Bank": qb.length }} />
-      </div>
-
-      {tab === "Pinned" && <PinnedTab pins={pins} manager={manager} onPin={() => setPinOpen(true)} onUnpin={unpin} />}
-      {tab === "Courses" && <CoursesTab section={section} courses={courses} canEdit={canEdit} manager={manager} onAddCourse={() => setCourseOpen(true)} onDeleteCourse={(item) => setConfirm({ kind: "course", item })} />}
-      {tab === "Question Bank" && <QuestionBankTab qb={qb} canEdit={canEdit} isManager={manager} onUpload={() => setQbOpen(true)} onVerify={verifyQB} onDelete={(item) => setConfirm({ kind: "qb", item })} />}
+      {section.isMine ? (
+        <>
+          <div className="mb-5">
+            <FilterTabs options={["Pinned", "Courses"]} value={tab} onChange={setTab} counts={{ Pinned: pins.length, Courses: courses.length }} />
+          </div>
+          {tab === "Pinned" && <PinnedTab pins={pins} manager={manager} onPin={() => setPinOpen(true)} onUnpin={unpin} />}
+          {tab === "Courses" && <CoursesTab section={section} courses={courses} canEdit={canAddCourse} manager={manager} onAddCourse={() => setCourseOpen(true)} onDeleteCourse={(item) => setConfirm({ item })} />}
+        </>
+      ) : (
+        <CoursesTab section={section} courses={courses} canEdit={false} manager={false} onAddCourse={() => {}} onDeleteCourse={() => {}} />
+      )}
 
       <PinModal open={pinOpen} onClose={() => setPinOpen(false)} sectionId={section.id} />
       <AddCourseModal open={courseOpen} onClose={() => setCourseOpen(false)} sectionId={section.id} />
-      <UploadQBModal open={qbOpen} onClose={() => setQbOpen(false)} sectionId={section.id} />
       <Modal
         open={!!confirm} onClose={() => setConfirm(null)} icon="Trash2" tone="red"
-        title={confirm?.kind === "course" ? "Remove this course?" : "Remove this paper?"}
-        description={confirm ? (confirm.kind === "course"
-          ? `"${confirm.item.code} — ${confirm.item.name}" and all its materials will be removed for the section.`
-          : `"${confirm.item.title}" will be removed for everyone in the section.`) : ""}
+        title="Remove this subject?"
+        description={confirm ? `"${confirm.item.code} — ${confirm.item.name}" and all its notes, questions, and books will be removed for the section.` : ""}
         footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={doConfirm}>Remove</Button></>}
       />
     </AppShell>
@@ -1153,12 +1047,47 @@ function FileRow({ file, isManager, onDelete }) {
   );
 }
 
-export function StudyHubCourse({ sectionId, courseId }) {
-  const { studyCourseById, studySectionById, studyFilesIn, resolveMySection, deleteStudyMaterial, dataLoading } = useApp();
-  const toast = useToast();
+// Notes (course materials) tab — file list with a type filter.
+function NotesTab({ files, canUpload, manager, onUpload, onDelete }) {
   const [filter, setFilter] = React.useState("All");
+  const types = ["All", ...MATERIAL_TYPES.filter((t) => files.some((f) => f.type === t))];
+  const counts = { All: files.length };
+  MATERIAL_TYPES.forEach((t) => { counts[t] = files.filter((f) => f.type === t).length; });
+  const shown = filter === "All" ? files : files.filter((f) => f.type === filter);
+  return (
+    <div>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {files.length > 1 ? <FilterTabs options={types} value={filter} onChange={setFilter} counts={counts} /> : <span />}
+        {canUpload && <Button icon="Upload" onClick={onUpload}>Upload</Button>}
+      </div>
+      {files.length === 0 ? (
+        <EmptyState icon="FileText" title="No notes yet" message={canUpload ? "Upload notes, slides, or assignments for this subject." : "Nothing has been uploaded yet."}
+          action={canUpload ? <Button icon="Upload" onClick={onUpload}>Upload</Button> : null} />
+      ) : shown.length === 0 ? (
+        <EmptyState icon="FileText" title="Nothing here" message="No notes of this type yet." />
+      ) : (
+        <Card className="divide-y divide-slate-200 overflow-hidden">
+          {shown.map((f) => <FileRow key={f.id} file={f} isManager={manager} onDelete={onDelete} />)}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Subject view — one course: Notes / Questions / Books
+// ============================================================================
+export function StudyHubCourse({ sectionId, courseId }) {
+  const {
+    studyCourseById, studySectionById, studyFilesIn, studyQuestionsIn, studyBooksInCourse,
+    resolveMySection, deleteStudyMaterial, deleteStudyQB, setQBVerified, deleteStudyBook, dataLoading,
+  } = useApp();
+  const toast = useToast();
+  const [tab, setTab] = React.useState("Notes");
   const [uploadOpen, setUploadOpen] = React.useState(false);
-  const [deleteItem, setDeleteItem] = React.useState(null);
+  const [qbOpen, setQbOpen] = React.useState(false);
+  const [bookOpen, setBookOpen] = React.useState(false);
+  const [confirm, setConfirm] = React.useState(null); // { kind: 'note'|'qb'|'book', item }
 
   const course = studyCourseById(courseId);
   const section = course && studySectionById(course.sectionId);
@@ -1167,7 +1096,7 @@ export function StudyHubCourse({ sectionId, courseId }) {
     return (
       <AppShell activeKey="study-hub" title="Study Hub">
         {dataLoading ? <Loading /> : (
-          <EmptyState icon="BookOpen" title="Course not found" message="This course may have been removed."
+          <EmptyState icon="BookOpen" title="Subject not found" message="This subject may have been removed."
             action={<Button onClick={() => navigate(sectionId ? `/study-hub/section/${sectionId}` : "/study-hub")}>Back</Button>} />
         )}
       </AppShell>
@@ -1175,32 +1104,42 @@ export function StudyHubCourse({ sectionId, courseId }) {
   }
 
   const mine = resolveMySection();
+  const myDeptId = mine?.section.deptId;
   const myRole = section.isMine ? (mine?.myRole || "member") : "viewer";
-  const canView = section.isMine || section.accessGranted;
-  const canEdit = section.isMine && canContribute(myRole);
+  const canView = section.isMine || section.deptId === myDeptId; // department-open
+  const canUpload = section.isMine;                              // approved member of THIS section
   const manager = section.isMine && isCR(myRole);
 
   if (!canView) {
     return (
       <AppShell activeKey="study-hub" title="Study Hub">
-        <EmptyState icon="Lock" title="This section is private" message="You need access to this section to view its materials."
-          action={<Button onClick={() => navigate(`/study-hub/intake/${section.intakeId}`)}>Back to intake</Button>} />
+        <EmptyState icon="Lock" title="Not available" message="These materials belong to another department."
+          action={<Button onClick={() => navigate("/study-hub")}>Back to Study Hub</Button>} />
       </AppShell>
     );
   }
 
   const files = studyFilesIn(course.id);
-  const types = ["All", ...MATERIAL_TYPES.filter((t) => files.some((f) => f.type === t))];
-  const counts = { All: files.length };
-  MATERIAL_TYPES.forEach((t) => { counts[t] = files.filter((f) => f.type === t).length; });
-  const shown = filter === "All" ? files : files.filter((f) => f.type === filter);
+  const qb = studyQuestionsIn(course.id);
+  const books = studyBooksInCourse(course.id);
 
-  async function doDelete() {
-    const r = await deleteStudyMaterial(deleteItem.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); setDeleteItem(null); return; }
-    toast({ type: "success", title: "Material removed", message: deleteItem.title });
-    setDeleteItem(null);
+  async function verifyQB(paper) {
+    const r = await setQBVerified(paper.id, !paper.verified);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
+    toast({ type: "success", title: paper.verified ? "Marked unverified" : "Marked verified" });
   }
+  async function doConfirm() {
+    if (!confirm) return;
+    const { kind, item } = confirm;
+    const r = kind === "note" ? await deleteStudyMaterial(item.id)
+            : kind === "qb"   ? await deleteStudyQB(item.id)
+            :                   await deleteStudyBook(item.id);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); setConfirm(null); return; }
+    toast({ type: "success", title: "Removed", message: item.title });
+    setConfirm(null);
+  }
+
+  const confirmLabel = { note: "note", qb: "question paper", book: "book" }[confirm?.kind] || "item";
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
@@ -1209,35 +1148,42 @@ export function StudyHubCourse({ sectionId, courseId }) {
       </button>
       <PageHeader
         title={`${course.code} — ${course.name}`}
-        subtitle={`${files.length} material${files.length === 1 ? "" : "s"}`}
-        action={canEdit ? <Button icon="Upload" onClick={() => setUploadOpen(true)}>Upload</Button> : null}
+        subtitle={section.isMine ? null : `Section ${section.number} · read-only`}
       />
 
-      {files.length > 1 && <div className="mb-4"><FilterTabs options={types} value={filter} onChange={setFilter} counts={counts} /></div>}
+      <div className="mb-5">
+        <FilterTabs options={["Notes", "Questions", "Books"]} value={tab} onChange={setTab}
+          counts={{ Notes: files.length, Questions: qb.length, Books: books.length }} />
+      </div>
 
-      {files.length === 0 ? (
-        <EmptyState icon="FileText" title="No materials yet" message={canEdit ? "Upload notes, slides, or assignments for this course." : "Nothing has been uploaded for this course yet."}
-          action={canEdit ? <Button icon="Upload" onClick={() => setUploadOpen(true)}>Upload</Button> : null} />
-      ) : shown.length === 0 ? (
-        <EmptyState icon="FileText" title="Nothing here" message="No materials of this type yet." />
-      ) : (
-        <Card className="divide-y divide-slate-200 overflow-hidden">
-          {shown.map((f) => <FileRow key={f.id} file={f} isManager={manager} onDelete={setDeleteItem} />)}
-        </Card>
+      {tab === "Notes" && (
+        <NotesTab files={files} canUpload={canUpload} manager={manager}
+          onUpload={() => setUploadOpen(true)} onDelete={(item) => setConfirm({ kind: "note", item })} />
+      )}
+      {tab === "Questions" && (
+        <QuestionBankTab qb={qb} canEdit={canUpload} isManager={manager}
+          onUpload={() => setQbOpen(true)} onVerify={verifyQB} onDelete={(item) => setConfirm({ kind: "qb", item })} />
+      )}
+      {tab === "Books" && (
+        <BooksTab books={books} canAdd={canUpload} isManager={manager}
+          onAdd={() => setBookOpen(true)} onDelete={(item) => setConfirm({ kind: "book", item })} />
       )}
 
       <UploadFileModal open={uploadOpen} onClose={() => setUploadOpen(false)} courseId={course.id} courseCode={course.code} />
+      <UploadQBModal open={qbOpen} onClose={() => setQbOpen(false)} courseId={course.id} />
+      <AddBookModal open={bookOpen} onClose={() => setBookOpen(false)} courseId={course.id} courseCode={course.code} />
       <Modal
-        open={!!deleteItem} onClose={() => setDeleteItem(null)} icon="Trash2" tone="red"
-        title="Remove this material?" description={deleteItem ? `"${deleteItem.title}" will be removed for everyone in the section.` : ""}
-        footer={<><Button variant="secondary" onClick={() => setDeleteItem(null)}>Cancel</Button><Button variant="destructive" onClick={doDelete}>Remove</Button></>}
+        open={!!confirm} onClose={() => setConfirm(null)} icon="Trash2" tone="red"
+        title={`Remove this ${confirmLabel}?`}
+        description={confirm ? `"${confirm.item.title}" will be removed for everyone in the section.` : ""}
+        footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={doConfirm}>Remove</Button></>}
       />
     </AppShell>
   );
 }
 
 // ============================================================================
-// Manage section — CR only (members + access requests)
+// Manage section — CR only (members)
 // ============================================================================
 function MemberRow({ member, label, actions }) {
   const { studyPersonName } = useApp();
@@ -1298,66 +1244,12 @@ function MembersTab({ section, members, onAct }) {
   );
 }
 
-function AccessRequestsTab({ section, requests, grants, onResolve, onRevoke }) {
-  const { studySectionById, studyPersonName } = useApp();
-  return (
-    <div className="space-y-8">
-      <section>
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Pending requests{requests.length > 0 && <span className="text-slate-400"> · {requests.length}</span>}</h3>
-        {requests.length === 0 ? (
-          <EmptyState icon="Inbox" title="No pending requests" message="When another section asks to browse yours, it'll show up here." />
-        ) : (
-          <div className="space-y-4">
-            {requests.map((r) => {
-              const from = studySectionById(r.fromSectionId);
-              return (
-                <Card key={r.id} className="p-5">
-                  <div className="flex items-start gap-3">
-                    <AccentTile icon="Lock" tone={ACCENT} size={40} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900">Section {from ? from.number : "?"} wants to browse your section</p>
-                      <p className="mt-0.5 text-xs text-slate-400">{studyPersonName(r.requestedBy)} · {relativeDate(r.createdAt)}</p>
-                      {r.message && <p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">“{r.message}”</p>}
-                    </div>
-                  </div>
-                  <div className="mt-4 flex justify-end gap-2 border-t border-slate-100 pt-4">
-                    <Button variant="secondary" onClick={() => onResolve(r, false)}>Deny</Button>
-                    <Button icon="Check" onClick={() => onResolve(r, true)}>Approve</Button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {grants.length > 0 && (
-        <section>
-          <h3 className="mb-3 text-sm font-semibold text-slate-900">Sections with access</h3>
-          <Card className="divide-y divide-slate-200 overflow-hidden">
-            {grants.map((g) => {
-              const from = studySectionById(g.fromSectionId);
-              return (
-                <div key={g.id} className="flex items-center justify-between gap-2 p-4">
-                  <p className="text-sm text-slate-700">Section {from ? from.number : "?"} can browse your section</p>
-                  <Button size="sm" variant="secondary" icon="UserMinus" onClick={() => onRevoke(g)}>Revoke</Button>
-                </div>
-              );
-            })}
-          </Card>
-        </section>
-      )}
-    </div>
-  );
-}
-
 export function StudyHubManage({ sectionId }) {
   const {
-    departments, studyIntakes, studySectionById, studyMembers, studyGrants, resolveMySection, studyAccessRequestsFor,
-    approveMember, removeMember, setMemberRole, decideSectionAccess, revokeSectionGrant, dataLoading,
+    departments, studyIntakes, studySectionById, studyMembers, resolveMySection,
+    approveMember, removeMember, setMemberRole, dataLoading,
   } = useApp();
   const toast = useToast();
-  const [tab, setTab] = React.useState("Members");
 
   const section = studySectionById(sectionId);
   const intake = section && studyIntakes.find((i) => i.id === section.intakeId);
@@ -1380,21 +1272,13 @@ export function StudyHubManage({ sectionId }) {
   if (!isManager) {
     return (
       <AppShell activeKey="study-hub" title="Study Hub">
-        <EmptyState icon="Lock" title="You don't manage this section" message="Only a section's CR can manage its members and access requests."
+        <EmptyState icon="Lock" title="You don't manage this section" message="Only a section's CR can manage its members."
           action={<Button onClick={() => navigate(`/study-hub/section/${section.id}`)}>Back to section</Button>} />
       </AppShell>
     );
   }
 
   const members = studyMembers.filter((m) => m.sectionId === section.id);
-  const requests = studyAccessRequestsFor(section.id);
-  const grants = studyGrants.filter((g) => g.toSectionId === section.id); // sections allowed to browse this one
-
-  async function onRevoke(g) {
-    const r = await revokeSectionGrant(g.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't revoke", message: r.error }); return; }
-    toast({ type: "success", title: "Access revoked" });
-  }
 
   async function onAct(kind, m) {
     let r;
@@ -1406,11 +1290,6 @@ export function StudyHubManage({ sectionId }) {
     const titles = { approve: "Member approved", deny: "Request denied", remove: "Member removed", promote: "Promoted to editor", demote: "Set to member" };
     toast({ type: "success", title: titles[kind] });
   }
-  async function onResolve(req, approve) {
-    const r = await decideSectionAccess(req.id, approve);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
-    toast({ type: "success", title: approve ? "Access granted" : "Request denied" });
-  }
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
@@ -1418,15 +1297,7 @@ export function StudyHubManage({ sectionId }) {
         <Icon name="ArrowLeft" size={16} /> Section {section.number}
       </button>
       <PageHeader title={`Manage Section ${section.number}`} subtitle={`${deptCode(dept.name)} · Intake ${intake.number}`} />
-
-      <div className="mb-5">
-        <FilterTabs options={["Members", "Access requests"]} value={tab} onChange={setTab}
-          counts={{ Members: members.length, "Access requests": requests.length }} />
-      </div>
-
-      {tab === "Members"
-        ? <MembersTab section={section} members={members} onAct={onAct} />
-        : <AccessRequestsTab section={section} requests={requests} grants={grants} onResolve={onResolve} onRevoke={onRevoke} />}
+      <MembersTab section={section} members={members} onAct={onAct} />
     </AppShell>
   );
 }

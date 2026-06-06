@@ -102,7 +102,7 @@ function AssignCRModal({ section, students, onClose, onAssign }) {
     <Modal
       open={!!section} onClose={onClose} icon="UserPlus" tone="blue"
       title={section ? `Assign CR — Section ${section.number}` : ""}
-      description="The CR runs this section: approves members, promotes editors, and handles cross-section access."
+      description="The CR runs this section: approves members and promotes editors."
       footer={students.length
         ? <><Button variant="secondary" onClick={onClose}>Cancel</Button><Button icon="UserPlus" onClick={submit} disabled={saving}>Assign CR</Button></>
         : <Button variant="secondary" onClick={onClose}>Close</Button>}
