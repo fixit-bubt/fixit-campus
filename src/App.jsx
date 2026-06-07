@@ -42,6 +42,7 @@ import { BloodDonation, RegisterDonor, RequestBlood } from "./screens/blood/Bloo
 import { MedicalCenter, DoctorBooking, MyAppointments, DoctorQueue } from "./screens/medical/Medical.jsx";
 import { StudyHub, StudyHubBrowse, StudyHubDept, StudyHubIntake, StudyHubSection, StudyHubCourse, StudyHubManage } from "./screens/studyhub/StudyHub.jsx";
 import { ClubsHome, ClubHome, ClubMembers, ClubPostForm, ClubManage, AdminManageClubs } from "./screens/clubs/Clubs.jsx";
+import { Jobs, JobDetail, JobForm, ModerateJobs, SavedJobs } from "./screens/jobs/Jobs.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -189,6 +190,16 @@ export default function App() {
   if (path === "/events") return <RequireAuth><Events /></RequireAuth>;
   if (path === "/events/new") return <RequireAuth><EventForm /></RequireAuth>;
   if ((m = matchRoute("/events/:id", path))) return <RequireAuth><EventDetail id={m.id} /></RequireAuth>;
+
+  // ---- Campus Life: Jobs & Internships (any signed-in user browses; posting is
+  // gated by canPostJobs in the form; moderation is admin-only) ----
+  // Order matters: literal /jobs/new and /jobs/moderate precede /jobs/:id.
+  if (path === "/jobs") return <RequireAuth><Jobs /></RequireAuth>;
+  if (path === "/jobs/new") return <RequireAuth><JobForm /></RequireAuth>;
+  if (path === "/jobs/saved") return <RequireAuth><SavedJobs /></RequireAuth>;
+  if (path === "/jobs/moderate") return <RequireRole role="Admin"><ModerateJobs /></RequireRole>;
+  if ((m = matchRoute("/jobs/:id/edit", path))) return <RequireAuth><JobForm id={m.id} /></RequireAuth>;
+  if ((m = matchRoute("/jobs/:id", path))) return <RequireAuth><JobDetail id={m.id} /></RequireAuth>;
 
   // ---- Community: Marketplace (any signed-in user) ----
   if (path === "/marketplace") return <RequireAuth><Marketplace /></RequireAuth>;

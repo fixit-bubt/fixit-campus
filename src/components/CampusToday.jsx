@@ -8,6 +8,7 @@ import { MarketplaceWidget } from "../screens/marketplace/Marketplace.jsx";
 import { RideWidget } from "../screens/rides/Rides.jsx";
 import { BloodWidget } from "../screens/blood/Blood.jsx";
 import { ClubsWidget } from "../screens/clubs/Clubs.jsx";
+import { JobsWidget } from "../screens/jobs/Jobs.jsx";
 
 // ============================================================================
 // CampusToday — at-a-glance hub of the campus-life features. Each widget is a
@@ -28,6 +29,7 @@ export function CampusToday({ className = "" }) {
         <RideWidget />
         <BloodWidget />
         <ClubsWidget />
+        <JobsWidget />
       </div>
     </div>
   );
