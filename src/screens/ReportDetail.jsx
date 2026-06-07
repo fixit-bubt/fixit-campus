@@ -88,9 +88,9 @@ export default function ReportDetail({ id }) {
     );
   }
 
-  const role = currentUser.role;
-  const isOwner = report.studentId === currentUser.id;
-  const isAssigned = report.assignedStaffId === currentUser.id;
+  const role = currentUser?.role;
+  const isOwner = report.studentId === currentUser?.id;
+  const isAssigned = report.assignedStaffId === currentUser?.id;
   const staff = report.assignedStaffId ? userById(report.assignedStaffId) : null;
   const reporter = userById(report.studentId);
   const activeKey = role === "Admin" ? "all-reports" : role === "Staff" ? "assigned" : "reports";

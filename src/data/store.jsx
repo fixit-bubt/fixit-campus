@@ -1298,7 +1298,7 @@ export function AppProvider({ children }) {
   async function markAnnouncementRead(id) {
     if (!currentUser) return;
     const note = announcements.find((a) => a.id === id);
-    if (!note || note.readBy.includes(currentUser.id)) return;
+    if (!note || (note.readBy ?? []).includes(currentUser.id)) return;
     const { error } = await supabase
       .from("announcement_reads")
       .upsert(
