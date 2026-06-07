@@ -96,7 +96,7 @@ export function RideShare() {
     .filter((r) => {
       const q = area.trim().toLowerCase();
       if (!q) return true;
-      return r.origin.toLowerCase().includes(q) || r.destination.toLowerCase().includes(q);
+      return (r.origin ?? "").toLowerCase().includes(q) || (r.destination ?? "").toLowerCase().includes(q);
     })
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 

@@ -195,25 +195,25 @@ export default function ItemDetail({ id }) {
     const approvedClaim = claims.find((c) => c.itemId === item.id && c.status === "Approved");
     let targetId = null;
     if (approvedClaim) {
-      if (item.posterId === currentUser.id) targetId = approvedClaim.claimantId;
-      else if (approvedClaim.claimantId === currentUser.id) targetId = item.posterId;
+      if (item.posterId === currentUser?.id) targetId = approvedClaim.claimantId;
+      else if (approvedClaim.claimantId === currentUser?.id) targetId = item.posterId;
     }
     if (targetId) getContact(targetId).then((c) => { if (active) setContact(c); });
     else setContact(null);
     return () => { active = false; };
-  }, [item?.id, claims, currentUser.id]);
+  }, [item?.id, claims, currentUser?.id]);
 
   // Poster only: resolve each claim's private proof path to a signed view URL.
   useEffect(() => {
     let active = true;
-    if (!item || item.posterId !== currentUser.id) { setProofUrls({}); return; }
+    if (!item || item.posterId !== currentUser?.id) { setProofUrls({}); return; }
     const withProof = claims.filter((c) => c.itemId === item.id && c.proof);
     if (!withProof.length) { setProofUrls({}); return; }
     Promise.all(withProof.map((c) => getProofUrl(c.proof).then((url) => [c.id, url]))).then((pairs) => {
       if (active) setProofUrls(Object.fromEntries(pairs));
     });
     return () => { active = false; };
-  }, [item?.id, claims, currentUser.id]);
+  }, [item?.id, claims, currentUser?.id]);
 
   if (!item) {
     return (
@@ -224,8 +224,8 @@ export default function ItemDetail({ id }) {
   }
 
   const poster = userById(item.posterId);
-  const isPoster = item.posterId === currentUser.id;
-  const myClaim = claims.find((c) => c.itemId === item.id && c.claimantId === currentUser.id);
+  const isPoster = item.posterId === currentUser?.id;
+  const myClaim = claims.find((c) => c.itemId === item.id && c.claimantId === currentUser?.id);
   const itemClaims = isPoster
     ? claims
         .filter((c) => c.itemId === item.id)

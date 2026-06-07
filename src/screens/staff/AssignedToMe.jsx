@@ -12,7 +12,7 @@ export default function AssignedToMe() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
 
-  const mine = reports.filter((r) => r.assignedStaffId === currentUser.id);
+  const mine = reports.filter((r) => r.assignedStaffId === currentUser?.id);
   const statuses = ["All", "Open", "In Progress", "Resolved"];
   const counts = statuses.reduce((acc, s) => {
     acc[s] = s === "All" ? mine.length : mine.filter((r) => r.status === s).length;

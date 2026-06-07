@@ -67,7 +67,7 @@ function sortFaculty(list) {
     if (a.isChairman !== b.isChairman) return a.isChairman ? -1 : 1;
     const r = rankIndex(a.designation) - rankIndex(b.designation);
     if (r !== 0) return r;
-    return a.name.localeCompare(b.name);
+    return (a.name ?? "").localeCompare(b.name ?? "");
   });
 }
 
@@ -230,13 +230,13 @@ export function FacultyDirectory() {
     let list = faculty;
     if (interest) {
       const si = interest.toLowerCase();
-      list = list.filter((f) => f.interests.some((i) => i.toLowerCase() === si));
+      list = list.filter((f) => (f.interests ?? []).some((i) => (i ?? "").toLowerCase() === si));
     }
     if (q) {
       list = list.filter((f) =>
-        f.name.toLowerCase().includes(q) ||
-        f.designation.toLowerCase().includes(q) ||
-        f.interests.some((i) => i.toLowerCase().includes(q))
+        (f.name ?? "").toLowerCase().includes(q) ||
+        (f.designation ?? "").toLowerCase().includes(q) ||
+        (f.interests ?? []).some((i) => (i ?? "").toLowerCase().includes(q))
       );
     }
     return sortFaculty(list);
@@ -385,7 +385,7 @@ export function DepartmentFaculty({ deptNo }) {
   const q = query.trim().toLowerCase();
   const roster = sortFaculty(faculty.filter((f) => f.departmentId === dept.id));
   const list = q
-    ? roster.filter((f) => f.name.toLowerCase().includes(q) || f.designation.toLowerCase().includes(q) || f.interests.some((i) => i.toLowerCase().includes(q)))
+    ? roster.filter((f) => (f.name ?? "").toLowerCase().includes(q) || (f.designation ?? "").toLowerCase().includes(q) || (f.interests ?? []).some((i) => (i ?? "").toLowerCase().includes(q)))
     : roster;
 
   return (

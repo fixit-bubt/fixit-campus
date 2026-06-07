@@ -73,6 +73,8 @@ export default function ReportDetail({ id }) {
   const [assignTo, setAssignTo] = useState("");
   const [confirm, setConfirm] = useState(null); // 'delete' | 'reject' | 'close'
   const [busy, setBusy] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [assignBusy, setAssignBusy] = useState(false);
 
   useEffect(() => {
     if (report) setAssignTo(report.assignedStaffId || "");
@@ -100,13 +102,23 @@ export default function ReportDetail({ id }) {
     if (res.ok) toast({ type: "success", title: `Marked ${status}`, message: `${id} updated.` });
     else toast({ type: "error", title: "Couldn't update status", message: res.error });
   }
+  async function advanceStatus(status) {
+    if (statusBusy) return;
+    setStatusBusy(true);
+    try { await setStatus(status); } finally { setStatusBusy(false); }
+  }
   async function assign() {
-    if (!assignTo) return;
-    const staffName = staffList.find((s) => s.id === assignTo)?.name;
-    const wasAssigned = !!report.assignedStaffId;
-    const res = await assignReport(id, assignTo);
-    if (res.ok) toast({ type: "success", title: wasAssigned ? "Report reassigned" : "Report assigned", message: `Assigned to ${staffName}.` });
-    else toast({ type: "error", title: "Couldn't assign", message: res.error });
+    if (!assignTo || assignBusy) return;
+    setAssignBusy(true);
+    try {
+      const staffName = staffList.find((s) => s.id === assignTo)?.name;
+      const wasAssigned = !!report.assignedStaffId;
+      const res = await assignReport(id, assignTo);
+      if (res.ok) toast({ type: "success", title: wasAssigned ? "Report reassigned" : "Report assigned", message: `Assigned to ${staffName}.` });
+      else toast({ type: "error", title: "Couldn't assign", message: res.error });
+    } finally {
+      setAssignBusy(false);
+    }
   }
   async function doConfirm() {
     if (busy) return;
@@ -192,8 +204,8 @@ export default function ReportDetail({ id }) {
                 <h3 className="text-sm font-semibold text-slate-900">Update status</h3>
                 <p className="mt-1 text-sm text-slate-500">Move this report forward as you work on it.</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {report.status === "Open" && <Button icon={Play} onClick={() => setStatus("In Progress")}>Start work (In Progress)</Button>}
-                  {report.status === "In Progress" && <Button icon={Check} onClick={() => setStatus("Resolved")}>Mark Resolved</Button>}
+                  {report.status === "Open" && <Button icon={Play} disabled={statusBusy} onClick={() => advanceStatus("In Progress")}>Start work (In Progress)</Button>}
+                  {report.status === "In Progress" && <Button icon={Check} disabled={statusBusy} onClick={() => advanceStatus("Resolved")}>Mark Resolved</Button>}
                 </div>
               </Card>
             )}
@@ -210,7 +222,7 @@ export default function ReportDetail({ id }) {
                         <option value="">Select a staff member</option>
                         {staffList.map((s) => <option key={s.id} value={s.id}>{s.name} — {s.dept}</option>)}
                       </Select>
-                      <Button icon={UserCheck} disabled={!assignTo || assignTo === report.assignedStaffId} onClick={assign}>
+                      <Button icon={UserCheck} disabled={!assignTo || assignTo === report.assignedStaffId || assignBusy} onClick={assign}>
                         {report.assignedStaffId ? "Reassign" : "Assign"}
                       </Button>
                     </div>

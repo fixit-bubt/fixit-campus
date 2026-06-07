@@ -9,7 +9,7 @@ import { CampusToday } from "../../components/CampusToday.jsx";
 
 export default function StaffDashboard() {
   const { currentUser, reports, dataLoading } = useApp();
-  const mine = reports.filter((r) => r.assignedStaffId === currentUser.id);
+  const mine = reports.filter((r) => r.assignedStaffId === currentUser?.id);
   const count = (s) => mine.filter((r) => r.status === s).length;
   const active = mine
     .filter((r) => r.status === "Open" || r.status === "In Progress")
@@ -19,7 +19,7 @@ export default function StaffDashboard() {
   return (
     <AppShell activeKey="dashboard" title="Dashboard">
       <PageHeader
-        title={`Welcome, ${currentUser.name.split(" ")[0]}`}
+        title={`Welcome, ${(currentUser?.name ?? "").split(" ")[0] || "there"}`}
         subtitle={`Your maintenance queue${currentUser.dept ? ` · ${currentUser.dept}` : ""}.`}
       />
 

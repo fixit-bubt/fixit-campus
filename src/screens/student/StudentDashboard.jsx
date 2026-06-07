@@ -17,7 +17,7 @@ export default function StudentDashboard() {
   return (
     <AppShell activeKey="dashboard" title="Dashboard">
       <PageHeader
-        title={`Welcome back, ${currentUser.name.split(" ")[0]}`}
+        title={`Welcome back, ${(currentUser.name ?? "").split(" ")[0] || "there"}`}
         subtitle="Here's what's happening with your campus reports."
         action={<Button icon={CirclePlus} onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
       />

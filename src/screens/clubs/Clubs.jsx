@@ -224,7 +224,7 @@ function AddMembersModal({ clubId, existingUserIds, onClose }) {
     (u) =>
       u.role === "Student" &&
       !existingUserIds.has(u.id) &&
-      (query.trim() === "" || u.name.toLowerCase().includes(query.toLowerCase()))
+      (query.trim() === "" || (u.name ?? "").toLowerCase().includes(query.toLowerCase()))
   );
 
   const toggle = (u) =>
@@ -1201,7 +1201,7 @@ function ReassignPresidentModal({ club, users, clubMembers, onSave, onClose }) {
     (u) =>
       u.role === "Student" &&
       u.id !== currentPresident?.userId &&
-      (query === "" || u.name.toLowerCase().includes(query.toLowerCase()))
+      (query === "" || (u.name ?? "").toLowerCase().includes(query.toLowerCase()))
   );
 
   async function handleSave() {
