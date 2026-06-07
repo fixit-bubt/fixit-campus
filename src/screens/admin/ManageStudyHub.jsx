@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useApp } from "../../data/store.jsx";
 import {
-  Card, Button, Modal, Field, Input, Select, EmptyState, Loading, useToast,
+  Card, Button, Modal, Field, Input, Select, Textarea, EmptyState, Loading, useToast, Avatar,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
+import { FilterTabs } from "../../components/FilterTabs.jsx";
 import { Icon } from "../../components/Icon.jsx";
+import { relativeDate } from "../../lib/helpers.js";
 
 // ============================================================================
 // Admin — Study Hub catalogue & CRs
@@ -120,6 +122,64 @@ function AssignCRModal({ section, students, onClose, onAssign }) {
   );
 }
 
+function RejectModal({ req, onClose, onReject }) {
+  const toast = useToast();
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  React.useEffect(() => { if (!req) setNote(""); }, [req]);
+  async function submit() {
+    if (saving) return;
+    setSaving(true);
+    const r = await onReject(req.id, note);
+    setSaving(false);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't reject", message: r.error }); return; }
+    toast({ type: "success", title: "Request rejected" });
+    setNote(""); onClose();
+  }
+  return (
+    <Modal
+      open={!!req} onClose={onClose} icon="X" tone="red"
+      title="Reject section request"
+      description={req ? `Section ${req.sectionNumber} — ${req.intakeLabel}` : ""}
+      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button variant="destructive" onClick={submit} disabled={saving}>Reject</Button></>}
+    >
+      <Field label="Note for student" hint="Optional — explain why.">
+        <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. This section already exists." />
+      </Field>
+    </Modal>
+  );
+}
+
+function PendingRequestsTab({ requests, onApprove, onReject, personName }) {
+  if (requests.length === 0) {
+    return <EmptyState icon="Inbox" title="No pending requests" message="Student requests to create a new section will appear here." />;
+  }
+  return (
+    <div className="space-y-3">
+      {requests.map((req) => (
+        <Card key={req.id} className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar name={personName(req.requestedBy)} size={36} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900">{personName(req.requestedBy)}</p>
+                <p className="truncate text-xs text-slate-500">
+                  {req.intakeLabel} · Section {req.sectionNumber}
+                </p>
+                <p className="text-xs text-slate-400">{relativeDate(req.createdAt)}</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button size="sm" variant="secondary" icon="X" onClick={() => onReject(req)}>Reject</Button>
+              <Button size="sm" icon="Check" onClick={() => onApprove(req)}>Approve</Button>
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 function SectionAdminCard({ section, crMembers, onAssign, onRemoveCR }) {
   return (
     <Card className="p-4">
@@ -154,15 +214,18 @@ function SectionAdminCard({ section, crMembers, onAssign, onRemoveCR }) {
 export default function ManageStudyHub() {
   const {
     departments, studyIntakesIn, studySectionsIn, studyMembers, users, studyPersonName,
-    addStudyIntake, addStudySection, assignSectionCR, setMemberRole, dataLoading,
+    addStudyIntake, addStudySection, assignSectionCR, setMemberRole,
+    studySectionRequestsAll, approveSectionRequest, rejectSectionRequest, dataLoading,
   } = useApp();
   const toast = useToast();
+  const [tab, setTab] = useState("Catalogue");
   const [deptId, setDeptId] = useState("");
   const [intakeId, setIntakeId] = useState("");
   const [showAddIntake, setShowAddIntake] = useState(false);
   const [showAddSection, setShowAddSection] = useState(false);
   const [assignSection, setAssignSection] = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(null);
+  const [rejectReq, setRejectReq] = useState(null);
 
   const activeDeptId = deptId || departments[0]?.id || "";
   const activeDept = departments.find((d) => d.id === activeDeptId);
@@ -171,15 +234,31 @@ export default function ManageStudyHub() {
   const activeIntake = intakes.find((i) => i.id === activeIntakeId);
   const sections = activeIntakeId ? studySectionsIn(activeIntakeId) : [];
   const students = users.filter((u) => u.role === "Student");
+  const pendingRequests = studySectionRequestsAll();
+
   const crMembersFor = (sectionId) =>
     studyMembers
       .filter((m) => m.sectionId === sectionId && m.role === "cr" && m.status === "approved")
       .map((m) => ({ id: m.id, name: studyPersonName(m.userId) }));
 
+  async function doApprove(req) {
+    const r = await approveSectionRequest(req.id);
+    if (!r.ok) { toast({ type: "error", title: "Approval failed", message: r.error }); return; }
+    toast({
+      type: "success",
+      title: "Section created",
+      message: `Section ${req.sectionNumber} ready. Join code: ${r.joinCode}`,
+    });
+  }
+
+  async function doRejectReq(reqId, note) {
+    return await rejectSectionRequest(reqId, note);
+  }
+
   async function doRemoveCR() {
     const cr = confirmRemove;
     if (!cr) return;
-    const r = await setMemberRole(cr.id, "member"); // drop the CR role; keep them as a member
+    const r = await setMemberRole(cr.id, "member");
     if (!r.ok) { toast({ type: "error", title: "Couldn't remove CR", message: r.error }); setConfirmRemove(null); return; }
     toast({ type: "success", title: "CR role removed", message: cr.name });
     setConfirmRemove(null);
@@ -196,52 +275,72 @@ export default function ManageStudyHub() {
 
   return (
     <AppShell activeKey="studyhub-admin" title="Study Hub">
-      <PageHeader title="Study Hub" subtitle="Manage intakes, sections, and class representatives. Admins set the catalogue and CRs — section content stays with students." />
+      <PageHeader title="Study Hub" subtitle="Manage intakes, sections, CRs, and student section requests." />
 
-      <Card className="p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <Field label="Department" className="sm:flex-1">
-            <Select value={activeDeptId} onChange={(e) => { setDeptId(e.target.value); setIntakeId(""); }}>
-              {departments.map((d) => <option key={d.id} value={d.id}>{shortDept(d.name)}</option>)}
-            </Select>
-          </Field>
-          <Field label="Intake" className="sm:flex-1">
-            <Select value={activeIntakeId} onChange={(e) => setIntakeId(e.target.value)} disabled={!intakes.length}>
-              {intakes.length
-                ? intakes.map((i) => <option key={i.id} value={i.id}>Intake {i.number}{i.years ? ` · ${i.years}` : ""}</option>)
-                : <option value="">No intakes yet</option>}
-            </Select>
-          </Field>
-          <Button variant="secondary" icon="Plus" onClick={() => setShowAddIntake(true)} disabled={!activeDeptId}>Add intake</Button>
-        </div>
-      </Card>
-
-      <div className="mt-8">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">
-            Sections{activeIntake ? ` · Intake ${activeIntake.number}` : ""}
-          </h3>
-          <Button icon="Plus" onClick={() => setShowAddSection(true)} disabled={!activeIntakeId}>Add section</Button>
-        </div>
-
-        {!activeIntakeId ? (
-          <EmptyState icon="Users" title="No intake selected" message="Add an intake for this department to start creating sections." />
-        ) : sections.length === 0 ? (
-          <EmptyState icon="Users" title="No sections yet" message="Add the first section for this intake." />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {sections.map((s) => (
-              <SectionAdminCard
-                key={s.id}
-                section={s}
-                crMembers={crMembersFor(s.id)}
-                onAssign={() => setAssignSection(s)}
-                onRemoveCR={setConfirmRemove}
-              />
-            ))}
-          </div>
-        )}
+      <div className="mb-6">
+        <FilterTabs
+          options={["Catalogue", "Pending Requests"]}
+          value={tab} onChange={setTab}
+          counts={{ "Pending Requests": pendingRequests.length > 0 ? pendingRequests.length : undefined }}
+        />
       </div>
+
+      {tab === "Pending Requests" && (
+        <PendingRequestsTab
+          requests={pendingRequests}
+          onApprove={doApprove}
+          onReject={setRejectReq}
+          personName={studyPersonName}
+        />
+      )}
+
+      {tab === "Catalogue" && (
+        <>
+          <Card className="p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <Field label="Department" className="sm:flex-1">
+                <Select value={activeDeptId} onChange={(e) => { setDeptId(e.target.value); setIntakeId(""); }}>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{shortDept(d.name)}</option>)}
+                </Select>
+              </Field>
+              <Field label="Intake" className="sm:flex-1">
+                <Select value={activeIntakeId} onChange={(e) => setIntakeId(e.target.value)} disabled={!intakes.length}>
+                  {intakes.length
+                    ? intakes.map((i) => <option key={i.id} value={i.id}>Intake {i.number}{i.years ? ` · ${i.years}` : ""}</option>)
+                    : <option value="">No intakes yet</option>}
+                </Select>
+              </Field>
+              <Button variant="secondary" icon="Plus" onClick={() => setShowAddIntake(true)} disabled={!activeDeptId}>Add intake</Button>
+            </div>
+          </Card>
+
+          <div className="mt-8">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Sections{activeIntake ? ` · Intake ${activeIntake.number}` : ""}
+              </h3>
+              <Button icon="Plus" onClick={() => setShowAddSection(true)} disabled={!activeIntakeId}>Add section</Button>
+            </div>
+
+            {!activeIntakeId ? (
+              <EmptyState icon="Users" title="No intake selected" message="Add an intake for this department to start creating sections." />
+            ) : sections.length === 0 ? (
+              <EmptyState icon="Users" title="No sections yet" message="Add the first section for this intake." />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {sections.map((s) => (
+                  <SectionAdminCard
+                    key={s.id} section={s}
+                    crMembers={crMembersFor(s.id)}
+                    onAssign={() => setAssignSection(s)}
+                    onRemoveCR={setConfirmRemove}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       <AddIntakeModal
         open={showAddIntake} onClose={() => setShowAddIntake(false)} deptName={activeDept?.name}
@@ -255,6 +354,7 @@ export default function ManageStudyHub() {
         section={assignSection} students={students}
         onClose={() => setAssignSection(null)} onAssign={assignSectionCR}
       />
+      <RejectModal req={rejectReq} onClose={() => setRejectReq(null)} onReject={doRejectReq} />
       <Modal
         open={!!confirmRemove} onClose={() => setConfirmRemove(null)} icon="UserMinus" tone="red"
         title="Remove CR role?"

@@ -174,7 +174,7 @@ function CRBanner({ section, sectionNumber }) {
 // Landing — your section overview / pending / first-run setup
 // ============================================================================
 export function StudyHub() {
-  const { currentUser, studyMembers, studySections, resolveMySection, studySectionStats, studyRecentActivity, studyCoursesIn, studyBooksInCourse, dataLoading } = useApp();
+  const { currentUser, studyMembers, studySections, resolveMySection, studySectionStats, studyRecentActivity, studyCoursesIn, studyBooksInCourse, dataLoading, myPendingCreateRequest } = useApp();
 
   const mine = resolveMySection();
 
@@ -182,8 +182,10 @@ export function StudyHub() {
     if (dataLoading && studySections.length === 0) {
       return <AppShell activeKey="study-hub" title="Study Hub"><Loading /></AppShell>;
     }
-    const myRow = studyMembers.find((m) => m.userId === currentUser?.id);
-    if (myRow && myRow.status === "pending") return <StudyHubPending />;
+    const pendingCreate = myPendingCreateRequest();
+    const myRow = studyMembers.find((m) => m.userId === currentUser?.id && m.status === "pending");
+    if (myRow) return <StudyHubPending />;
+    if (pendingCreate) return <StudyHubPending pendingCreate />;
     return <StudyHubSetup />;
   }
 
@@ -278,33 +280,81 @@ export function StudyHub() {
 }
 
 // ============================================================================
-// First-run setup — request to join a section
+// First-run setup — join by code / find section / request new section
 // ============================================================================
 function StudyHubSetup() {
-  const { departments, studyIntakesIn, studySectionsIn, requestJoinSection } = useApp();
+  const { departments, studyIntakesIn, studySectionsIn, requestJoinSection, joinByCode, requestCreateSection } = useApp();
   const toast = useToast();
+
+  const [mode, setMode] = React.useState("join");       // "join" | "create"
+  const [joinMode, setJoinMode] = React.useState("code"); // "code" | "find"
+
+  // Join-by-code state
+  const [code, setCode] = React.useState("");
+  const [codeError, setCodeError] = React.useState("");
+  const [codeSaving, setCodeSaving] = React.useState(false);
+
+  // Find-section state
   const [deptId, setDeptId] = React.useState("");
   const [intakeId, setIntakeId] = React.useState("");
   const [sectionId, setSectionId] = React.useState("");
-  const [saving, setSaving] = React.useState(false);
+  const [findSaving, setFindSaving] = React.useState(false);
 
+  // Create-section state
+  const [crDeptId, setCrDeptId] = React.useState("");
+  const [crIntakeId, setCrIntakeId] = React.useState("");
+  const [crNumber, setCrNumber] = React.useState("");
+  const [crError, setCrError] = React.useState("");
+  const [crSaving, setCrSaving] = React.useState(false);
+
+  // Derived — find
   const activeDeptId = deptId || departments[0]?.id || "";
   const intakes = activeDeptId ? studyIntakesIn(activeDeptId) : [];
   const activeIntakeId = intakeId && intakes.some((i) => i.id === intakeId) ? intakeId : (intakes[0]?.id || "");
   const sections = activeIntakeId ? studySectionsIn(activeIntakeId) : [];
   const activeSectionId = sectionId && sections.some((s) => s.id === sectionId) ? sectionId : (sections[0]?.id || "");
 
-  async function submit(e) {
+  // Derived — create
+  const crActiveDeptId = crDeptId || departments[0]?.id || "";
+  const crIntakes = crActiveDeptId ? studyIntakesIn(crActiveDeptId) : [];
+  const crActiveIntakeId = crIntakeId && crIntakes.some((i) => i.id === crIntakeId) ? crIntakeId : (crIntakes[0]?.id || "");
+
+  async function submitCode(e) {
     if (e) e.preventDefault();
-    if (!activeSectionId || saving) return;
-    setSaving(true);
+    const trimmed = code.trim().toUpperCase();
+    if (trimmed.length !== 6) { setCodeError("Enter the 6-character code from your CR."); return; }
+    if (codeSaving) return;
+    setCodeSaving(true); setCodeError("");
+    try {
+      const r = await joinByCode(trimmed);
+      if (!r.ok) { setCodeError(r.error || "Invalid code — check it and try again."); return; }
+      toast({ type: "success", title: "Joined!", message: "You're now a member of the section." });
+    } finally { setCodeSaving(false); }
+  }
+
+  async function submitFind(e) {
+    if (e) e.preventDefault();
+    if (!activeSectionId || findSaving) return;
+    setFindSaving(true);
     try {
       const r = await requestJoinSection(activeSectionId);
       if (!r.ok) { toast({ type: "error", title: "Couldn't send request", message: r.error }); return; }
       toast({ type: "success", title: "Request sent", message: "Your CR will approve you shortly." });
-    } finally {
-      setSaving(false);
-    }
+    } finally { setFindSaving(false); }
+  }
+
+  async function submitCreate(e) {
+    if (e) e.preventDefault();
+    const num = parseInt(crNumber, 10);
+    if (!crActiveIntakeId) { setCrError("Select an intake."); return; }
+    if (!num || num < 1 || num > 99) { setCrError("Enter a valid section number (1–99)."); return; }
+    if (crSaving) return;
+    setCrSaving(true); setCrError("");
+    try {
+      const r = await requestCreateSection(crActiveDeptId, crActiveIntakeId, num);
+      if (!r.ok) { setCrError(r.error || "Couldn't send request."); return; }
+      toast({ type: "success", title: "Request sent", message: "Admin will review and create your section." });
+    } finally { setCrSaving(false); }
   }
 
   return (
@@ -312,51 +362,130 @@ function StudyHubSetup() {
       <div className="mx-auto max-w-lg">
         <PageHeader title="Study Hub" />
         <Card className="p-6">
-          <div className="flex items-start gap-4">
+          <div className="mb-6 flex items-start gap-4">
             <AccentTile icon="BookMarked" tone={ACCENT} size={48} />
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-slate-900">Join your section</h3>
-              <p className="mt-1 text-sm text-slate-500">Pick your section to request access. Your CR approves the request, then you can share and study notes, questions, and books.</p>
+              <h3 className="text-sm font-semibold text-slate-900">Get started</h3>
+              <p className="mt-1 text-sm text-slate-500">Join your class section to share notes, questions, and books — or request a new section if yours hasn't been created yet.</p>
             </div>
           </div>
 
-          <form onSubmit={submit} className="mt-5 space-y-5">
-            <Field label="Department" htmlFor="su-dept">
-              <Select id="su-dept" value={activeDeptId} onChange={(e) => { setDeptId(e.target.value); setIntakeId(""); setSectionId(""); }}>
-                {departments.map((d) => <option key={d.id} value={d.id}>{shortDept(d.name)}</option>)}
-              </Select>
-            </Field>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Intake" htmlFor="su-intake">
-                <Select id="su-intake" value={activeIntakeId} onChange={(e) => { setIntakeId(e.target.value); setSectionId(""); }} disabled={!intakes.length}>
-                  {intakes.length ? intakes.map((i) => <option key={i.id} value={i.id}>Intake {i.number}</option>) : <option value="">No intakes</option>}
+          <SegmentToggle
+            options={[{ value: "join", label: "Join a section", icon: "LogIn" }, { value: "create", label: "Request new section", icon: "Plus" }]}
+            value={mode}
+            onChange={(v) => { setMode(v); setCodeError(""); setCrError(""); }}
+          />
+
+          {mode === "join" && (
+            <div className="mt-5 space-y-5">
+              <SegmentToggle
+                options={[{ value: "code", label: "I have a code", icon: "Hash" }, { value: "find", label: "Find my section", icon: "Search" }]}
+                value={joinMode}
+                onChange={(v) => { setJoinMode(v); setCodeError(""); }}
+              />
+
+              {joinMode === "code" && (
+                <form onSubmit={submitCode} className="space-y-4">
+                  <Field label="Join code" htmlFor="su-code" error={codeError} hint="6-character code from your CR.">
+                    <Input
+                      id="su-code" value={code} error={!!codeError} maxLength={6}
+                      onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "")); setCodeError(""); }}
+                      placeholder="e.g. A3B7C2"
+                      className="tracking-widest font-mono text-center text-lg"
+                    />
+                  </Field>
+                  <div className="flex justify-end">
+                    <Button type="submit" icon="LogIn" disabled={codeSaving || code.length !== 6}>
+                      {codeSaving ? <Spinner size={16} /> : "Join now"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {joinMode === "find" && (
+                <form onSubmit={submitFind} className="space-y-4">
+                  <Field label="Department" htmlFor="su-dept">
+                    <Select id="su-dept" value={activeDeptId} onChange={(e) => { setDeptId(e.target.value); setIntakeId(""); setSectionId(""); }}>
+                      {departments.map((d) => <option key={d.id} value={d.id}>{shortDept(d.name)}</option>)}
+                    </Select>
+                  </Field>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Intake" htmlFor="su-intake">
+                      <Select id="su-intake" value={activeIntakeId} onChange={(e) => { setIntakeId(e.target.value); setSectionId(""); }} disabled={!intakes.length}>
+                        {intakes.length ? intakes.map((i) => <option key={i.id} value={i.id}>Intake {i.number}</option>) : <option value="">No intakes</option>}
+                      </Select>
+                    </Field>
+                    <Field label="Section" htmlFor="su-section">
+                      <Select id="su-section" value={activeSectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!sections.length}>
+                        {sections.length ? sections.map((s) => <option key={s.id} value={s.id}>Section {s.number}</option>) : <option value="">No sections</option>}
+                      </Select>
+                    </Field>
+                  </div>
+                  {!sections.length && (
+                    <p className="text-xs text-slate-400">No sections here yet — switch to "Request new section" to create yours.</p>
+                  )}
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <button type="button" onClick={() => navigate("/study-hub/browse")} className="text-sm font-medium text-slate-500 hover:text-slate-700">Browse first</button>
+                    <Button type="submit" icon="Send" disabled={findSaving || !activeSectionId}>
+                      {findSaving ? <Spinner size={16} /> : "Request to join"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {mode === "create" && (
+            <form onSubmit={submitCreate} className="mt-5 space-y-4">
+              <p className="text-xs text-slate-500">Tell us your intake and the section number you want. Admin will review and set you as Class Representative.</p>
+              <Field label="Department" htmlFor="cr-dept">
+                <Select id="cr-dept" value={crActiveDeptId} onChange={(e) => { setCrDeptId(e.target.value); setCrIntakeId(""); }}>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{shortDept(d.name)}</option>)}
                 </Select>
               </Field>
-              <Field label="Section" htmlFor="su-section">
-                <Select id="su-section" value={activeSectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!sections.length}>
-                  {sections.length ? sections.map((s) => <option key={s.id} value={s.id}>Section {s.number}</option>) : <option value="">No sections</option>}
-                </Select>
-              </Field>
-            </div>
-            {!sections.length && (
-              <p className="text-xs text-slate-400">No sections here yet — check back once your department sets them up.</p>
-            )}
-            <div className="flex items-center justify-between gap-3 pt-1">
-              <button type="button" onClick={() => navigate("/study-hub/browse")} className="text-sm font-medium text-slate-500 hover:text-slate-700">Browse first</button>
-              <Button type="submit" icon="Send" disabled={saving || !activeSectionId}>
-                {saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Request to join"}
-              </Button>
-            </div>
-          </form>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Intake" htmlFor="cr-intake">
+                  <Select id="cr-intake" value={crActiveIntakeId} onChange={(e) => setCrIntakeId(e.target.value)} disabled={!crIntakes.length}>
+                    {crIntakes.length ? crIntakes.map((i) => <option key={i.id} value={i.id}>Intake {i.number}</option>) : <option value="">No intakes</option>}
+                  </Select>
+                </Field>
+                <Field label="Section number" htmlFor="cr-num" error={crError}>
+                  <Input id="cr-num" type="number" min={1} max={99} value={crNumber} error={!!crError}
+                    onChange={(e) => { setCrNumber(e.target.value); setCrError(""); }} placeholder="e.g. 3" />
+                </Field>
+              </div>
+              {crError && <p className="text-xs text-red-600">{crError}</p>}
+              <div className="flex justify-end pt-1">
+                <Button type="submit" icon="Send" disabled={crSaving}>
+                  {crSaving ? <Spinner size={16} /> : "Request to create"}
+                </Button>
+              </div>
+            </form>
+          )}
         </Card>
       </div>
     </AppShell>
   );
 }
 
-// --- Pending: requested, awaiting CR approval -------------------------------
-function StudyHubPending() {
+// --- Pending: awaiting CR approval (join) or admin approval (section creation) ---
+function StudyHubPending({ pendingCreate }) {
   const { currentUser, studyMembers, studySectionById } = useApp();
+  if (pendingCreate) {
+    return (
+      <AppShell activeKey="study-hub" title="Study Hub">
+        <div className="mx-auto max-w-lg">
+          <PageHeader title="Study Hub" />
+          <EmptyState
+            icon="Clock"
+            title="Section creation request pending"
+            message="Admin is reviewing your request to create a new section. You'll become the Class Representative once it's approved."
+            action={<Button variant="secondary" icon="LayoutGrid" onClick={() => navigate("/study-hub/browse")}>Browse departments</Button>}
+          />
+        </div>
+      </AppShell>
+    );
+  }
   const row = studyMembers.find((m) => m.userId === currentUser.id && m.status === "pending");
   const section = row && studySectionById(row.sectionId);
   return (
@@ -497,9 +626,10 @@ function SectionCard({ section }) {
       <div className="flex items-start gap-3">
         <AccentTile icon="Users" tone={ACCENT} size={40} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <p className="truncate text-sm font-semibold text-slate-900">Section {section.number}</p>
             {section.isMine && <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-medium text-teal-700">You</span>}
+            {!section.isPublic && <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500"><Icon name="Lock" size={9} /> Private</span>}
           </div>
           {subtitle && <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>}
         </div>
@@ -924,15 +1054,26 @@ export function StudyHubSection({ sectionId }) {
   }
 
   const mine = resolveMySection();
-  const myDeptId = mine?.section.deptId;
+  const myDeptId = mine?.section?.deptId;
+  const myIntakeId = mine?.section?.intakeId;
+  const sectionIntake = studyIntakes.find((i) => i.id === section.intakeId);
   const myRole = section.isMine ? (mine?.myRole || "member") : "viewer";
-  const canView = section.isMine || (myDeptId != null && section.deptId === myDeptId); // department-open
-  const canAddCourse = section.isMine && canContribute(myRole);  // CR/Editor curate the subject list
+  const canView =
+    section.isMine ||
+    (section.isPublic && section.intakeId === myIntakeId) ||
+    (section.isPublic && sectionIntake?.isPublic && myDeptId != null && section.deptId === myDeptId);
+  const canAddCourse = section.isMine && canContribute(myRole);
   const manager = section.isMine && isCR(myRole);
   const back = () => navigate(section.isMine ? "/study-hub" : `/study-hub/intake/${section.intakeId}`);
 
   if (!canView) {
     const noMembership = !mine;
+    const isPrivate = !section.isPublic;
+    const message = noMembership
+      ? "Join a section first to browse Study Hub materials."
+      : isPrivate
+      ? "This section is private — only its members can view the content."
+      : "These materials belong to another department.";
     return (
       <AppShell activeKey="study-hub" title="Study Hub">
         <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
@@ -940,8 +1081,8 @@ export function StudyHubSection({ sectionId }) {
         </button>
         <EmptyState
           icon="Lock"
-          title="Not available"
-          message={noMembership ? "Join a section first to browse Study Hub materials." : "These materials belong to another department."}
+          title={isPrivate ? "Private section" : "Not available"}
+          message={message}
           action={noMembership ? <Button onClick={() => navigate("/study-hub")}>Go to Study Hub</Button> : null}
         />
       </AppShell>
@@ -1108,7 +1249,7 @@ function NotesTab({ files, canUpload, manager, onUpload, onDelete }) {
 // ============================================================================
 export function StudyHubCourse({ sectionId, courseId }) {
   const {
-    studyCourseById, studySectionById, studyFilesIn, studyQuestionsIn, studyBooksInCourse,
+    studyCourseById, studySectionById, studyIntakes, studyFilesIn, studyQuestionsIn, studyBooksInCourse,
     resolveMySection, deleteStudyMaterial, deleteStudyQB, setQBVerified, deleteStudyBook, dataLoading,
   } = useApp();
   const toast = useToast();
@@ -1133,20 +1274,31 @@ export function StudyHubCourse({ sectionId, courseId }) {
   }
 
   const mine = resolveMySection();
-  const myDeptId = mine?.section.deptId;
+  const myDeptId = mine?.section?.deptId;
+  const myIntakeId = mine?.section?.intakeId;
+  const sectionIntake = studyIntakes.find((i) => i.id === section.intakeId);
   const myRole = section.isMine ? (mine?.myRole || "member") : "viewer";
-  const canView = section.isMine || (myDeptId != null && section.deptId === myDeptId); // department-open
-  const canUpload = section.isMine && canContribute(myRole);     // CR/Editor of THIS section
+  const canView =
+    section.isMine ||
+    (section.isPublic && section.intakeId === myIntakeId) ||
+    (section.isPublic && sectionIntake?.isPublic && myDeptId != null && section.deptId === myDeptId);
+  const canUpload = section.isMine && canContribute(myRole);
   const manager = section.isMine && isCR(myRole);
 
   if (!canView) {
     const noMembership = !mine;
+    const isPrivate = !section.isPublic;
+    const message = noMembership
+      ? "Join a section first to browse Study Hub materials."
+      : isPrivate
+      ? "This section is private — only its members can view the content."
+      : "These materials belong to another department.";
     return (
       <AppShell activeKey="study-hub" title="Study Hub">
         <EmptyState
           icon="Lock"
-          title="Not available"
-          message={noMembership ? "Join a section first to browse Study Hub materials." : "These materials belong to another department."}
+          title={isPrivate ? "Private section" : "Not available"}
+          message={message}
           action={<Button onClick={() => navigate("/study-hub")}>Back to Study Hub</Button>}
         />
       </AppShell>
@@ -1278,12 +1430,142 @@ function MembersTab({ section, members, onAct }) {
   );
 }
 
+// ============================================================================
+// Settings tab — join code, section privacy, intake vote
+// ============================================================================
+function SettingsTab({ section, intake, onTogglePublic }) {
+  const { intakeVoteFor, intakeBallotsFor, myBallotFor, initiateIntakeVote, castIntakeVote } = useApp();
+  const toast = useToast();
+  const [copied, setCopied] = React.useState(false);
+  const [voteLoading, setVoteLoading] = React.useState(false);
+
+  const vote = intakeVoteFor(intake.id);
+  const ballots = vote ? intakeBallotsFor(vote.id) : [];
+  const myBallot = vote ? myBallotFor(vote.id) : null;
+
+  async function copyCode() {
+    if (!section.joinCode) return;
+    try {
+      await navigator.clipboard.writeText(section.joinCode);
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    } catch { toast({ type: "error", title: "Copy failed", message: "Copy the code manually." }); }
+  }
+
+  async function startVote(targetPublic) {
+    setVoteLoading(true);
+    try {
+      const r = await initiateIntakeVote(intake.id, targetPublic);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't start vote", message: r.error }); return; }
+      toast({ type: "success", title: "Vote started", message: "All CRs in this intake can now cast their ballot." });
+    } finally { setVoteLoading(false); }
+  }
+
+  async function castVote(inFavor) {
+    setVoteLoading(true);
+    try {
+      const r = await castIntakeVote(vote.id, inFavor);
+      if (!r.ok) { toast({ type: "error", title: "Vote failed", message: r.error }); return; }
+      toast({ type: "success", title: "Vote recorded" });
+    } finally { setVoteLoading(false); }
+  }
+
+  const inFavorCount = ballots.filter((b) => b.inFavor).length;
+  const againstCount = ballots.filter((b) => !b.inFavor).length;
+  const closesAt = vote ? new Date(vote.closesAt).toLocaleDateString("en-BD", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null;
+
+  return (
+    <div className="space-y-8">
+      {/* Join code */}
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-slate-900">Join code</h3>
+        <Card className="p-4">
+          {section.joinCode ? (
+            <div className="flex items-center gap-3">
+              <span className="flex-1 rounded-lg bg-slate-100 px-4 py-2.5 font-mono text-xl font-bold tracking-[0.25em] text-slate-900 text-center">{section.joinCode}</span>
+              <Button variant="secondary" icon={copied ? "Check" : "Copy"} onClick={copyCode}>{copied ? "Copied!" : "Copy"}</Button>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No join code assigned yet — contact admin.</p>
+          )}
+          <p className="mt-2 text-xs text-slate-400">Share this with students so they can join your section instantly.</p>
+        </Card>
+      </section>
+
+      {/* Section visibility */}
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-slate-900">Section visibility</h3>
+        <Card className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-900">{section.isPublic ? "Public" : "Private"}</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {section.isPublic
+                  ? "Same-intake students (or whole dept if intake is public) can browse your section's materials."
+                  : "Only approved members can see this section's content."}
+              </p>
+            </div>
+            <Button size="sm" variant="secondary" icon={section.isPublic ? "Lock" : "Unlock"} onClick={() => onTogglePublic(!section.isPublic)}>
+              {section.isPublic ? "Make private" : "Make public"}
+            </Button>
+          </div>
+        </Card>
+      </section>
+
+      {/* Intake visibility vote */}
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-slate-900">Intake visibility</h3>
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${intake.isPublic ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+              <Icon name={intake.isPublic ? "Globe" : "Lock"} size={10} />
+              {intake.isPublic ? "Public intake" : "Private intake"}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500">
+            {intake.isPublic
+              ? "Students from other intakes in your department can see your sections (when they're public)."
+              : "Only same-intake students can see public sections here."}
+          </p>
+
+          {vote ? (
+            <>
+              <p className="text-sm font-medium text-slate-900">Active vote: make intake {vote.targetPublic ? "public" : "private"}</p>
+              <div className="flex gap-4 text-sm">
+                <span className="text-emerald-700 font-medium">{inFavorCount} in favour</span>
+                <span className="text-red-600 font-medium">{againstCount} against</span>
+              </div>
+              <p className="text-xs text-slate-400">Closes {closesAt}</p>
+              {myBallot ? (
+                <p className="text-xs text-slate-500">Your vote: <strong>{myBallot.inFavor ? "In favour" : "Against"}</strong></p>
+              ) : (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" icon="ThumbsDown" onClick={() => castVote(false)} disabled={voteLoading}>Against</Button>
+                  <Button size="sm" icon="ThumbsUp" onClick={() => castVote(true)} disabled={voteLoading}>In favour</Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div>
+              {intake.isPublic
+                ? <Button size="sm" variant="secondary" icon="Lock" onClick={() => startVote(false)} disabled={voteLoading}>Vote to make private</Button>
+                : <Button size="sm" icon="Globe" onClick={() => startVote(true)} disabled={voteLoading}>Vote to make public</Button>}
+            </div>
+          )}
+        </Card>
+      </section>
+    </div>
+  );
+}
+
 export function StudyHubManage({ sectionId }) {
   const {
     departments, studyIntakes, studySectionById, studyMembers, resolveMySection,
-    approveMember, removeMember, setMemberRole, dataLoading,
+    approveMember, removeMember, setMemberRole, toggleSectionPublic, checkExpiredVotes, dataLoading,
   } = useApp();
   const toast = useToast();
+  const [tab, setTab] = React.useState("Members");
+
+  React.useEffect(() => { checkExpiredVotes(); }, []); // auto-close expired intake votes on load
 
   const section = studySectionById(sectionId);
   const intake = section && studyIntakes.find((i) => i.id === section.intakeId);
@@ -1313,6 +1595,7 @@ export function StudyHubManage({ sectionId }) {
   }
 
   const members = studyMembers.filter((m) => m.sectionId === section.id);
+  const pendingCount = members.filter((m) => m.status === "pending").length;
 
   async function onAct(kind, m) {
     let r;
@@ -1325,13 +1608,27 @@ export function StudyHubManage({ sectionId }) {
     toast({ type: "success", title: titles[kind] });
   }
 
+  async function handleTogglePublic(isPublic) {
+    const r = await toggleSectionPublic(section.id, isPublic);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
+    toast({ type: "success", title: isPublic ? "Section is now public" : "Section is now private" });
+  }
+
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
       <button onClick={() => navigate(`/study-hub/section/${section.id}`)} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
         <Icon name="ArrowLeft" size={16} /> Section {section.number}
       </button>
       <PageHeader title={`Manage Section ${section.number}`} subtitle={`${deptCode(dept.name)} · Intake ${intake.number}`} />
-      <MembersTab section={section} members={members} onAct={onAct} />
+      <div className="mb-5">
+        <FilterTabs
+          options={["Members", "Settings"]}
+          value={tab} onChange={setTab}
+          counts={{ Members: pendingCount > 0 ? pendingCount : undefined }}
+        />
+      </div>
+      {tab === "Members" && <MembersTab section={section} members={members} onAct={onAct} />}
+      {tab === "Settings" && <SettingsTab section={section} intake={intake} onTogglePublic={handleTogglePublic} />}
     </AppShell>
   );
 }
