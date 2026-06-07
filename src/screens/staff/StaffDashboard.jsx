@@ -20,7 +20,7 @@ export default function StaffDashboard() {
     <AppShell activeKey="dashboard" title="Dashboard">
       <PageHeader
         title={`Welcome, ${(currentUser?.name ?? "").split(" ")[0] || "there"}`}
-        subtitle={`Your maintenance queue${currentUser.dept ? ` · ${currentUser.dept}` : ""}.`}
+        subtitle={`Your maintenance queue${currentUser?.dept ? ` · ${currentUser.dept}` : ""}.`}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">

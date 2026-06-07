@@ -22,7 +22,7 @@ export default function EditReport({ id }) {
     }
   }, [report, id]);
 
-  if (!report || report.studentId !== currentUser.id || report.status !== "Open") return null;
+  if (!currentUser || !report || report.studentId !== currentUser.id || report.status !== "Open") return null;
 
   async function handleSubmit(form) {
     const res = await updateReport(id, form);
