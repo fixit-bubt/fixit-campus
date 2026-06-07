@@ -675,7 +675,7 @@ export function AppProvider({ children }) {
       supabase.from("study_pins").select("*").order("created_at", { ascending: false }),
       supabase.rpc("study_sections_with_cr"),
       supabase.from("study_section_requests").select("*").order("created_at", { ascending: false }),
-      supabase.from("study_intake_votes").select("*").order("opens_at", { ascending: false }),
+      supabase.from("study_intake_votes").select("*").order("created_at", { ascending: false }),
       supabase.from("study_intake_vote_ballots").select("*"),
     ]);
     if (!stillCurrent(uid)) return;
