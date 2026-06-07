@@ -109,7 +109,7 @@ function DonorContact({ userId }) {
 }
 
 // --- Donor card -------------------------------------------------------------
-export function DonorCard({ donor }) {
+export function DonorCard({ donor, isAdmin }) {
   const eligible = isEligible(donor);
   return (
     <Card className="p-5">
@@ -126,7 +126,7 @@ export function DonorCard({ donor }) {
       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
         {eligible ? <Badge tone="emerald"><span className="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>Available to donate</Badge>
           : <Badge tone="amber">Eligible {fmtDate(eligibleDate(donor.lastDonated))}</Badge>}
-        {eligible && <DonorContact userId={donor.userId} />}
+        {(eligible || isAdmin) && <DonorContact userId={donor.userId} />}
       </div>
     </Card>
   );
@@ -164,6 +164,7 @@ function BloodRequesterContact({ code, fallbackName }) {
 // --- Main (tabs) ------------------------------------------------------------
 export function BloodDonation() {
   const { currentUser, bloodRequests, donors, userById, pledgeBlood, dataLoading } = useApp();
+  const isAdmin = currentUser?.role === "Admin";
   const toast = useToast();
   const [tab, setTab] = React.useState("Requests");
   const [groupFilter, setGroupFilter] = React.useState("All");
@@ -189,13 +190,14 @@ export function BloodDonation() {
 
   return (
     <AppShell activeKey="blood" title="Blood Donation">
-      <PageHeader title="Blood Donation" subtitle="Find donors and respond to urgent blood requests on campus."
-        action={
+      <PageHeader title="Blood Donation"
+        subtitle={isAdmin ? "View all donors and active blood requests on campus." : "Find donors and respond to urgent blood requests on campus."}
+        action={isAdmin ? null : (
           <div className="flex gap-2">
             <Button variant="secondary" icon="UserPlus" onClick={() => navigate("/blood/register")}>{myDonor ? "Update donor info" : "Register as donor"}</Button>
             <Button icon="Plus" onClick={() => navigate("/blood/request")}>Request blood</Button>
           </div>
-        } />
+        )} />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <FilterTabs options={["Requests", "Donors"]} value={tab} onChange={setTab} counts={{ Requests: bloodRequests.length, Donors: donors.length }} />
@@ -234,7 +236,7 @@ export function BloodDonation() {
             <EmptyState icon="Users" title="No donors yet" message="Be the first to join the donor registry." action={<Button icon="UserPlus" onClick={() => navigate("/blood/register")}>Register as donor</Button>} />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {donorList.map((d) => <DonorCard key={d.id} donor={{ ...d, name: userById(d.userId)?.name || "Student" }} />)}
+              {donorList.map((d) => <DonorCard key={d.id} donor={{ ...d, name: userById(d.userId)?.name || "Student" }} isAdmin={isAdmin} />)}
             </div>
           )}
         </>

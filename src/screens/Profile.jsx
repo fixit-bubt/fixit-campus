@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Save, Mail, Check } from "lucide-react";
+import { Save, Mail, Check, Lock } from "lucide-react";
 import { useApp } from "../data/store.jsx";
 import { Card, Button, Field, Input, FileUpload, Avatar, Badge, Spinner, useToast } from "../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../components/AppShell.jsx";
+import { Icon } from "../components/Icon.jsx";
 
 // Small on/off switch.
 function Toggle({ checked, onChange, label, hint }) {
@@ -20,9 +21,27 @@ function Toggle({ checked, onChange, label, hint }) {
 }
 
 export default function Profile() {
-  const { currentUser, updateProfile } = useApp();
+  const { currentUser, updateProfile, changePassword } = useApp();
   const toast = useToast();
   const isStudent = currentUser.role === "Student";
+
+  // Change-password form state
+  const [pwForm, setPwForm] = useState({ newPw: "", confirmPw: "" });
+  const [pwError, setPwError] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+
+  async function submitPassword(e) {
+    e.preventDefault();
+    if (pwForm.newPw.length < 8) { setPwError("Password must be at least 8 characters."); return; }
+    if (pwForm.newPw !== pwForm.confirmPw) { setPwError("Passwords don't match."); return; }
+    setPwError("");
+    setPwSaving(true);
+    const res = await changePassword(pwForm.newPw);
+    setPwSaving(false);
+    if (!res.ok) { setPwError(res.error); return; }
+    toast({ type: "success", title: "Password changed", message: "Your new password is active." });
+    setPwForm({ newPw: "", confirmPw: "" });
+  }
 
   const [form, setForm] = useState({
     name: currentUser.name || "",
@@ -146,6 +165,31 @@ export default function Profile() {
               {saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : saved ? "Saved" : "Save changes"}
             </Button>
           </div>
+        </form>
+
+        {/* Change password */}
+        <form onSubmit={submitPassword} className="mt-6">
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-5">
+              <Icon name="Lock" size={18} className="text-slate-500" />
+              <h3 className="text-base font-semibold text-slate-900">Change Password</h3>
+            </div>
+            <div className="space-y-4">
+              <Field label="New password" htmlFor="pw-new" hint="Minimum 8 characters." error={pwError && pwForm.newPw.length > 0 ? undefined : undefined}>
+                <Input id="pw-new" type="password" placeholder="Enter new password" value={pwForm.newPw}
+                  onChange={(e) => { setPwError(""); setPwForm((f) => ({ ...f, newPw: e.target.value })); }} />
+              </Field>
+              <Field label="Confirm new password" htmlFor="pw-confirm" error={pwError || undefined}>
+                <Input id="pw-confirm" type="password" placeholder="Repeat new password" value={pwForm.confirmPw} error={!!pwError}
+                  onChange={(e) => { setPwError(""); setPwForm((f) => ({ ...f, confirmPw: e.target.value })); }} />
+              </Field>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <Button type="submit" icon={Lock} disabled={pwSaving || !pwForm.newPw}>
+                {pwSaving ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Change password"}
+              </Button>
+            </div>
+          </Card>
         </form>
       </div>
     </AppShell>

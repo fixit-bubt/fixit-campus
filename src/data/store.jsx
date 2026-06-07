@@ -24,6 +24,7 @@ function toUser(p) {
     email: p.email ?? "",
     role: cap(p.role),
     dept: p.department ?? undefined,
+    expertise: p.expertise ?? null,
     whatsapp: p.whatsapp ?? "",
     intake: p.intake ?? "",
     section: p.section ?? "",
@@ -166,6 +167,7 @@ function toRide(r, requesterIds) {
     recurring: r.recurring || [],
     notes: r.notes || "",
     requesterIds: requesterIds || [],
+    expiresAt: r.expires_at || null,
   };
 }
 
@@ -217,6 +219,11 @@ function toBusRoute(r) {
     toDepartures: r.to_departures || [],
     fromDepartures: r.from_departures || [],
   };
+}
+
+// DB musallah_locations row -> screen shape.
+function toMusallahLocation(r) {
+  return { id: r.id, name: r.name, floorDesc: r.floor_desc, sort: r.sort };
 }
 
 // DB doctors row -> screen shape (start_time/end_time -> start/end).
@@ -350,6 +357,7 @@ export function AppProvider({ children }) {
 
   // ---- ride share (LIVE Supabase) ----
   const [rides, setRides] = useState([]);
+  const [ridesPosted, setRidesPosted] = useState(0);
 
   // ---- blood donation (LIVE Supabase) ----
   const [bloodRequests, setBloodRequests] = useState([]);
@@ -363,8 +371,9 @@ export function AppProvider({ children }) {
   const [busRoutes, setBusRoutes] = useState([]);
   const [savedBusRoutes, setSavedBusRoutes] = useState([]); // route ids this user starred
 
-  // ---- prayer times (LIVE Supabase) ----
+  // ---- prayer times + musallah locations (LIVE Supabase) ----
   const [prayerTimes, setPrayerTimes] = useState([]);
+  const [musallahLocations, setMusallahLocations] = useState([]);
 
   // ---- faculty directory (LIVE Supabase) ----
   const [departments, setDepartments] = useState([]);
@@ -545,18 +554,24 @@ export function AppProvider({ children }) {
   }, [currentUser?.id]);
 
   // Rides + seat requests (aggregated into each ride's `requesterIds` array).
+  // Calls delete_expired_rides() first (lazy deletion of 8/12-hr-old posts).
   const loadRides = useCallback(async () => {
     if (!currentUser) { setRides([]); return; }
     const uid = currentUser.id;
-    const [{ data: rows, error: e1 }, { data: reqs, error: e2 }] = await Promise.all([
+    await supabase.rpc("delete_expired_rides");
+    const now = new Date().toISOString();
+    const [{ data: rows, error: e1 }, { data: reqs, error: e2 }, { data: stat }] = await Promise.all([
       supabase.from("rides").select("*").order("date", { ascending: true }),
       supabase.from("ride_requests").select("ride_id, requester_id"),
+      supabase.from("app_stats").select("value").eq("key", "rides_posted").maybeSingle(),
     ]);
     if (!stillCurrent(uid)) return;
     if (e1 || e2) { setDataError(true); return; }
     const byRide = {};
     (reqs || []).forEach((r) => { (byRide[r.ride_id] ||= []).push(r.requester_id); });
-    setRides((rows || []).map((r) => toRide(r, byRide[r.id])));
+    const mapped = (rows || []).map((r) => toRide(r, byRide[r.id]));
+    setRides(mapped.filter((r) => !r.expiresAt || r.expiresAt > now));
+    if (stat) setRidesPosted(Number(stat.value) || 0);
   }, [currentUser?.id]);
 
   // Blood requests (+ pledges aggregated into each request's `pledges` array)
@@ -606,14 +621,18 @@ export function AppProvider({ children }) {
     setSavedBusRoutes((saved || []).map((s) => s.route_id));
   }, [currentUser?.id]);
 
-  // Prayer times config (Azan + Jamaat per prayer), ordered by `sort`.
+  // Prayer times config (Azan + Jamaat per prayer) + musallah locations.
   const loadPrayer = useCallback(async () => {
-    if (!currentUser) { setPrayerTimes([]); return; }
+    if (!currentUser) { setPrayerTimes([]); setMusallahLocations([]); return; }
     const uid = currentUser.id;
-    const { data, error } = await supabase.from("prayer_times").select("*").order("sort");
+    const [{ data: times, error: e1 }, { data: locs, error: e2 }] = await Promise.all([
+      supabase.from("prayer_times").select("*").order("sort"),
+      supabase.from("musallah_locations").select("*").order("sort"),
+    ]);
     if (!stillCurrent(uid)) return;
-    if (error) { setDataError(true); return; }
-    setPrayerTimes(data || []);
+    if (e1 || e2) { setDataError(true); return; }
+    setPrayerTimes(times || []);
+    setMusallahLocations((locs || []).map(toMusallahLocation));
   }, [currentUser?.id]);
 
   // Faculty directory: departments + faculty (both reference data, RLS = any
@@ -827,7 +846,7 @@ export function AppProvider({ children }) {
     }
   }
 
-  async function createUser({ name, email, password, role, dept }) {
+  async function createUser({ name, email, password, role, dept, expertise }) {
     const tmp = createClient(
       import.meta.env.VITE_SUPABASE_URL,
       import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -854,7 +873,7 @@ export function AppProvider({ children }) {
     // Set the role (the signup trigger created the row as 'student'); verify it took.
     const { data: updated, error: e2 } = await supabase
       .from("profiles")
-      .update({ role: lower(role), department: dept?.trim() || null })
+      .update({ role: lower(role), department: dept?.trim() || null, expertise: expertise?.trim() || null })
       .eq("id", data.user.id)
       .select("id");
     await tmp.auth.signOut();
@@ -920,6 +939,13 @@ export function AppProvider({ children }) {
     const { data } = await supabase.from("profiles").select("*").eq("id", currentUser.id).single();
     setCurrentUser(toUser(data));
     await refreshUsers();
+    return { ok: true };
+  }
+
+  // Change the signed-in user's password via Supabase Auth.
+  async function changePassword(newPassword) {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   }
 
@@ -1794,6 +1820,29 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
+  // Admin-only (RLS): musallah location CRUD.
+  async function addMusallahLocation(name, floorDesc) {
+    const sort = musallahLocations.length + 1;
+    const { data, error } = await supabase
+      .from("musallah_locations").insert({ name, floor_desc: floorDesc, sort }).select().single();
+    if (error) return { ok: false, error: error.message };
+    setMusallahLocations((s) => [...s, toMusallahLocation(data)].sort((a, b) => a.sort - b.sort));
+    return { ok: true };
+  }
+  async function updateMusallahLocation(id, name, floorDesc) {
+    const { error } = await supabase
+      .from("musallah_locations").update({ name, floor_desc: floorDesc }).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    setMusallahLocations((s) => s.map((l) => l.id === id ? { ...l, name, floorDesc } : l));
+    return { ok: true };
+  }
+  async function deleteMusallahLocation(id) {
+    const { error } = await supabase.from("musallah_locations").delete().eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    setMusallahLocations((s) => s.filter((l) => l.id !== id));
+    return { ok: true };
+  }
+
   // ══════════════════════════════════════════════════════════════════════════
   // Study Hub (LIVE Supabase, migration 0046)
   // ══════════════════════════════════════════════════════════════════════════
@@ -2401,11 +2450,11 @@ export function AppProvider({ children }) {
     listings, addListing, updateListing, deleteListing, markListingSold, getListingContact,
     events, canCreateEvents, addEvent, toggleRSVP, deleteEvent,
     jobs, jobReports, jobBookmarks, canPostJobs, addJob, updateJob, withdrawJob, removeJob, restoreJob, reportJob, toggleJobBookmark,
-    rides, addRide, requestSeat, deleteRide, getRideContact,
+    rides, ridesPosted, addRide, requestSeat, deleteRide, getRideContact,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor, getDonorContact, getBloodRequesterContact,
     doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
     busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
-    prayerTimes, updatePrayerJamaat,
+    prayerTimes, updatePrayerJamaat, musallahLocations, addMusallahLocation, updateMusallahLocation, deleteMusallahLocation,
     departments, faculty, facultyBookmarks, facultyById, departmentByNumber, departmentById, toggleFacultyBookmark, updateFaculty, uploadFacultyPhoto,
     // study hub (data)
     studyIntakes, studySections, studyMembers, studyCourses, studyMaterials, studyQuestionBank, studyBooks, studyPins,
@@ -2437,7 +2486,7 @@ export function AppProvider({ children }) {
     login, register, logout, createUser,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
-    setRole, updateProfile, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact, getProofUrl,
+    setRole, updateProfile, changePassword, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact, getProofUrl,
     getStudentDirectory, sendConnectionRequest, respondConnection, cancelConnectionRequest,
   };
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -43,7 +43,6 @@ const BRANCH_ORDER = [
 const LINK_META = {
   scholar: { label: "Google Scholar", icon: "GraduationCap" },
   researchgate: { label: "ResearchGate", icon: "BookOpen" },
-  linkedin: { label: "LinkedIn", icon: "Linkedin" },
   orcid: { label: "ORCID", icon: "Fingerprint" },
   website: { label: "Website", icon: "Globe" },
 };
