@@ -107,6 +107,7 @@ export function AnnouncementDetail({ id }) {
   const toast = useToast();
   const note = announcements.find((a) => a.id === id);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
 
   // Depend on `note` (not just `id`) so it still fires when the notice arrives
   // after an async load; markAnnouncementRead is idempotent so re-runs are safe.
@@ -165,10 +166,10 @@ export function AnnouncementDetail({ id }) {
         </Card>
       </div>
 
-      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} icon="Trash2" tone="red"
+      <Modal open={confirmDelete} onClose={() => !deleting && setConfirmDelete(false)} icon="Trash2" tone="red"
         title="Delete this notice?" description={`"${note.title}" will be removed from the notice board.`}
-        footer={<><Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          <Button variant="destructive" onClick={async () => { const r = await deleteAnnouncement(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Notice deleted" }); navigate("/announcements"); }}>Delete notice</Button></>} />
+        footer={<><Button variant="secondary" disabled={deleting} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          <Button variant="destructive" disabled={deleting} onClick={async () => { if (deleting) return; setDeleting(true); try { const r = await deleteAnnouncement(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Notice deleted" }); navigate("/announcements"); } finally { setDeleting(false); } }}>Delete notice</Button></>} />
     </AppShell>
   );
 }
@@ -186,6 +187,7 @@ export function AnnouncementForm() {
 
   async function submit(e) {
     e.preventDefault();
+    if (saving) return;
     const er = {};
     if (!form.title.trim()) er.title = "Enter a title.";
     if (!form.department) er.department = "Choose a department.";
@@ -193,11 +195,14 @@ export function AnnouncementForm() {
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const res = await addAnnouncement({ title: form.title.trim(), body: form.body.trim(), department: form.department, priority: form.priority, pinned: form.pinned, image: form.image, imageFile: form.imageFile, attachmentFile: form.attachmentFile });
-    setSaving(false);
-    if (!res.ok) { toast({ type: "error", title: "Couldn't post notice", message: res.error }); return; }
-    toast({ type: "success", title: "Notice posted", message: form.pinned ? "Pinned to the top of the board." : "It's now on the notice board." });
-    navigate(`/announcements/${res.id}`);
+    try {
+      const res = await addAnnouncement({ title: form.title.trim(), body: form.body.trim(), department: form.department, priority: form.priority, pinned: form.pinned, image: form.image, imageFile: form.imageFile, attachmentFile: form.attachmentFile });
+      if (!res.ok) { toast({ type: "error", title: "Couldn't post notice", message: res.error }); return; }
+      toast({ type: "success", title: "Notice posted", message: form.pinned ? "Pinned to the top of the board." : "It's now on the notice board." });
+      navigate(`/announcements/${res.id}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

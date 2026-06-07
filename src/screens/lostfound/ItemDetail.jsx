@@ -35,19 +35,23 @@ function ClaimModal({ open, item, onClose, onSubmitted }) {
   const kind = isFound ? "claim" : "notify";
 
   async function submit() {
+    if (submitting) return;
     if (message.trim().length < 10) {
       setError("Add a few details so the poster can confirm it's yours.");
       return;
     }
     setSubmitting(true);
-    const res = await addClaim({ itemUuid: item.uuid, kind, message, proof, proofFile });
-    setSubmitting(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
+    try {
+      const res = await addClaim({ itemUuid: item.uuid, kind, message, proof, proofFile });
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setStep("done");
+      onSubmitted && onSubmitted();
+    } finally {
+      setSubmitting(false);
     }
-    setStep("done");
-    onSubmitted && onSubmitted();
   }
 
   if (step === "done") {
@@ -244,10 +248,13 @@ export default function ItemDetail({ id }) {
   async function doDelete() {
     if (deleting) return;
     setDeleting(true);
-    const res = await deleteItem(id);
-    if (res.ok) { toast({ type: "success", title: "Item removed" }); navigate("/lost-found"); return; }
-    toast({ type: "error", title: "Couldn't remove", message: res.error });
-    setDeleting(false);
+    try {
+      const res = await deleteItem(id);
+      if (res.ok) { toast({ type: "success", title: "Item removed" }); navigate("/lost-found"); return; }
+      toast({ type: "error", title: "Couldn't remove", message: res.error });
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function decide(claim, status) {
