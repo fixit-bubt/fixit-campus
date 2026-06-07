@@ -259,7 +259,7 @@ export function ListingForm({ id }) {
   const editing = !!id;
   const existing = editing ? listings.find((l) => l.id === id) : null;
   const isAdmin = currentUser?.role === "Admin";
-  const denied = (editing && existing && existing.sellerId !== currentUser.id) || (!editing && isAdmin);
+  const denied = (editing && existing && existing.sellerId !== currentUser?.id) || (!editing && isAdmin);
 
   React.useEffect(() => {
     if (denied) navigate(editing ? `/marketplace/${id}` : "/marketplace");
@@ -384,7 +384,7 @@ function ListingEditor({ id, existing }) {
 export function MyListings() {
   const { currentUser, listings, userById, dataLoading } = useApp();
   React.useEffect(() => { if (currentUser?.role === "Admin") navigate("/marketplace"); }, [currentUser?.role]);
-  const mine = listings.filter((l) => l.sellerId === currentUser.id).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const mine = listings.filter((l) => l.sellerId === currentUser?.id).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   return (
     <AppShell activeKey="marketplace" title="My Listings">
       <PageHeader title="My Listings" subtitle="Items you're selling."

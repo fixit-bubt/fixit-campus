@@ -20,14 +20,17 @@ export function AssignModal({ report, onClose }) {
     const name = staffList.find((s) => s.id === staffId)?.name || "the selected staff";
     const was = !!report.assignedStaffId;
     setBusy(true);
-    const res = await assignReport(report.id, staffId);
-    setBusy(false);
-    if (res && res.ok === false) {
-      toast({ type: "error", title: "Couldn't assign", message: res.error });
-      return;
+    try {
+      const res = await assignReport(report.id, staffId);
+      if (res && res.ok === false) {
+        toast({ type: "error", title: "Couldn't assign", message: res.error });
+        return;
+      }
+      toast({ type: "success", title: was ? "Report reassigned" : "Report assigned", message: `${report.id} → ${name}.` });
+      onClose();
+    } finally {
+      setBusy(false);
     }
-    toast({ type: "success", title: was ? "Report reassigned" : "Report assigned", message: `${report.id} → ${name}.` });
-    onClose();
   }
 
   return (

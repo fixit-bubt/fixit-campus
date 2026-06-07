@@ -396,12 +396,15 @@ export function ClubHome({ id }) {
   const advisor = club.facultyAdvisorId ? facultyById?.(club.facultyAdvisorId) : null;
 
   async function handleDelete() {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleting) return;
     setDeleting(true);
-    const { ok, error } = await deleteClubPost(deleteTarget);
-    setDeleting(false);
-    setDeleteTarget(null);
-    if (!ok) toast.error("Couldn't delete", error); else toast.success("Post deleted.");
+    try {
+      const { ok, error } = await deleteClubPost(deleteTarget);
+      if (!ok) toast.error("Couldn't delete", error); else toast.success("Post deleted.");
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function handlePin(postId) {
@@ -971,11 +974,15 @@ export function AdminManageClubs() {
   const allClubs = [...clubs].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 
   async function handleSetActive(clubId, isActive) {
+    if (actioning) return;
     setActioning(clubId);
-    const { ok, error } = await setClubActive(clubId, isActive);
-    setActioning(null);
-    if (!ok) toast.error("Action failed", error);
-    setDeactivateTarget(null);
+    try {
+      const { ok, error } = await setClubActive(clubId, isActive);
+      if (!ok) toast.error("Action failed", error);
+      setDeactivateTarget(null);
+    } finally {
+      setActioning(null);
+    }
   }
 
   return (
