@@ -31,7 +31,8 @@ export function eventStatus(ev) {
   if (ev.date > today) return "Upcoming";
   const now = nowDhakaMinutes();
   if (now < toMinutes(ev.time)) return "Today";
-  if (now <= toMinutes(ev.endTime || ev.time)) return "Ongoing";
+  if (!ev.endTime) return "Ongoing";
+  if (now <= toMinutes(ev.endTime)) return "Ongoing";
   return "Ended";
 }
 
@@ -181,8 +182,8 @@ export function EventDetail({ id }) {
     );
   }
   const status = eventStatus(ev);
-  const going = ev.attendees.includes(currentUser.id);
-  const canManage = currentUser.role === "Admin" || ev.createdById === currentUser.id;
+  const going = ev.attendees.includes(currentUser?.id);
+  const canManage = currentUser?.role === "Admin" || ev.createdById === currentUser?.id;
   const ended = status === "Ended";
 
   async function onToggleRSVP() {
@@ -259,6 +260,7 @@ export function EventForm() {
   // Wait for the organizer allowlist to load before deciding access, so a
   // non-admin designated organizer isn't bounced on a cold load/refresh.
   React.useEffect(() => { if (!dataLoading && !canCreateEvents) navigate("/events"); }, [dataLoading, canCreateEvents]);
+  if (!dataLoading && !canCreateEvents) return null;
   const [form, setForm] = React.useState({ title: "", category: "", organizer: "", date: todayISO(), time: "10:00", endTime: "12:00", venue: "", description: "", capacity: "", banner: null, bannerFile: null });
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);
@@ -266,20 +268,26 @@ export function EventForm() {
 
   async function submit(e) {
     e.preventDefault();
+    if (saving) return;
     const er = {};
     if (!form.title.trim()) er.title = "Enter a title.";
     if (!form.category) er.category = "Choose a category.";
     if (!form.organizer.trim()) er.organizer = "Who's organizing?";
     if (!form.venue.trim()) er.venue = "Enter a venue.";
     if (!form.description.trim()) er.description = "Add a description.";
+    if (form.endTime && form.endTime <= form.time) er.endTime = "End time must be after start.";
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const cap = Number(form.capacity);
-    const r = await addEvent({ title: form.title.trim(), category: form.category, organizer: form.organizer.trim(), date: form.date, time: form.time, endTime: form.endTime, venue: form.venue.trim(), description: form.description.trim(), capacity: form.capacity && cap > 0 ? cap : null, banner: form.banner, bannerFile: form.bannerFile });
-    if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't create event", message: r.error }); return; }
-    toast({ type: "success", title: "Event created", message: `"${form.title.trim()}" is now live.` });
-    navigate(`/events/${r.id}`);
+    try {
+      const cap = Number(form.capacity);
+      const r = await addEvent({ title: form.title.trim(), category: form.category, organizer: form.organizer.trim(), date: form.date, time: form.time, endTime: form.endTime, venue: form.venue.trim(), description: form.description.trim(), capacity: form.capacity && cap > 0 ? cap : null, banner: form.banner, bannerFile: form.bannerFile });
+      if (!r.ok) { toast({ type: "error", title: "Couldn't create event", message: r.error }); return; }
+      toast({ type: "success", title: "Event created", message: `"${form.title.trim()}" is now live.` });
+      navigate(`/events/${r.id}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (dataLoading) return <AppShell activeKey="events" title="Create Event"><Loading /></AppShell>;
@@ -309,7 +317,7 @@ export function EventForm() {
             <div className="grid gap-5 sm:grid-cols-3">
               <Field label="Date" htmlFor="ev-date"><Input id="ev-date" type="date" value={form.date} min={todayISO()} onChange={(e) => set("date", e.target.value)} /></Field>
               <Field label="Start" htmlFor="ev-time"><Input id="ev-time" type="time" value={form.time} onChange={(e) => set("time", e.target.value)} /></Field>
-              <Field label="End" htmlFor="ev-end"><Input id="ev-end" type="time" value={form.endTime} onChange={(e) => set("endTime", e.target.value)} /></Field>
+              <Field label="End" htmlFor="ev-end" error={errors.endTime}><Input id="ev-end" type="time" value={form.endTime} error={!!errors.endTime} onChange={(e) => set("endTime", e.target.value)} /></Field>
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Venue" htmlFor="ev-venue" required error={errors.venue}><Input id="ev-venue" placeholder="e.g. Auditorium, Main Building" value={form.venue} error={!!errors.venue} onChange={(e) => set("venue", e.target.value)} /></Field>

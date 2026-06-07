@@ -169,7 +169,8 @@ export function BloodDonation() {
   const [tab, setTab] = React.useState("Requests");
   const [groupFilter, setGroupFilter] = React.useState("All");
   const [active, setActive] = React.useState(null); // request being donated to
-  const myDonor = donors.find((d) => d.userId === currentUser.id);
+  const [donating, setDonating] = React.useState(false);
+  const myDonor = donors.find((d) => d.userId === currentUser?.id);
 
   const requests = [...bloodRequests]
     .filter((r) => groupFilter === "All" || r.group === groupFilter)
@@ -183,9 +184,15 @@ export function BloodDonation() {
   const byGroup = BLOOD_GROUPS.map((g) => ({ g, n: donors.filter((d) => d.group === g).length }));
 
   async function donate(req) {
-    const r = await pledgeBlood(req.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't pledge", message: r.error }); return; }
-    setActive(req);
+    if (donating) return;
+    setDonating(true);
+    try {
+      const r = await pledgeBlood(req.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't pledge", message: r.error }); return; }
+      setActive(req);
+    } finally {
+      setDonating(false);
+    }
   }
 
   return (
@@ -215,7 +222,7 @@ export function BloodDonation() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {requests.map((r) => (
-              <RequestCard key={r.id} req={r} requester={userById(r.requesterId)} mine={r.requesterId === currentUser.id} pledged={r.pledges.includes(currentUser.id)} onDonate={() => donate(r)} />
+              <RequestCard key={r.id} req={r} requester={userById(r.requesterId)} mine={r.requesterId === currentUser?.id} pledged={r.pledges.includes(currentUser?.id)} onDonate={() => donate(r)} />
             ))}
           </div>
         )
@@ -256,26 +263,31 @@ export function BloodDonation() {
 export function RegisterDonor() {
   const { currentUser, donors, registerDonor } = useApp();
   const toast = useToast();
-  const existing = donors.find((d) => d.userId === currentUser.id);
+  const existing = donors.find((d) => d.userId === currentUser?.id);
   const [form, setForm] = React.useState(existing
-    ? { group: existing.group, area: existing.area, lastDonated: existing.lastDonated || "", phone: currentUser.whatsapp || "" }
-    : { group: "", area: "", lastDonated: "", phone: currentUser.whatsapp || "" });
+    ? { group: existing.group, area: existing.area, lastDonated: existing.lastDonated || "", phone: currentUser?.whatsapp || "" }
+    : { group: "", area: "", lastDonated: "", phone: currentUser?.whatsapp || "" });
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   async function submit(e) {
     e.preventDefault();
+    if (saving) return;
     const er = {};
     if (!form.group) er.group = "Select your blood group.";
     if (!form.area.trim()) er.area = "Enter your area.";
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await registerDonor({ group: form.group, area: form.area.trim(), lastDonated: form.lastDonated || null, phone: form.phone.trim() });
-    if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't save", message: r.error }); return; }
-    toast({ type: "success", title: existing ? "Donor info updated" : "Registered as donor", message: "Thank you for joining the registry." });
-    navigate("/blood");
+    try {
+      const r = await registerDonor({ group: form.group, area: form.area.trim(), lastDonated: form.lastDonated || null, phone: form.phone.trim() });
+      if (!r.ok) { toast({ type: "error", title: "Couldn't save", message: r.error }); return; }
+      toast({ type: "success", title: existing ? "Donor info updated" : "Registered as donor", message: "Thank you for joining the registry." });
+      navigate("/blood");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -325,6 +337,7 @@ export function RequestBlood() {
 
   async function submit(e) {
     e.preventDefault();
+    if (saving) return;
     const er = {};
     if (!form.group) er.group = "Select the blood group needed.";
     if (!form.patient.trim()) er.patient = "Who is it for?";
@@ -333,10 +346,14 @@ export function RequestBlood() {
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await addBloodRequest({ group: form.group, units: Number(form.units), patient: form.patient.trim(), hospital: form.hospital.trim(), area: form.area.trim(), urgency: form.urgency });
-    if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't post request", message: r.error }); return; }
-    toast({ type: "success", title: "Request posted", message: `${form.group} request is now visible to donors.` });
-    navigate("/blood");
+    try {
+      const r = await addBloodRequest({ group: form.group, units: Number(form.units), patient: form.patient.trim(), hospital: form.hospital.trim(), area: form.area.trim(), urgency: form.urgency });
+      if (!r.ok) { toast({ type: "error", title: "Couldn't post request", message: r.error }); return; }
+      toast({ type: "success", title: "Request posted", message: `${form.group} request is now visible to donors.` });
+      navigate("/blood");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

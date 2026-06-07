@@ -35,28 +35,29 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
 
   async function handleSave() {
     setSaving(true);
-
-    // Upload photo first if a new file was chosen
-    if (photoFile) {
-      setUploading(true);
-      const upResult = await onUploadPhoto(f.id, photoFile);
-      setUploading(false);
-      if (!upResult.ok) {
-        toast({ type: "error", title: "Photo upload failed", message: upResult.error });
-        setSaving(false);
-        return;
+    try {
+      // Upload photo first if a new file was chosen
+      if (photoFile) {
+        setUploading(true);
+        const upResult = await onUploadPhoto(f.id, photoFile);
+        setUploading(false);
+        if (!upResult.ok) {
+          toast({ type: "error", title: "Photo upload failed", message: upResult.error });
+          return;
+        }
       }
-    }
 
-    const updates = {};
-    if (removePhoto && !photoFile) updates.photo_url = null;
-    const result = await onSave(f.id, updates);
-    setSaving(false);
-    if (result.ok) {
-      toast({ type: "success", title: "Saved", message: `${f.name}'s profile updated.` });
-      onClose();
-    } else {
-      toast({ type: "error", title: "Failed to save", message: result.error });
+      const updates = {};
+      if (removePhoto && !photoFile) updates.photo_url = null;
+      const result = await onSave(f.id, updates);
+      if (result.ok) {
+        toast({ type: "success", title: "Saved", message: `${f.name}'s profile updated.` });
+        onClose();
+      } else {
+        toast({ type: "error", title: "Failed to save", message: result.error });
+      }
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -150,7 +151,7 @@ export default function ManageFaculty() {
         const dept = deptMap[f.departmentId];
         return (
           f.name.toLowerCase().includes(q) ||
-          f.designation.toLowerCase().includes(q) ||
+          (f.designation ?? "").toLowerCase().includes(q) ||
           (dept && dept.name.toLowerCase().includes(q))
         );
       })

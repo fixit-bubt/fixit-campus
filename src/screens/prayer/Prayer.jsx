@@ -227,7 +227,7 @@ export function PrayerTimes() {
             {displayList.map((p, i) => (
               <div key={p.key} className="group relative">
                 <PrayerRow prayer={p} state={i === st.currentIdx ? "current" : toMinutes(p.azan) <= nowDhakaMinutes() ? "passed" : "upcoming"} isNext={p.key === st.next.key} />
-                {currentUser.role === "Admin" && (
+                {currentUser?.role === "Admin" && (
                   <button onClick={() => openAdjust(p)} title="Adjust jamaat" className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-lg bg-white/90 p-1.5 text-slate-400 shadow-sm hover:text-emerald-600 group-hover:block">
                     <Icon name="Pencil" size={14} />
                   </button>
@@ -251,7 +251,7 @@ export function PrayerTimes() {
                       <p className="font-medium text-slate-900">{loc.name}</p>
                       {loc.floorDesc && <p className="text-xs text-slate-500">{loc.floorDesc}</p>}
                     </div>
-                    {currentUser.role === "Admin" && (
+                    {currentUser?.role === "Admin" && (
                       <div className="hidden gap-1 group-hover:flex">
                         <button onClick={() => openEditLoc(loc)} className="rounded p-1 text-slate-400 hover:text-emerald-600" title="Edit location">
                           <Icon name="Pencil" size={13} />
@@ -264,7 +264,7 @@ export function PrayerTimes() {
                   </div>
                 ))}
               </div>
-              {currentUser.role === "Admin" && (
+              {currentUser?.role === "Admin" && (
                 <div className="mt-4 border-t border-slate-100 pt-3 space-y-2">
                   <button onClick={openAddLoc} className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium">
                     <Icon name="Plus" size={13} /> Add location

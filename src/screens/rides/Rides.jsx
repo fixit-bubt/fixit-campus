@@ -89,9 +89,9 @@ export function RideShare() {
   const [direction, setDirection] = React.useState("All");
   const [area, setArea] = React.useState("");
 
-  const mineRides = rides.filter((r) => r.driverId === currentUser.id);
+  const mineRides = rides.filter((r) => r.driverId === currentUser?.id);
   const browseRides = rides
-    .filter((r) => isAdmin || r.driverId !== currentUser.id)
+    .filter((r) => isAdmin || r.driverId !== currentUser?.id)
     .filter((r) => direction === "All" || r.direction === direction)
     .filter((r) => {
       const q = area.trim().toLowerCase();
@@ -236,6 +236,7 @@ export function RideDetail({ id }) {
   const toast = useToast();
   const ride = rides.find((r) => r.id === id);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [actionBusy, setActionBusy] = React.useState(false);
 
   if (!ride) {
     return (
@@ -245,10 +246,10 @@ export function RideDetail({ id }) {
     );
   }
   const driver = userById(ride.driverId);
-  const isAdmin = currentUser.role === "Admin";
-  const mine = ride.driverId === currentUser.id;
+  const isAdmin = currentUser?.role === "Admin";
+  const mine = ride.driverId === currentUser?.id;
   const canDelete = mine || isAdmin;
-  const requested = ride.requesterIds.includes(currentUser.id);
+  const requested = ride.requesterIds.includes(currentUser?.id);
   const left = seatsLeft(ride);
 
   return (
@@ -342,7 +343,7 @@ export function RideDetail({ id }) {
                 ) : (
                   <>
                     <p className="mt-1 text-sm text-slate-500">Request a seat to get the driver's WhatsApp and confirm.</p>
-                    <Button className="mt-3" full icon="Check" onClick={async () => { const r = await requestSeat(ride.id); if (!r.ok) { toast({ type: "error", title: "Couldn't request seat", message: r.error }); return; } toast({ type: "success", title: "Seat requested", message: "Driver's contact is now available." }); }}>Request a seat</Button>
+                    <Button className="mt-3" full icon="Check" disabled={actionBusy} onClick={async () => { if (actionBusy) return; setActionBusy(true); try { const r = await requestSeat(ride.id); if (!r.ok) { toast({ type: "error", title: "Couldn't request seat", message: r.error }); return; } toast({ type: "success", title: "Seat requested", message: "Driver's contact is now available." }); } finally { setActionBusy(false); } }}>Request a seat</Button>
                   </>
                 )}
               </Card>
@@ -351,10 +352,10 @@ export function RideDetail({ id }) {
         </div>
       </div>
 
-      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} icon="Trash2" tone="red"
+      <Modal open={confirmDelete} onClose={() => !actionBusy && setConfirmDelete(false)} icon="Trash2" tone="red"
         title="Delete this ride?" description="Your offered ride will be removed and requesters will no longer see it."
-        footer={<><Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          <Button variant="destructive" onClick={async () => { const r = await deleteRide(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Ride deleted" }); navigate("/rides"); }}>Delete ride</Button></>} />
+        footer={<><Button variant="secondary" disabled={actionBusy} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          <Button variant="destructive" disabled={actionBusy} onClick={async () => { if (actionBusy) return; setActionBusy(true); try { const r = await deleteRide(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Ride deleted" }); navigate("/rides"); } finally { setActionBusy(false); } }}>Delete ride</Button></>} />
     </AppShell>
   );
 }
@@ -380,14 +381,19 @@ export function OfferRide() {
   }
   async function submit(e) {
     e.preventDefault();
+    if (saving) return;
     const er = validate();
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const r = await addRide({ origin: form.origin.trim(), destination: form.destination.trim(), direction: form.direction, date: form.date, time: form.time, seatsTotal: Number(form.seatsTotal), fare: Number(form.fare), vehicle: form.vehicle, recurring: form.recurring, notes: form.notes.trim() });
-    if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't post ride", message: r.error }); return; }
-    toast({ type: "success", title: "Ride posted", message: `${form.origin.trim()} → ${form.destination.trim()} is now live.` });
-    navigate(`/rides/${r.id}`);
+    try {
+      const r = await addRide({ origin: form.origin.trim(), destination: form.destination.trim(), direction: form.direction, date: form.date, time: form.time, seatsTotal: Number(form.seatsTotal), fare: Number(form.fare), vehicle: form.vehicle, recurring: form.recurring, notes: form.notes.trim() });
+      if (!r.ok) { toast({ type: "error", title: "Couldn't post ride", message: r.error }); return; }
+      toast({ type: "success", title: "Ride posted", message: `${form.origin.trim()} → ${form.destination.trim()} is now live.` });
+      navigate(`/rides/${r.id}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -437,7 +443,7 @@ export function OfferRide() {
 // --- Dashboard widget -------------------------------------------------------
 export function RideWidget() {
   const { currentUser, rides } = useApp();
-  const avail = rides.filter((r) => r.driverId !== currentUser.id && seatsLeft(r) > 0).length;
+  const avail = rides.filter((r) => r.driverId !== currentUser?.id && seatsLeft(r) > 0).length;
   return (
     <button onClick={() => navigate("/rides")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50/40">
       <AccentTile icon="Car" tone="indigo" size={44} />

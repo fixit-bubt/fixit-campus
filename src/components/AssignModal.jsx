@@ -6,7 +6,7 @@ import { useToast } from "./ui.jsx";
 
 // Quick-assign / reassign modal used by the admin dashboard and All Reports.
 export function AssignModal({ report, onClose }) {
-  const { staffList, assignReport } = useApp();
+  const { staffList = [], assignReport } = useApp();
   const toast = useToast();
   const [staffId, setStaffId] = useState(report ? report.assignedStaffId || "" : "");
   const [busy, setBusy] = useState(false);

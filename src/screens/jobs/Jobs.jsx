@@ -672,6 +672,7 @@ function JobEditor({ id, existing }) {
 
   async function submit(e) {
     e.preventDefault();
+    if (saving) return;
     const er = validate();
     setErrors(er);
     if (Object.keys(er).length) { toast({ type: "error", title: "Check the form", message: "A few fields need attention." }); return; }

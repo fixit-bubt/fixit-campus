@@ -15,6 +15,7 @@ export default function Login() {
 
   async function submit(e) {
     e.preventDefault();
+    if (loading) return;
     setError("");
     if (!email || !password) {
       setError("Enter your email and password.");
@@ -30,8 +31,11 @@ export default function Login() {
       if (res.user) {
         toast({ type: "success", title: `Welcome back, ${(res.user.name || "").split(" ")[0]}` });
         navigate(dashboardPath(res.user.role));
+      } else {
+        // Auth succeeded but profile read failed. Show an error rather than
+        // leaving the user on the login page holding an active session.
+        setError("Signed in but couldn't load your profile. Please try again.");
       }
-      // else: the profile read hiccuped — the session effect reloads it and the route guards redirect.
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

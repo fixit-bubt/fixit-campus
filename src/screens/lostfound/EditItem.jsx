@@ -7,19 +7,21 @@ import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ItemForm } from "./ItemForm.jsx";
 
 export default function EditItem({ id }) {
-  const { currentUser, items, updateItem } = useApp();
+  const { currentUser, items, dataLoading, updateItem } = useApp();
   const toast = useToast();
   const item = items.find((i) => i.id === id);
 
   useEffect(() => {
+    if (dataLoading) return; // wait for store to hydrate before redirecting
     if (!item) {
       navigate("/lost-found");
       return;
     }
-    if (item.posterId !== currentUser.id) navigate(`/lost-found/${id}`);
-  }, [item, id]);
+    if (!currentUser || item.posterId !== currentUser.id) navigate(`/lost-found/${id}`);
+  }, [item, id, currentUser, dataLoading]);
 
-  if (!item || item.posterId !== currentUser.id) return null;
+  if (dataLoading) return null;
+  if (!item || !currentUser || item.posterId !== currentUser.id) return null;
 
   async function handleSubmit(form) {
     const res = await updateItem(id, form);

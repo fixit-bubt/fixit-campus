@@ -69,21 +69,24 @@ export default function ManageUsers() {
     if (Object.keys(er).length) return;
 
     setSaving(true);
-    const res = await createUser({
-      name: form.name,
-      email: form.email,
-      password: form.password,
-      role: form.role,
-      dept: form.role === "Staff" ? form.dept : "",
-      expertise: form.role === "Staff" ? form.expertise : "",
-    });
-    setSaving(false);
-    if (!res.ok) {
-      setFormErr({ email: res.error });
-      return;
+    try {
+      const res = await createUser({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        dept: form.role === "Staff" ? form.dept : "",
+        expertise: form.role === "Staff" ? form.expertise : "",
+      });
+      if (!res.ok) {
+        setFormErr({ email: res.error });
+        return;
+      }
+      toast({ type: "success", title: `${form.role} account created`, message: `${form.name.trim()} can now log in with the password you set.` });
+      setAddOpen(false);
+    } finally {
+      setSaving(false);
     }
-    toast({ type: "success", title: `${form.role} account created`, message: `${form.name.trim()} can now log in with the password you set.` });
-    setAddOpen(false);
   }
 
   return (
@@ -121,7 +124,7 @@ export default function ManageUsers() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((u) => {
-                const isSelf = u.id === currentUser.id;
+                const isSelf = u.id === currentUser?.id;
                 return (
                   <tr key={u.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">

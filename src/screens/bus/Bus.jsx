@@ -234,7 +234,7 @@ export function BusDetail({ id }) {
               <p className="mt-0.5 text-sm text-slate-400"><span className="font-mono">{route.busNo}</span> · {route.area} · {route.days}</p>
             </div>
           </div>
-          {currentUser.role === "Admin" && (
+          {currentUser?.role === "Admin" && (
             <Button variant="secondary" icon="Pencil" onClick={() => navigate(`/bus/${route.id}/edit`)}>Edit route</Button>
           )}
         </div>
@@ -265,10 +265,12 @@ export function BusDetail({ id }) {
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">To-campus trips</dt><dd className="font-medium text-slate-900">{route.toDepartures.length}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">From-campus trips</dt><dd className="font-medium text-slate-900">{route.fromDepartures.length}</dd></div>
               </dl>
-              <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                <Icon name="TriangleAlert" size={14} className="mt-0.5 shrink-0" />
-                {route.fridayNote}
-              </div>
+              {route.fridayNote && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  <Icon name="TriangleAlert" size={14} className="mt-0.5 shrink-0" />
+                  {route.fridayNote}
+                </div>
+              )}
             </Card>
 
             {route.helperName && (

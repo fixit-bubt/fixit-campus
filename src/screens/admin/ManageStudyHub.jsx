@@ -27,11 +27,14 @@ function AddIntakeModal({ open, onClose, onAdd, deptName }) {
     const n = parseInt(number, 10);
     if (!Number.isInteger(n) || n <= 0) { setErrors({ number: "Enter a valid intake number." }); return; }
     setSaving(true);
-    const r = await onAdd(n, years.trim() || null);
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't add intake", message: r.error }); return; }
-    toast({ type: "success", title: "Intake added", message: `Intake ${n}` });
-    setNumber(""); setYears(""); setErrors({}); onClose();
+    try {
+      const r = await onAdd(n, years.trim() || null);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't add intake", message: r.error }); return; }
+      toast({ type: "success", title: "Intake added", message: `Intake ${n}` });
+      setNumber(""); setYears(""); setErrors({}); onClose();
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <Modal
@@ -63,11 +66,14 @@ function AddSectionModal({ open, onClose, onAdd, intakeNumber }) {
     const n = parseInt(number, 10);
     if (!Number.isInteger(n) || n <= 0) { setErrors({ number: "Enter a valid section number." }); return; }
     setSaving(true);
-    const r = await onAdd(n);
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't add section", message: r.error }); return; }
-    toast({ type: "success", title: "Section added", message: `Section ${n}` });
-    setNumber(""); setErrors({}); onClose();
+    try {
+      const r = await onAdd(n);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't add section", message: r.error }); return; }
+      toast({ type: "success", title: "Section added", message: `Section ${n}` });
+      setNumber(""); setErrors({}); onClose();
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <Modal
@@ -94,11 +100,14 @@ function AssignCRModal({ section, students, onClose, onAssign }) {
   async function submit() {
     if (!value) return;
     setSaving(true);
-    const r = await onAssign(section.id, value);
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't assign CR", message: r.error }); return; }
-    toast({ type: "success", title: "CR assigned", message: students.find((s) => s.id === value)?.name });
-    setPick(""); onClose();
+    try {
+      const r = await onAssign(section.id, value);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't assign CR", message: r.error }); return; }
+      toast({ type: "success", title: "CR assigned", message: students.find((s) => s.id === value)?.name });
+      setPick(""); onClose();
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <Modal
@@ -128,13 +137,16 @@ function RejectModal({ req, onClose, onReject }) {
   const [saving, setSaving] = useState(false);
   React.useEffect(() => { if (!req) setNote(""); }, [req]);
   async function submit() {
-    if (saving) return;
+    if (saving || !req) return;
     setSaving(true);
-    const r = await onReject(req.id, note);
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't reject", message: r.error }); return; }
-    toast({ type: "success", title: "Request rejected" });
-    setNote(""); onClose();
+    try {
+      const r = await onReject(req.id, note);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't reject", message: r.error }); return; }
+      toast({ type: "success", title: "Request rejected" });
+      setNote(""); onClose();
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <Modal
