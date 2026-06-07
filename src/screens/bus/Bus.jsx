@@ -309,7 +309,7 @@ export function BusRouteForm({ id }) {
   const existing = editing ? busById(id) : null;
 
   React.useEffect(() => {
-    if (currentUser.role !== "Admin") navigate("/bus");
+    if (currentUser?.role !== "Admin") navigate("/bus");
   }, [currentUser]);
 
   if (editing && (dataLoading || !existing)) {

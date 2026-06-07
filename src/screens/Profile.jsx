@@ -23,8 +23,6 @@ function Toggle({ checked, onChange, label, hint }) {
 export default function Profile() {
   const { currentUser, updateProfile, changePassword } = useApp();
   const toast = useToast();
-  const isStudent = currentUser.role === "Student";
-
   // Change-password form state
   const [pwForm, setPwForm] = useState({ newPw: "", confirmPw: "" });
   const [pwError, setPwError] = useState("");
@@ -32,30 +30,36 @@ export default function Profile() {
 
   async function submitPassword(e) {
     e.preventDefault();
+    if (pwSaving) return;
     if (pwForm.newPw.length < 8) { setPwError("Password must be at least 8 characters."); return; }
     if (pwForm.newPw !== pwForm.confirmPw) { setPwError("Passwords don't match."); return; }
     setPwError("");
     setPwSaving(true);
-    const res = await changePassword(pwForm.newPw);
-    setPwSaving(false);
-    if (!res.ok) { setPwError(res.error); return; }
-    toast({ type: "success", title: "Password changed", message: "Your new password is active." });
-    setPwForm({ newPw: "", confirmPw: "" });
+    try {
+      const res = await changePassword(pwForm.newPw);
+      if (!res.ok) { setPwError(res.error); return; }
+      toast({ type: "success", title: "Password changed", message: "Your new password is active." });
+      setPwForm({ newPw: "", confirmPw: "" });
+    } finally {
+      setPwSaving(false);
+    }
   }
 
   const [form, setForm] = useState({
-    name: currentUser.name || "",
-    whatsapp: currentUser.whatsapp || "",
-    intake: currentUser.intake || "",
-    section: currentUser.section || "",
-    avatar: currentUser.avatar || null,
+    name: currentUser?.name || "",
+    whatsapp: currentUser?.whatsapp || "",
+    intake: currentUser?.intake || "",
+    section: currentUser?.section || "",
+    avatar: currentUser?.avatar || null,
     avatarFile: null,
-    directoryVisible: currentUser.directoryVisible !== false,
-    showWhatsapp: currentUser.showWhatsapp === true,
+    directoryVisible: currentUser?.directoryVisible !== false,
+    showWhatsapp: currentUser?.showWhatsapp === true,
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  if (!currentUser) return null;
+  const isStudent = currentUser.role === "Student";
   const set = (k) => (e) => { setSaved(false); setForm((f) => ({ ...f, [k]: e.target.value })); };
   const setToggle = (k) => (v) => { setSaved(false); setForm((f) => ({ ...f, [k]: v })); };
 
