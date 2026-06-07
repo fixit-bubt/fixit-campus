@@ -296,9 +296,12 @@ function deptAcronym(name) {
   const words = s.split(/\s+/).filter((w) => /[A-Za-z]/.test(w) && !/^(&|and|of|the|in|for)$/i.test(w));
   return words.length >= 2 ? words.map((w) => w[0].toUpperCase()).join("") : s;
 }
-const toStudyIntake  = (r) => ({ id: r.id, deptId: r.department_id, number: r.number, years: r.years || "" });
-const toStudySection = (r) => ({ id: r.id, intakeId: r.intake_id, number: r.number });
-const toStudyMember  = (r) => ({ id: r.id, sectionId: r.section_id, userId: r.user_id, role: r.role, status: r.status });
+const toStudyIntake  = (r) => ({ id: r.id, deptId: r.department_id, number: r.number, years: r.years || "", isPublic: r.is_public !== false });
+const toStudySection = (r) => ({ id: r.id, intakeId: r.intake_id, number: r.number, joinCode: r.join_code || null, isPublic: r.is_public !== false });
+const toStudyMember  = (r) => ({ id: r.id, sectionId: r.section_id, userId: r.user_id, role: r.role, status: r.status, joinedVia: r.joined_via || null });
+const toStudySectionRequest = (r) => ({ id: r.id, deptId: r.department_id, intakeId: r.intake_id, sectionNumber: r.section_number, requestedBy: r.requested_by, status: r.status, adminNote: r.admin_note || null, createdAt: day(r.created_at) });
+const toStudyIntakeVote   = (r) => ({ id: r.id, intakeId: r.intake_id, proposedBy: r.proposed_by, targetPublic: r.target_is_public, opensAt: r.opens_at, closesAt: r.closes_at, status: r.status, result: r.result || null });
+const toStudyIntakeBallot = (r) => ({ id: r.id, voteId: r.vote_id, userId: r.user_id, inFavor: r.in_favor });
 const toStudyCourse  = (r) => ({ id: r.id, sectionId: r.section_id, code: r.code, name: r.name, createdBy: r.created_by, createdAt: day(r.created_at) });
 const toStudyMaterial = (r) => ({ id: r.id, courseId: r.course_id, title: r.title, type: r.type, kind: r.file_kind || "", sizeMB: bytesToMB(r.size_bytes), path: r.storage_path, byId: r.uploaded_by, createdAt: day(r.created_at) });
 const toStudyQB      = (r) => ({ id: r.id, sectionId: r.section_id, courseId: r.course_id || null, exam: r.exam, title: r.title, kind: r.file_kind || "", sizeMB: bytesToMB(r.size_bytes), path: r.storage_path, verified: !!r.verified, byId: r.uploaded_by, createdAt: day(r.created_at) });
@@ -379,6 +382,9 @@ export function AppProvider({ children }) {
   const [studyBooks, setStudyBooks] = useState([]);
   const [studyPins, setStudyPins] = useState([]);
   const [studyCRSections, setStudyCRSections] = useState([]); // section ids with an approved CR (RLS-safe, via RPC)
+  const [studySectionRequests, setStudySectionRequests] = useState([]); // migration 0057: student-initiated section creation requests
+  const [studyIntakeVotes, setStudyIntakeVotes] = useState([]);         // migration 0057: open/closed CR votes on intake visibility
+  const [studyIntakeBallots, setStudyIntakeBallots] = useState([]);     // migration 0057: individual CR ballots
 
   // ---- club hub (LIVE Supabase, migration 0053) ----
   const [clubs, setClubs] = useState([]);
@@ -634,11 +640,11 @@ export function AppProvider({ children }) {
     const clear = () => {
       setStudyIntakes([]); setStudySections([]); setStudyMembers([]); setStudyCourses([]);
       setStudyMaterials([]); setStudyQuestionBank([]); setStudyBooks([]); setStudyPins([]);
-      setStudyCRSections([]);
+      setStudyCRSections([]); setStudySectionRequests([]); setStudyIntakeVotes([]); setStudyIntakeBallots([]);
     };
     if (!currentUser || (currentUser.role !== "Student" && currentUser.role !== "Admin")) { clear(); return; }
     const uid = currentUser.id;
-    const [ints, secs, mems, crs, mats, qb, bks, pins, crSecs] = await Promise.all([
+    const [ints, secs, mems, crs, mats, qb, bks, pins, crSecs, reqs, votes, ballots] = await Promise.all([
       supabase.from("study_intakes").select("*"),
       supabase.from("study_sections").select("*"),
       supabase.from("study_section_members").select("*"),
@@ -648,9 +654,12 @@ export function AppProvider({ children }) {
       supabase.from("study_books").select("*").order("created_at", { ascending: false }),
       supabase.from("study_pins").select("*").order("created_at", { ascending: false }),
       supabase.rpc("study_sections_with_cr"),
+      supabase.from("study_section_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("study_intake_votes").select("*").order("opens_at", { ascending: false }),
+      supabase.from("study_intake_vote_ballots").select("*"),
     ]);
     if (!stillCurrent(uid)) return;
-    if ([ints, secs, mems, crs, mats, qb, bks, pins, crSecs].some((r) => r.error)) { setDataError(true); return; }
+    if ([ints, secs, mems, crs, mats, qb, bks, pins, crSecs, reqs, votes, ballots].some((r) => r.error)) { setDataError(true); return; }
     setStudyCRSections((crSecs.data || []).map((r) => r.section_id));
     setStudyIntakes((ints.data || []).map(toStudyIntake));
     setStudySections((secs.data || []).map(toStudySection));
@@ -660,6 +669,9 @@ export function AppProvider({ children }) {
     setStudyQuestionBank((qb.data || []).map(toStudyQB));
     setStudyBooks((bks.data || []).map(toStudyBook));
     setStudyPins((pins.data || []).map(toStudyPin));
+    setStudySectionRequests((reqs.data || []).map(toStudySectionRequest));
+    setStudyIntakeVotes((votes.data || []).map(toStudyIntakeVote));
+    setStudyIntakeBallots((ballots.data || []).map(toStudyIntakeBallot));
   }, [currentUser?.id, currentUser?.role]);
 
   // ── Club Hub mappers ────────────────────────────────────────────────────────
@@ -1858,6 +1870,28 @@ export function AppProvider({ children }) {
     };
   };
 
+  // --- 0057 selectors ---
+  // Student's pending section-creation request (null if none).
+  const myPendingCreateRequest = () =>
+    studySectionRequests.find((r) => r.requestedBy === currentUser?.id && r.status === "pending") || null;
+  // Admin: all pending section-creation requests, enriched with dept/intake names.
+  const studySectionRequestsAll = () =>
+    studySectionRequests.filter((r) => r.status === "pending").map((r) => ({
+      ...r,
+      intakeLabel: (() => {
+        const intake = studyIntakes.find((i) => i.id === r.intakeId);
+        const dept   = intake && departments.find((d) => d.id === intake.deptId);
+        return dept ? `${deptAcronym(dept.name)} — Intake ${intake.number}` : "Unknown Intake";
+      })(),
+    }));
+  // Open vote for a given intake, or null.
+  const intakeVoteFor = (intakeId) =>
+    studyIntakeVotes.find((v) => v.intakeId === intakeId && v.status === "open") || null;
+  // Ballots cast for a given vote.
+  const intakeBallotsFor = (voteId) => studyIntakeBallots.filter((b) => b.voteId === voteId);
+  // Whether the current user has already voted in a given vote.
+  const myBallotFor = (voteId) => studyIntakeBallots.find((b) => b.voteId === voteId && b.userId === currentUser?.id) || null;
+
   // --- file helpers (private 'study-materials' bucket; objects live under `${uid}/…`)
   async function uploadStudyFile(file) {
     if (!currentUser) throw new Error("Not signed in.");
@@ -1882,7 +1916,7 @@ export function AppProvider({ children }) {
   async function requestJoinSection(sectionId) {
     if (!currentUser) return { ok: false, error: "Not signed in." };
     const { error } = await supabase.from("study_section_members")
-      .insert({ section_id: sectionId, user_id: currentUser.id, role: "member", status: "pending" });
+      .insert({ section_id: sectionId, user_id: currentUser.id, role: "member", status: "pending", joined_via: "request" });
     if (error) return { ok: false, error: error.code === "23505" ? "You've already requested to join this section." : error.message };
     await loadStudyHub();
     return { ok: true };
@@ -1906,6 +1940,70 @@ export function AppProvider({ children }) {
     if (error) return { ok: false, error: error.message };
     await loadStudyHub();
     return { ok: true };
+  }
+
+  // --- 0057 actions ---
+  // Student requests admin to create a new section for them (they become CR on approval).
+  async function requestCreateSection(deptId, intakeId, sectionNumber) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const { error } = await supabase.from("study_section_requests")
+      .insert({ department_id: deptId, intake_id: intakeId, section_number: sectionNumber, requested_by: currentUser.id });
+    if (error) return { ok: false, error: error.code === "23505" ? "You already have a pending request." : error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  // Join a section instantly via its 6-char join code (SECURITY DEFINER RPC).
+  async function joinByCode(code) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const { data, error } = await supabase.rpc("join_section_by_code", { p_code: code.trim().toUpperCase() });
+    if (error) return { ok: false, error: error.message };
+    if (!data?.ok) return { ok: false, error: data?.error || "Invalid code." };
+    await loadStudyHub();
+    return { ok: true, sectionId: data.section_id };
+  }
+  // Admin: approve a pending section-creation request (RPC creates section + assigns CR + sets join_code).
+  async function approveSectionRequest(reqId) {
+    const { data, error } = await supabase.rpc("approve_section_request", { p_req_id: reqId });
+    if (error) return { ok: false, error: error.message };
+    if (!data?.ok) return { ok: false, error: data?.error || "Approval failed." };
+    await loadStudyHub();
+    return { ok: true, sectionId: data.section_id, joinCode: data.join_code };
+  }
+  // Admin: reject a pending section-creation request.
+  async function rejectSectionRequest(reqId, note = "") {
+    const { data, error } = await supabase.rpc("reject_section_request", { p_req_id: reqId, p_note: note.trim() || null });
+    if (error) return { ok: false, error: error.message };
+    if (!data?.ok) return { ok: false, error: data?.error || "Rejection failed." };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  // CR: toggle the section's public/private flag.
+  async function toggleSectionPublic(sectionId, isPublic) {
+    const { error } = await supabase.from("study_sections").update({ is_public: isPublic }).eq("id", sectionId);
+    if (error) return { ok: false, error: error.message };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  // CR: start a 48-hour vote on changing intake visibility.
+  async function initiateIntakeVote(intakeId, targetPublic) {
+    const { data, error } = await supabase.rpc("initiate_intake_vote", { p_intake_id: intakeId, p_target_is_public: targetPublic });
+    if (error) return { ok: false, error: error.message };
+    if (!data?.ok) return { ok: false, error: data?.error || "Could not start vote." };
+    await loadStudyHub();
+    return { ok: true, voteId: data.vote_id };
+  }
+  // CR: cast their ballot in an intake vote.
+  async function castIntakeVote(voteId, inFavor) {
+    const { data, error } = await supabase.rpc("cast_intake_vote", { p_vote_id: voteId, p_in_favor: inFavor });
+    if (error) return { ok: false, error: error.message };
+    if (!data?.ok) return { ok: false, error: data?.error || "Vote failed." };
+    await loadStudyHub();
+    return { ok: true };
+  }
+  // Called on manage-page load to auto-close votes whose 48-hour window has expired.
+  async function checkExpiredVotes() {
+    await supabase.rpc("check_expired_intake_votes");
+    await loadStudyHub();
   }
 
   // --- courses ---
@@ -2311,9 +2409,11 @@ export function AppProvider({ children }) {
     departments, faculty, facultyBookmarks, facultyById, departmentByNumber, departmentById, toggleFacultyBookmark, updateFaculty, uploadFacultyPhoto,
     // study hub (data)
     studyIntakes, studySections, studyMembers, studyCourses, studyMaterials, studyQuestionBank, studyBooks, studyPins,
+    studySectionRequests, studyIntakeVotes, studyIntakeBallots,
     // study hub (selectors)
     studyCoursesIn, studyCourseById, studyFilesIn, studyQuestionBankIn, studyQuestionsIn, studyBooksInCourse, studyPinsIn, studyIntakesIn,
     studySectionsIn, studySectionById, studyPersonName, studySectionFileCount, studySectionStats, studyRecentActivity, resolveMySection,
+    myPendingCreateRequest, studySectionRequestsAll, intakeVoteFor, intakeBallotsFor, myBallotFor,
     // study hub (files)
     getStudyFileUrl,
     // study hub (actions)
@@ -2321,6 +2421,8 @@ export function AppProvider({ children }) {
     addStudyCourse, deleteStudyCourse, uploadStudyMaterial, deleteStudyMaterial,
     uploadStudyQB, setQBVerified, deleteStudyQB, addStudyBook, deleteStudyBook, addStudyPin, deleteStudyPin,
     addStudyIntake, addStudySection, assignSectionCR,
+    requestCreateSection, joinByCode, approveSectionRequest, rejectSectionRequest,
+    toggleSectionPublic, initiateIntakeVote, castIntakeVote, checkExpiredVotes,
     // club hub (data)
     clubs, clubMembers, clubPosts,
     // club hub (selectors)
