@@ -380,6 +380,11 @@ export function AppProvider({ children }) {
   const [studyPins, setStudyPins] = useState([]);
   const [studyCRSections, setStudyCRSections] = useState([]); // section ids with an approved CR (RLS-safe, via RPC)
 
+  // ---- club hub (LIVE Supabase, migration 0053) ----
+  const [clubs, setClubs] = useState([]);
+  const [clubMembers, setClubMembers] = useState([]);
+  const [clubPosts, setClubPosts] = useState([]);
+
   // Latest signed-in user id — loaders compare against this after their await so a
   // slow response from a previous account can't overwrite the new account's data.
   const currentUidRef = useRef(null);
@@ -652,14 +657,66 @@ export function AppProvider({ children }) {
     setStudyPins((pins.data || []).map(toStudyPin));
   }, [currentUser?.id, currentUser?.role]);
 
+  // ── Club Hub mappers ────────────────────────────────────────────────────────
+  function toClub(r) {
+    const coverUrl = r.cover_url
+      ? supabase.storage.from("club-covers").getPublicUrl(r.cover_url).data.publicUrl
+      : null;
+    return {
+      id: r.id, name: r.name, tagline: r.tagline || "", about: r.about || "",
+      coverUrl, category: r.category, facultyAdvisorId: r.faculty_advisor_id,
+      isActive: r.is_active, createdBy: r.created_by, createdAt: r.created_at,
+    };
+  }
+  function toClubMember(r) {
+    return { id: r.id, clubId: r.club_id, userId: r.user_id, role: r.role, addedBy: r.added_by, joinedAt: r.joined_at };
+  }
+  function toClubPost(r) {
+    return {
+      id: r.id, clubId: r.club_id, authorId: r.author_id, title: r.title,
+      body: r.body || "", imageUrl: r.image_url || null,
+      fileUrl: r.file_url || null, fileName: r.file_name || null,
+      isPinned: r.is_pinned, createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+  }
+
+  // Club Hub loader: all active clubs + members/posts for clubs I'm in.
+  // Two round-trips: (1) clubs + my memberships in parallel,
+  //                  (2) full rosters + posts for my clubs in parallel.
+  const loadClubs = useCallback(async () => {
+    const clear = () => { setClubs([]); setClubMembers([]); setClubPosts([]); };
+    if (!currentUser) { clear(); return; }
+    const uid = currentUser.id;
+    const [clubsRes, myRes] = await Promise.all([
+      supabase.from("clubs").select("*").eq("is_active", true).order("name"),
+      supabase.from("club_members").select("*").eq("user_id", currentUser.id),
+    ]);
+    if (!stillCurrent(uid)) return;
+    if (clubsRes.error || myRes.error) { setDataError(true); return; }
+    const myClubIds = (myRes.data || []).map((m) => m.club_id);
+    const [membersRes, postsRes] = await Promise.all([
+      myClubIds.length
+        ? supabase.from("club_members").select("*").in("club_id", myClubIds)
+        : { data: [], error: null },
+      myClubIds.length
+        ? supabase.from("club_posts").select("*").in("club_id", myClubIds).order("created_at", { ascending: false })
+        : { data: [], error: null },
+    ]);
+    if (!stillCurrent(uid)) return;
+    if (membersRes.error || postsRes.error) { setDataError(true); return; }
+    setClubs((clubsRes.data || []).map(toClub));
+    setClubMembers((membersRes.data || []).map(toClubMember));
+    setClubPosts((postsRes.data || []).map(toClubPost));
+  }, [currentUser?.id]);
+
   useEffect(() => {
     let active = true;
     if (currentUser?.id) { setDataLoading(true); setDataError(false); }
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub]);
+  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -1205,7 +1262,9 @@ export function AppProvider({ children }) {
   // Whether the current user may publish events (admin or on the allowlist) —
   // mirrors the can_create_events() helper that RLS uses on insert.
   const canCreateEvents = !!currentUser &&
-    (currentUser.role === "Admin" || eventOrganizers.includes(currentUser.id));
+    (currentUser.role === "Admin" ||
+     eventOrganizers.includes(currentUser.id) ||
+     clubMembers.some((m) => m.userId === currentUser.id && ["president", "vp"].includes(m.role)));
 
   // Build the insert column payload (uploads the banner if a new file).
   async function eventCols(data) {
@@ -1817,6 +1876,191 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // Club Hub — selectors + actions (migration 0053)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // --- selectors ---
+  const myClubs = () => {
+    const myIds = new Set(clubMembers.filter((m) => m.userId === currentUser?.id).map((m) => m.clubId));
+    return clubs.filter((c) => myIds.has(c.id));
+  };
+  const clubById = (id) => clubs.find((c) => c.id === id);
+  const ROLE_ORDER = { president: 0, vp: 1, editor: 2, member: 3 };
+  const clubMembersIn = (clubId) =>
+    clubMembers.filter((m) => m.clubId === clubId)
+      .sort((a, b) => (ROLE_ORDER[a.role] ?? 4) - (ROLE_ORDER[b.role] ?? 4));
+  const clubPostsIn = (clubId) => {
+    const all = clubPosts.filter((p) => p.clubId === clubId);
+    const pinned = all.filter((p) => p.isPinned);
+    const rest   = all.filter((p) => !p.isPinned);
+    return [...pinned, ...rest];
+  };
+  const userRoleIn    = (clubId) => clubMembers.find((m) => m.clubId === clubId && m.userId === currentUser?.id)?.role ?? null;
+  const canPostIn     = (clubId) => ["president", "vp", "editor"].includes(userRoleIn(clubId));
+  const canManageClub = (clubId) => ["president", "vp"].includes(userRoleIn(clubId));
+  const isPresident   = (clubId) => userRoleIn(clubId) === "president";
+
+  // --- upload a file attachment to club-attachments bucket ---
+  async function uploadClubAttachment(file, clubId) {
+    if (!currentUser) throw new Error("Not signed in.");
+    const ext = (file.name?.split(".").pop() || "bin").toLowerCase();
+    const path = `${clubId}/${currentUser.id}_${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("club-attachments").upload(path, file, { cacheControl: "3600", upsert: false });
+    if (error) throw error;
+    return { path, name: file.name };
+  }
+
+  // Generate a short-lived signed URL for a club attachment.
+  async function getClubFileUrl(path) {
+    if (!path) return null;
+    const { data } = await supabase.storage.from("club-attachments").createSignedUrl(path, 3600);
+    return data?.signedUrl || null;
+  }
+
+  // --- member management ---
+  async function addClubMembers(clubId, userIds) {
+    const rows = userIds.map((userId) => ({ club_id: clubId, user_id: userId, role: "member", added_by: currentUser.id }));
+    const { error } = await supabase.from("club_members").insert(rows);
+    if (error) return { ok: false, error: error.code === "23505" ? "One or more users are already members." : error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+  async function removeClubMember(clubId, userId) {
+    const { error } = await supabase.from("club_members").delete().match({ club_id: clubId, user_id: userId });
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+  async function updateClubMemberRole(clubId, userId, role) {
+    const { error } = await supabase.from("club_members").update({ role }).match({ club_id: clubId, user_id: userId });
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+  async function leaveClub(clubId) {
+    const { error } = await supabase.from("club_members").delete().match({ club_id: clubId, user_id: currentUser.id });
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+
+  // --- posts ---
+  async function addClubPost(clubId, data) {
+    let imageUrl = null, fileUrl = null, fileName = null;
+    try {
+      if (data.imageFile) imageUrl = await uploadPhoto(data.imageFile, "club-posts");
+      if (data.attachmentFile) {
+        const att = await uploadClubAttachment(data.attachmentFile, clubId);
+        fileUrl = att.path; fileName = att.name;
+      }
+    } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
+    const { error } = await supabase.from("club_posts").insert({
+      club_id: clubId, author_id: currentUser.id,
+      title: data.title.trim(), body: data.body?.trim() || null,
+      image_url: imageUrl, file_url: fileUrl, file_name: fileName,
+      is_pinned: data.isPinned || false,
+    });
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+  async function updateClubPost(postId, data) {
+    const updates = {
+      title: data.title.trim(), body: data.body?.trim() || null,
+      is_pinned: data.isPinned || false,
+    };
+    try {
+      if (data.imageFile) updates.image_url = await uploadPhoto(data.imageFile, "club-posts");
+      if (data.attachmentFile) {
+        const att = await uploadClubAttachment(data.attachmentFile, data.clubId);
+        updates.file_url = att.path; updates.file_name = att.name;
+      }
+    } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
+    const { error } = await supabase.from("club_posts").update(updates).eq("id", postId);
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+  async function deleteClubPost(postId) {
+    const post = clubPosts.find((p) => p.id === postId);
+    const { error } = await supabase.from("club_posts").delete().eq("id", postId);
+    if (error) return { ok: false, error: error.message };
+    if (post?.fileUrl) await supabase.storage.from("club-attachments").remove([post.fileUrl]);
+    await loadClubs();
+    return { ok: true };
+  }
+  async function toggleClubPin(postId) {
+    const post = clubPosts.find((p) => p.id === postId);
+    if (!post) return { ok: false, error: "Post not found." };
+    const { error } = await supabase.from("club_posts").update({ is_pinned: !post.isPinned }).eq("id", postId);
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+
+  // --- admin: club management ---
+  async function createClub(data) {
+    let coverUrl = null;
+    try {
+      if (data.coverFile) {
+        const ext = (data.coverFile.name?.split(".").pop() || "jpg").toLowerCase();
+        const path = `${crypto.randomUUID()}.${ext}`;
+        const { error: ue } = await supabase.storage.from("club-covers").upload(path, data.coverFile, { cacheControl: "3600", upsert: false });
+        if (ue) return { ok: false, error: "Cover upload failed: " + ue.message };
+        coverUrl = supabase.storage.from("club-covers").getPublicUrl(path).data.publicUrl;
+      }
+    } catch (e) { return { ok: false, error: e.message }; }
+    const { data: club, error } = await supabase.from("clubs").insert({
+      name: data.name.trim(), tagline: data.tagline?.trim() || null,
+      about: data.about?.trim() || null, cover_url: coverUrl,
+      category: data.category, faculty_advisor_id: data.facultyAdvisorId || null,
+      created_by: currentUser.id,
+    }).select().single();
+    if (error) return { ok: false, error: error.message };
+    if (data.presidentId) {
+      await supabase.from("club_members").insert({ club_id: club.id, user_id: data.presidentId, role: "president", added_by: currentUser.id });
+    }
+    await loadClubs();
+    return { ok: true, id: club.id };
+  }
+  async function updateClubDetails(clubId, data) {
+    const updates = {
+      name: data.name.trim(), tagline: data.tagline?.trim() || null,
+      about: data.about?.trim() || null, category: data.category,
+      faculty_advisor_id: data.facultyAdvisorId || null,
+    };
+    try {
+      if (data.coverFile) {
+        const ext = (data.coverFile.name?.split(".").pop() || "jpg").toLowerCase();
+        const path = `${crypto.randomUUID()}.${ext}`;
+        const { error: ue } = await supabase.storage.from("club-covers").upload(path, data.coverFile, { cacheControl: "3600", upsert: false });
+        if (ue) return { ok: false, error: "Cover upload failed: " + ue.message };
+        updates.cover_url = supabase.storage.from("club-covers").getPublicUrl(path).data.publicUrl;
+      }
+    } catch (e) { return { ok: false, error: e.message }; }
+    const { error } = await supabase.from("clubs").update(updates).eq("id", clubId);
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+  async function setClubActive(clubId, isActive) {
+    const { error } = await supabase.from("clubs").update({ is_active: isActive }).eq("id", clubId);
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+  async function assignClubPresident(clubId, newPresidentId) {
+    // Demote the current president (if any) to member before elevating the new one.
+    await supabase.from("club_members").update({ role: "member" }).match({ club_id: clubId, role: "president" });
+    const { error } = await supabase.from("club_members")
+      .upsert({ club_id: clubId, user_id: newPresidentId, role: "president", added_by: currentUser.id }, { onConflict: "club_id,user_id" });
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
@@ -1840,6 +2084,16 @@ export function AppProvider({ children }) {
     addStudyCourse, deleteStudyCourse, uploadStudyMaterial, deleteStudyMaterial,
     uploadStudyQB, setQBVerified, deleteStudyQB, addStudyBook, deleteStudyBook, addStudyPin, deleteStudyPin,
     addStudyIntake, addStudySection, assignSectionCR,
+    // club hub (data)
+    clubs, clubMembers, clubPosts,
+    // club hub (selectors)
+    myClubs, clubById, clubMembersIn, clubPostsIn, userRoleIn, canPostIn, canManageClub, isPresident,
+    // club hub (files)
+    getClubFileUrl,
+    // club hub (actions)
+    addClubMembers, removeClubMember, updateClubMemberRole, leaveClub,
+    addClubPost, updateClubPost, deleteClubPost, toggleClubPin,
+    createClub, updateClubDetails, setClubActive, assignClubPresident,
     currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile, dataError, retryData,
     login, register, logout, createUser,
     userById, dashboardPath, staffList,

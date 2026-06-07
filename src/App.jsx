@@ -41,6 +41,7 @@ import { RideShare, RideDetail, OfferRide } from "./screens/rides/Rides.jsx";
 import { BloodDonation, RegisterDonor, RequestBlood } from "./screens/blood/Blood.jsx";
 import { MedicalCenter, DoctorBooking, MyAppointments, DoctorQueue } from "./screens/medical/Medical.jsx";
 import { StudyHub, StudyHubBrowse, StudyHubDept, StudyHubIntake, StudyHubSection, StudyHubCourse, StudyHubManage } from "./screens/studyhub/StudyHub.jsx";
+import { ClubsHome, ClubHome, ClubMembers, ClubPostForm, ClubManage, AdminManageClubs } from "./screens/clubs/Clubs.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -132,6 +133,7 @@ export default function App() {
   if (path === "/admin/users") return <RequireRole role="Admin"><ManageUsers /></RequireRole>;
   if (path === "/admin/faculty") return <RequireRole role="Admin"><ManageFaculty /></RequireRole>;
   if (path === "/admin/study-hub") return <RequireRole role="Admin"><ManageStudyHub /></RequireRole>;
+  if (path === "/admin/clubs") return <RequireRole role="Admin"><AdminManageClubs /></RequireRole>;
 
   // ---- Profile (any signed-in user) ----
   if (path === "/profile") return <RequireAuth><Profile /></RequireAuth>;
@@ -164,6 +166,14 @@ export default function App() {
   if ((m = matchRoute("/study-hub/section/:sectionId/course/:courseId", path))) return <RequireRole role="Student"><StudyHubCourse sectionId={m.sectionId} courseId={m.courseId} /></RequireRole>;
   if ((m = matchRoute("/study-hub/section/:sectionId/manage", path))) return <RequireRole role="Student"><StudyHubManage sectionId={m.sectionId} /></RequireRole>;
   if ((m = matchRoute("/study-hub/section/:sectionId", path))) return <RequireRole role="Student"><StudyHubSection sectionId={m.sectionId} /></RequireRole>;
+
+  // ---- Campus Life: Clubs (students only; officers manage their club) ----
+  if (path === "/clubs") return <RequireRole role="Student"><ClubsHome /></RequireRole>;
+  if ((m = matchRoute("/clubs/:id/members", path))) return <RequireRole role="Student"><ClubMembers id={m.id} /></RequireRole>;
+  if ((m = matchRoute("/clubs/:id/post/:postId/edit", path))) return <RequireRole role="Student"><ClubPostForm id={m.id} postId={m.postId} /></RequireRole>;
+  if ((m = matchRoute("/clubs/:id/post/new", path))) return <RequireRole role="Student"><ClubPostForm id={m.id} /></RequireRole>;
+  if ((m = matchRoute("/clubs/:id/manage", path))) return <RequireRole role="Student"><ClubManage id={m.id} /></RequireRole>;
+  if ((m = matchRoute("/clubs/:id", path))) return <RequireRole role="Student"><ClubHome id={m.id} /></RequireRole>;
 
   // ---- Campus Life: Faculty Directory (any signed-in user) ----
   // Order matters: literal /faculty/saved and /faculty/dept/:n precede /faculty/:id.
