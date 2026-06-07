@@ -141,6 +141,7 @@ export function PrayerTimes() {
   const [locName, setLocName] = React.useState("");
   const [locFloor, setLocFloor] = React.useState("");
   const [locSaving, setLocSaving] = React.useState(false);
+  const [locDeleting, setLocDeleting] = React.useState(false);
   useTick();
 
   if (dataLoading || list.length === 0) {
@@ -191,9 +192,15 @@ export function PrayerTimes() {
     }
   }
   async function deleteLoc(loc) {
-    const r = await deleteMusallahLocation(loc.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; }
-    toast({ type: "success", title: "Location removed" });
+    if (locDeleting) return;
+    setLocDeleting(true);
+    try {
+      const r = await deleteMusallahLocation(loc.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; }
+      toast({ type: "success", title: "Location removed" });
+    } finally {
+      setLocDeleting(false);
+    }
   }
 
   return (
@@ -263,7 +270,7 @@ export function PrayerTimes() {
                         <button onClick={() => openEditLoc(loc)} className="rounded p-1 text-slate-400 hover:text-emerald-600" title="Edit location">
                           <Icon name="Pencil" size={13} />
                         </button>
-                        <button onClick={() => deleteLoc(loc)} className="rounded p-1 text-slate-400 hover:text-red-500" title="Delete location">
+                        <button onClick={() => deleteLoc(loc)} disabled={locDeleting} className="rounded p-1 text-slate-400 hover:text-red-500 disabled:opacity-40" title="Delete location">
                           <Icon name="Trash2" size={13} />
                         </button>
                       </div>
