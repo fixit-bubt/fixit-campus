@@ -66,7 +66,8 @@ export function ListingCard({ listing, seller, onOpen }) {
 
 // --- Browse -----------------------------------------------------------------
 export function Marketplace() {
-  const { listings, userById, dataLoading } = useApp();
+  const { currentUser, listings, userById, dataLoading } = useApp();
+  const isAdmin = currentUser?.role === "Admin";
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState("All");
   const [status, setStatus] = React.useState("All");
@@ -84,13 +85,13 @@ export function Marketplace() {
 
   return (
     <AppShell activeKey="marketplace" title="Marketplace">
-      <PageHeader title="Marketplace" subtitle="Buy and sell with fellow students on campus."
-        action={
+      <PageHeader title="Marketplace" subtitle={isAdmin ? "Browse and moderate campus listings." : "Buy and sell with fellow students on campus."}
+        action={isAdmin ? null : (
           <div className="flex gap-2">
             <Button variant="secondary" icon="Tag" onClick={() => navigate("/marketplace/mine")}>My Listings</Button>
             <Button icon="Plus" onClick={() => navigate("/marketplace/new")}>Post an Item</Button>
           </div>
-        } />
+        )} />
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-xs">
@@ -181,6 +182,8 @@ export function ListingDetail({ id }) {
   }
   const seller = userById(listing.sellerId);
   const isOwner = listing.sellerId === currentUser.id;
+  const isAdmin = currentUser.role === "Admin";
+  const canModerate = isOwner || isAdmin;
   const sold = listing.status === "Sold";
 
   return (
@@ -215,10 +218,10 @@ export function ListingDetail({ id }) {
             </div>
 
             <div className="mt-5">
-              {isOwner ? (
+              {canModerate ? (
                 <div className="flex flex-wrap gap-2">
                   {!sold && <Button variant="secondary" icon="BadgeCheck" onClick={() => setConfirmSold(true)}>Mark as Sold</Button>}
-                  <Button variant="secondary" icon="Pencil" onClick={() => navigate(`/marketplace/${id}/edit`)}>Edit</Button>
+                  {isOwner && <Button variant="secondary" icon="Pencil" onClick={() => navigate(`/marketplace/${id}/edit`)}>Edit</Button>}
                   <Button variant="secondary" icon="Trash2" className="text-red-600" onClick={() => setConfirmDelete(true)}>Delete</Button>
                 </div>
               ) : sold ? (
@@ -254,9 +257,12 @@ export function ListingForm({ id }) {
   const { currentUser, listings, dataLoading } = useApp();
   const editing = !!id;
   const existing = editing ? listings.find((l) => l.id === id) : null;
-  const denied = editing && existing && existing.sellerId !== currentUser.id;
+  const isAdmin = currentUser?.role === "Admin";
+  const denied = (editing && existing && existing.sellerId !== currentUser.id) || (!editing && isAdmin);
 
-  React.useEffect(() => { if (denied) navigate(`/marketplace/${id}`); }, [denied, id]);
+  React.useEffect(() => {
+    if (denied) navigate(editing ? `/marketplace/${id}` : "/marketplace");
+  }, [denied, id, editing]);
 
   if (editing && (dataLoading || !existing)) {
     return (
@@ -372,6 +378,7 @@ function ListingEditor({ id, existing }) {
 // --- My Listings ------------------------------------------------------------
 export function MyListings() {
   const { currentUser, listings, userById, dataLoading } = useApp();
+  React.useEffect(() => { if (currentUser?.role === "Admin") navigate("/marketplace"); }, [currentUser?.role]);
   const mine = listings.filter((l) => l.sellerId === currentUser.id).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   return (
     <AppShell activeKey="marketplace" title="My Listings">

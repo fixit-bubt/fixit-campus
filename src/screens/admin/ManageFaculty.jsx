@@ -8,23 +8,7 @@ import { Icon } from "../../components/Icon.jsx";
 
 const shortDept = (name = "") => name.replace(/^Department of\s+/i, "");
 
-function LinkedInBadge({ url }) {
-  if (url) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-        <Icon name="Linkedin" size={11} /> Linked
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-400">
-      <Icon name="Linkedin" size={11} /> Missing
-    </span>
-  );
-}
-
 function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
-  const [linkedin, setLinkedin] = useState(f.links.linkedin || "");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(f.photo || null);
@@ -50,12 +34,6 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
   }
 
   async function handleSave() {
-    const trimmedLinkedin = linkedin.trim();
-    if (trimmedLinkedin && !trimmedLinkedin.startsWith("http")) {
-      toast({ type: "error", title: "Invalid URL", message: "LinkedIn URL must start with https://" });
-      return;
-    }
-
     setSaving(true);
 
     // Upload photo first if a new file was chosen
@@ -70,8 +48,8 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
       }
     }
 
-    const updates = { linkedin_url: trimmedLinkedin || null };
-    if (removePhoto && !photoFile) updates.photo_url = null; // persist a photo removal
+    const updates = {};
+    if (removePhoto && !photoFile) updates.photo_url = null;
     const result = await onSave(f.id, updates);
     setSaving(false);
     if (result.ok) {
@@ -141,15 +119,6 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
           </div>
         </div>
 
-        {/* LinkedIn URL */}
-        <Field label="LinkedIn Profile URL">
-          <Input
-            value={linkedin}
-            onChange={(e) => setLinkedin(e.target.value)}
-            placeholder="https://www.linkedin.com/in/username"
-            type="url"
-          />
-        </Field>
       </div>
 
       <div className="mt-6 flex justify-end gap-3">
@@ -165,7 +134,6 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
 export default function ManageFaculty() {
   const { faculty, departments, updateFaculty, uploadFacultyPhoto, dataLoading } = useApp();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("all"); // all | missing | linked
   const [editing, setEditing] = useState(null);
 
   const deptMap = useMemo(() => {
@@ -178,11 +146,6 @@ export default function ManageFaculty() {
     const q = query.trim().toLowerCase();
     return faculty
       .filter((f) => {
-        if (filter === "missing") return !f.links.linkedin;
-        if (filter === "linked") return !!f.links.linkedin;
-        return true;
-      })
-      .filter((f) => {
         if (!q) return true;
         const dept = deptMap[f.departmentId];
         return (
@@ -192,21 +155,12 @@ export default function ManageFaculty() {
         );
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [faculty, filter, query, deptMap]);
-
-  const linkedCount = faculty.filter((f) => f.links.linkedin).length;
-  const missingCount = faculty.length - linkedCount;
-
-  const FILTERS = [
-    { key: "all", label: `All (${faculty.length})` },
-    { key: "missing", label: `Missing LinkedIn (${missingCount})` },
-    { key: "linked", label: `Has LinkedIn (${linkedCount})` },
-  ];
+  }, [faculty, query, deptMap]);
 
   if (dataLoading && faculty.length === 0) {
     return (
       <AppShell activeKey="faculty-admin" title="Faculty Profiles">
-        <PageHeader title="Faculty Profiles" subtitle="Manage LinkedIn links and photos for all teachers." />
+        <PageHeader title="Faculty Profiles" subtitle="Manage photos for all teachers." />
         <Loading />
       </AppShell>
     );
@@ -216,25 +170,8 @@ export default function ManageFaculty() {
     <AppShell activeKey="faculty-admin" title="Faculty Profiles">
       <PageHeader
         title="Faculty Profiles"
-        subtitle={`${linkedCount} of ${faculty.length} teachers have a LinkedIn link.`}
+        subtitle={`${faculty.length} teacher${faculty.length === 1 ? "" : "s"} · manage photos.`}
       />
-
-      {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-              filter === f.key
-                ? "bg-indigo-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
 
       {/* Search */}
       <div className="relative mt-4">
@@ -263,7 +200,6 @@ export default function ManageFaculty() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-slate-900 truncate">{f.name}</p>
-                    <LinkedInBadge url={f.links.linkedin} />
                     {!f.photo && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-600">
                         <Icon name="ImageOff" size={11} /> No photo
@@ -273,16 +209,6 @@ export default function ManageFaculty() {
                   <p className="mt-0.5 text-xs text-slate-500 truncate">
                     {f.designation}{dept ? ` · ${shortDept(dept.name)}` : ""}
                   </p>
-                  {f.links.linkedin && (
-                    <a
-                      href={f.links.linkedin}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-0.5 block truncate text-xs text-blue-600 hover:underline"
-                    >
-                      {f.links.linkedin}
-                    </a>
-                  )}
                 </div>
                 <Button
                   size="sm"

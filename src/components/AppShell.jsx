@@ -77,7 +77,7 @@ const NAV_BY_ROLE = {
       { key: "studyhub-admin", label: "Study Hub", icon: "BookMarked", path: "/admin/study-hub" },
       { key: "clubs-admin", label: "Clubs", icon: "UsersRound", path: "/admin/clubs" },
     ]},
-    { section: "Campus Life", items: CAMPUS_LIFE },
+    { section: "Campus Life", items: CAMPUS_LIFE.filter((i) => i.key !== "clubs") },
     { section: "Services", items: [
       { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
     ]},

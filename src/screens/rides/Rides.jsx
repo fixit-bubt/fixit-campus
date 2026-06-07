@@ -84,13 +84,14 @@ export function RideCard({ ride, driver, mine, onOpen }) {
 // --- Browse -----------------------------------------------------------------
 export function RideShare() {
   const { currentUser, rides, userById, dataLoading } = useApp();
+  const isAdmin = currentUser?.role === "Admin";
   const [intent, setIntent] = React.useState("find");
   const [direction, setDirection] = React.useState("All");
   const [area, setArea] = React.useState("");
 
   const mineRides = rides.filter((r) => r.driverId === currentUser.id);
-  const findRides = rides
-    .filter((r) => r.driverId !== currentUser.id)
+  const browseRides = rides
+    .filter((r) => isAdmin || r.driverId !== currentUser.id)
     .filter((r) => direction === "All" || r.direction === direction)
     .filter((r) => {
       const q = area.trim().toLowerCase();
@@ -101,15 +102,18 @@ export function RideShare() {
 
   return (
     <AppShell activeKey="rideshare" title="Ride Share">
-      <PageHeader title="Ride Share" subtitle="Share rides to and from campus with fellow students."
-        action={<Button icon="Plus" onClick={() => navigate("/rides/new")}>Offer a Ride</Button>} />
+      <PageHeader title="Ride Share"
+        subtitle={isAdmin ? "View and moderate all active ride posts." : "Share rides to and from campus with fellow students."}
+        action={isAdmin ? null : <Button icon="Plus" onClick={() => navigate("/rides/new")}>Offer a Ride</Button>} />
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <SegmentToggle
-          options={[{ value: "find", label: "Find a Ride", icon: "Search" }, { value: "offer", label: "My Rides", icon: "Car" }]}
-          value={intent} onChange={setIntent}
-        />
-        {intent === "find" && (
+        {!isAdmin && (
+          <SegmentToggle
+            options={[{ value: "find", label: "Find a Ride", icon: "Search" }, { value: "offer", label: "My Rides", icon: "Car" }]}
+            value={intent} onChange={setIntent}
+          />
+        )}
+        {(isAdmin || intent === "find") && (
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative w-full sm:w-56">
               <Icon name="MapPin" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -127,12 +131,17 @@ export function RideShare() {
 
       {dataLoading ? (
         <Loading />
-      ) : intent === "find" ? (
-        findRides.length === 0 ? (
-          <EmptyState icon="Car" title="No rides match" message="Try clearing filters, or offer a ride yourself." action={<Button variant="secondary" onClick={() => { setArea(""); setDirection("All"); }}>Clear filters</Button>} />
+      ) : isAdmin || intent === "find" ? (
+        browseRides.length === 0 ? (
+          <EmptyState icon="Car" title="No rides posted" message={isAdmin ? "No active ride posts at the moment." : "Try clearing filters, or offer a ride yourself."}
+            action={isAdmin ? null : <Button variant="secondary" onClick={() => { setArea(""); setDirection("All"); }}>Clear filters</Button>} />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {findRides.map((r) => <RideCard key={r.id} ride={r} driver={userById(r.driverId)} onOpen={() => navigate(`/rides/${r.id}`)} />)}
+            {browseRides.map((r) => (
+              <div key={r.id} className="relative group">
+                <RideCard ride={r} driver={userById(r.driverId)} onOpen={() => navigate(`/rides/${r.id}`)} />
+              </div>
+            ))}
           </div>
         )
       ) : mineRides.length === 0 ? (
@@ -236,7 +245,9 @@ export function RideDetail({ id }) {
     );
   }
   const driver = userById(ride.driverId);
+  const isAdmin = currentUser.role === "Admin";
   const mine = ride.driverId === currentUser.id;
+  const canDelete = mine || isAdmin;
   const requested = ride.requesterIds.includes(currentUser.id);
   const left = seatsLeft(ride);
 
@@ -255,7 +266,7 @@ export function RideDetail({ id }) {
               <p className="text-sm text-slate-400">{ride.direction} · {ride.vehicle}</p>
             </div>
           </div>
-          {mine && <Button variant="secondary" icon="Trash2" className="text-red-600" onClick={() => setConfirmDelete(true)}>Delete</Button>}
+          {canDelete && <Button variant="secondary" icon="Trash2" className="text-red-600" onClick={() => setConfirmDelete(true)}>Delete</Button>}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -314,6 +325,11 @@ export function RideDetail({ id }) {
                   </div>
                 )}
               </Card>
+            ) : isAdmin ? (
+              <Card className="p-5">
+                <h3 className="text-sm font-semibold text-slate-900">Seat requests</h3>
+                <p className="mt-2 text-sm text-slate-400">{ride.requesterIds.length} request{ride.requesterIds.length === 1 ? "" : "s"}.</p>
+              </Card>
             ) : (
               <Card className="p-5">
                 <h3 className="text-sm font-semibold text-slate-900">{requested ? "Seat requested" : "Request a seat"}</h3>
@@ -345,8 +361,9 @@ export function RideDetail({ id }) {
 
 // --- Offer form -------------------------------------------------------------
 export function OfferRide() {
-  const { addRide } = useApp();
+  const { currentUser, addRide } = useApp();
   const toast = useToast();
+  React.useEffect(() => { if (currentUser?.role === "Admin") navigate("/rides"); }, [currentUser?.role]);
   const [form, setForm] = React.useState({ origin: "", destination: "", direction: "To Campus", date: todayISO(), time: "07:30", seatsTotal: "3", fare: "", vehicle: "Car", recurring: [], notes: "" });
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);

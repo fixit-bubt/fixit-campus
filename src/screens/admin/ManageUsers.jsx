@@ -6,7 +6,7 @@ import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import { fmtDate } from "../../lib/helpers.js";
 
-const EMPTY_NEW = { name: "", email: "", password: "", role: "Staff", dept: "" };
+const EMPTY_NEW = { name: "", email: "", password: "", role: "Staff", dept: "", expertise: "" };
 
 export default function ManageUsers() {
   const { users, currentUser, setRole, createUser } = useApp();
@@ -75,6 +75,7 @@ export default function ManageUsers() {
       password: form.password,
       role: form.role,
       dept: form.role === "Staff" ? form.dept : "",
+      expertise: form.role === "Staff" ? form.expertise : "",
     });
     setSaving(false);
     if (!res.ok) {
@@ -142,7 +143,7 @@ export default function ManageUsers() {
                         <Select value={u.role} onChange={(e) => setPending({ user: u, newRole: e.target.value })}>
                           <option value="Student">Student</option>
                           <option value="Staff">Staff</option>
-                          <option value="Admin">Admin</option>
+                          {u.role !== "Student" && <option value="Admin">Admin</option>}
                         </Select>
                       </div>
                     </td>
@@ -227,6 +228,11 @@ export default function ManageUsers() {
               </Field>
             )}
           </div>
+          {form.role === "Staff" && (
+            <Field label="Expertise" htmlFor="nu-expertise" hint="Optional — area of specialisation.">
+              <Input id="nu-expertise" placeholder="e.g. Network Administration, Lab Support" value={form.expertise} onChange={set("expertise")} />
+            </Field>
+          )}
         </div>
       </Modal>
     </AppShell>

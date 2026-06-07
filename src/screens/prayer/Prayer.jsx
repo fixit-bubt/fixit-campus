@@ -128,13 +128,19 @@ export function monthRows(base) {
 }
 
 export function PrayerTimes() {
-  const { currentUser, dataLoading, updatePrayerJamaat } = useApp();
+  const { currentUser, dataLoading, updatePrayerJamaat,
+    musallahLocations, addMusallahLocation, updateMusallahLocation, deleteMusallahLocation } = useApp();
   const { list, jummah, displayList } = usePrayerSchedule();
   const toast = useToast();
   const [view, setView] = React.useState("today");
   const [adjust, setAdjust] = React.useState(null); // prayer being edited
   const [adjVal, setAdjVal] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  // Musallah location edit state (admin only)
+  const [locModal, setLocModal] = React.useState(null); // null | { mode: "add" } | { mode: "edit", loc }
+  const [locName, setLocName] = React.useState("");
+  const [locFloor, setLocFloor] = React.useState("");
+  const [locSaving, setLocSaving] = React.useState(false);
   useTick();
 
   if (dataLoading || list.length === 0) {
@@ -162,6 +168,25 @@ export function PrayerTimes() {
     if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
     toast({ type: "success", title: "Jamaat time updated", message: `${adjust.en} jamaat set to ${fmtTime(adjVal)}.` });
     setAdjust(null);
+  }
+
+  function openAddLoc() { setLocName(""); setLocFloor(""); setLocModal({ mode: "add" }); }
+  function openEditLoc(loc) { setLocName(loc.name); setLocFloor(loc.floorDesc); setLocModal({ mode: "edit", loc }); }
+  async function saveLocModal() {
+    if (!locName.trim()) return;
+    setLocSaving(true);
+    const r = locModal.mode === "add"
+      ? await addMusallahLocation(locName.trim(), locFloor.trim())
+      : await updateMusallahLocation(locModal.loc.id, locName.trim(), locFloor.trim());
+    setLocSaving(false);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't save", message: r.error }); return; }
+    toast({ type: "success", title: locModal.mode === "add" ? "Location added" : "Location updated" });
+    setLocModal(null);
+  }
+  async function deleteLoc(loc) {
+    const r = await deleteMusallahLocation(loc.id);
+    if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; }
+    toast({ type: "success", title: "Location removed" });
   }
 
   return (
@@ -211,7 +236,7 @@ export function PrayerTimes() {
             ))}
             {!friday && (
               <div className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
-                <Icon name="Users" size={14} className="text-slate-400" /> Jummah jamaat is at {fmtTime(jummah?.jamaat || "13:15")} every Friday (replaces Dhuhr).
+                <Icon name="Users" size={14} className="text-slate-400" /> Every Friday, Jummah replaces Dhuhr.
               </div>
             )}
           </div>
@@ -219,19 +244,35 @@ export function PrayerTimes() {
             <Card className="p-5">
               <h3 className="text-sm font-semibold text-slate-900">Campus musallah</h3>
               <div className="mt-3 space-y-3 text-sm">
-                <div className="flex items-start gap-2.5">
-                  <Icon name="MapPin" size={16} className="mt-0.5 shrink-0 text-emerald-600" />
-                  <div><p className="font-medium text-slate-900">Central Musallah</p><p className="text-xs text-slate-500">4th floor, Main Academic Building</p></div>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <Icon name="MapPin" size={16} className="mt-0.5 shrink-0 text-emerald-600" />
-                  <div><p className="font-medium text-slate-900">Women's Musallah</p><p className="text-xs text-slate-500">2nd floor, Annex Building</p></div>
-                </div>
+                {musallahLocations.map((loc) => (
+                  <div key={loc.id} className="group flex items-start gap-2.5">
+                    <Icon name="MapPin" size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-slate-900">{loc.name}</p>
+                      {loc.floorDesc && <p className="text-xs text-slate-500">{loc.floorDesc}</p>}
+                    </div>
+                    {currentUser.role === "Admin" && (
+                      <div className="hidden gap-1 group-hover:flex">
+                        <button onClick={() => openEditLoc(loc)} className="rounded p-1 text-slate-400 hover:text-emerald-600" title="Edit location">
+                          <Icon name="Pencil" size={13} />
+                        </button>
+                        <button onClick={() => deleteLoc(loc)} className="rounded p-1 text-slate-400 hover:text-red-500" title="Delete location">
+                          <Icon name="Trash2" size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
               {currentUser.role === "Admin" && (
-                <p className="mt-4 flex items-center gap-1.5 border-t border-slate-100 pt-3 text-xs text-slate-400">
-                  <Icon name="Info" size={13} /> Hover a prayer to adjust its jamaat time.
-                </p>
+                <div className="mt-4 border-t border-slate-100 pt-3 space-y-2">
+                  <button onClick={openAddLoc} className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium">
+                    <Icon name="Plus" size={13} /> Add location
+                  </button>
+                  <p className="flex items-center gap-1.5 text-xs text-slate-400">
+                    <Icon name="Info" size={13} /> Hover a prayer to adjust its jamaat time.
+                  </p>
+                </div>
               )}
             </Card>
           </div>
@@ -282,6 +323,29 @@ export function PrayerTimes() {
         <Field label="Jamaat time" htmlFor="adj">
           <Input id="adj" type="time" value={adjVal} onChange={(e) => setAdjVal(e.target.value)} />
         </Field>
+      </Modal>
+
+      <Modal
+        open={!!locModal}
+        onClose={() => setLocModal(null)}
+        icon="MapPin"
+        tone="emerald"
+        title={locModal?.mode === "add" ? "Add musallah location" : "Edit musallah location"}
+        footer={<>
+          <Button variant="secondary" onClick={() => setLocModal(null)} disabled={locSaving}>Cancel</Button>
+          <Button onClick={saveLocModal} disabled={locSaving || !locName.trim()}>
+            {locSaving ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Save"}
+          </Button>
+        </>}
+      >
+        <div className="space-y-4">
+          <Field label="Location name" htmlFor="loc-name" required>
+            <Input id="loc-name" placeholder="e.g. Central Musallah" value={locName} onChange={(e) => setLocName(e.target.value)} />
+          </Field>
+          <Field label="Floor / building" htmlFor="loc-floor" hint="Optional">
+            <Input id="loc-floor" placeholder="e.g. 4th floor, Main Academic Building" value={locFloor} onChange={(e) => setLocFloor(e.target.value)} />
+          </Field>
+        </div>
       </Modal>
     </AppShell>
   );
