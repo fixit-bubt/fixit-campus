@@ -853,9 +853,15 @@ export function ModerateJobs() {
     }
   }
   async function doRestore(job) {
-    const r = await restoreJob(job.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't restore", message: r.error }); return; }
-    toast({ type: "success", title: "Listing restored" });
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await restoreJob(job.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't restore", message: r.error }); return; }
+      toast({ type: "success", title: "Listing restored" });
+    } finally {
+      setBusy(false);
+    }
   }
 
   const reasonLabel = (v) => REPORT_REASONS.find((r) => r.value === v)?.label || v;
