@@ -238,6 +238,8 @@ export default function ManageStudyHub() {
   const [assignSection, setAssignSection] = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(null);
   const [rejectReq, setRejectReq] = useState(null);
+  const [approveBusy, setApproveBusy] = useState(false);
+  const [removeCRBusy, setRemoveCRBusy] = useState(false);
 
   const activeDeptId = deptId || departments[0]?.id || "";
   const activeDept = departments.find((d) => d.id === activeDeptId);
@@ -254,13 +256,15 @@ export default function ManageStudyHub() {
       .map((m) => ({ id: m.id, name: studyPersonName(m.userId) }));
 
   async function doApprove(req) {
-    const r = await approveSectionRequest(req.id);
-    if (!r.ok) { toast({ type: "error", title: "Approval failed", message: r.error }); return; }
-    toast({
-      type: "success",
-      title: "Section created",
-      message: `Section ${req.sectionNumber} ready. Join code: ${r.joinCode}`,
-    });
+    if (approveBusy) return;
+    setApproveBusy(true);
+    try {
+      const r = await approveSectionRequest(req.id);
+      if (!r.ok) { toast({ type: "error", title: "Approval failed", message: r.error }); return; }
+      toast({ type: "success", title: "Section created", message: `Section ${req.sectionNumber} ready. Join code: ${r.joinCode}` });
+    } finally {
+      setApproveBusy(false);
+    }
   }
 
   async function doRejectReq(reqId, note) {
@@ -269,11 +273,16 @@ export default function ManageStudyHub() {
 
   async function doRemoveCR() {
     const cr = confirmRemove;
-    if (!cr) return;
-    const r = await setMemberRole(cr.id, "member");
-    if (!r.ok) { toast({ type: "error", title: "Couldn't remove CR", message: r.error }); setConfirmRemove(null); return; }
-    toast({ type: "success", title: "CR role removed", message: cr.name });
-    setConfirmRemove(null);
+    if (!cr || removeCRBusy) return;
+    setRemoveCRBusy(true);
+    try {
+      const r = await setMemberRole(cr.id, "member");
+      if (!r.ok) { toast({ type: "error", title: "Couldn't remove CR", message: r.error }); return; }
+      toast({ type: "success", title: "CR role removed", message: cr.name });
+      setConfirmRemove(null);
+    } finally {
+      setRemoveCRBusy(false);
+    }
   }
 
   if (dataLoading && departments.length === 0) {
@@ -371,7 +380,7 @@ export default function ManageStudyHub() {
         open={!!confirmRemove} onClose={() => setConfirmRemove(null)} icon="UserMinus" tone="red"
         title="Remove CR role?"
         description={confirmRemove ? `${confirmRemove.name} will stay a member, but the section will have no CR until you assign one.` : ""}
-        footer={<><Button variant="secondary" onClick={() => setConfirmRemove(null)}>Cancel</Button><Button variant="destructive" onClick={doRemoveCR}>Remove CR</Button></>}
+        footer={<><Button variant="secondary" onClick={() => setConfirmRemove(null)} disabled={removeCRBusy}>Cancel</Button><Button variant="destructive" onClick={doRemoveCR} disabled={removeCRBusy}>Remove CR</Button></>}
       />
     </AppShell>
   );

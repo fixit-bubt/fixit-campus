@@ -1043,6 +1043,8 @@ export function StudyHubSection({ sectionId }) {
   const [pinOpen, setPinOpen] = React.useState(false);
   const [courseOpen, setCourseOpen] = React.useState(false);
   const [confirm, setConfirm] = React.useState(null); // { item } — subject (course) delete
+  const [confirmBusy, setConfirmBusy] = React.useState(false);
+  const [unpinBusy, setUnpinBusy] = React.useState(false);
 
   const section = studySectionById(sectionId);
   const intake = section && studyIntakes.find((i) => i.id === section.intakeId);
@@ -1099,24 +1101,31 @@ export function StudyHubSection({ sectionId }) {
   const courses = studyCoursesIn(section.id);
 
   async function unpin(pin) {
+    if (unpinBusy) return;
+    setUnpinBusy(true);
     try {
       const r = await deleteStudyPin(pin.id);
       if (!r.ok) { toast({ type: "error", title: "Couldn't unpin", message: r.error }); return; }
       toast({ type: "success", title: "Unpinned" });
     } catch {
       toast({ type: "error", title: "Couldn't unpin", message: "Please try again." });
+    } finally {
+      setUnpinBusy(false);
     }
   }
   async function doConfirm() {
-    if (!confirm) return;
+    if (!confirm || confirmBusy) return;
+    setConfirmBusy(true);
     try {
       const r = await deleteStudyCourse(confirm.item.id);
-      if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); setConfirm(null); return; }
+      if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); return; }
       toast({ type: "success", title: "Subject removed", message: confirm.item.code });
       setConfirm(null);
     } catch {
       toast({ type: "error", title: "Couldn't remove", message: "Please try again." });
       setConfirm(null);
+    } finally {
+      setConfirmBusy(false);
     }
   }
 
@@ -1145,7 +1154,7 @@ export function StudyHubSection({ sectionId }) {
         open={!!confirm} onClose={() => setConfirm(null)} icon="Trash2" tone="red"
         title="Remove this subject?"
         description={confirm ? `"${confirm.item.code} — ${confirm.item.name}" and all its notes, questions, and books will be removed for the section.` : ""}
-        footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={doConfirm}>Remove</Button></>}
+        footer={<><Button variant="secondary" onClick={() => setConfirm(null)} disabled={confirmBusy}>Cancel</Button><Button variant="destructive" onClick={doConfirm} disabled={confirmBusy}>Remove</Button></>}
       />
     </AppShell>
   );
@@ -1273,6 +1282,8 @@ export function StudyHubCourse({ sectionId, courseId }) {
   const [qbOpen, setQbOpen] = React.useState(false);
   const [bookOpen, setBookOpen] = React.useState(false);
   const [confirm, setConfirm] = React.useState(null); // { kind: 'note'|'qb'|'book', item }
+  const [confirmBusy, setConfirmBusy] = React.useState(false);
+  const [verifyBusy, setVerifyBusy] = React.useState(false);
 
   const course = studyCourseById(courseId);
   const section = course && studySectionById(course.sectionId);
@@ -1325,27 +1336,34 @@ export function StudyHubCourse({ sectionId, courseId }) {
   const books = studyBooksInCourse(course.id);
 
   async function verifyQB(paper) {
+    if (verifyBusy) return;
+    setVerifyBusy(true);
     try {
       const r = await setQBVerified(paper.id, !paper.verified);
       if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
       toast({ type: "success", title: paper.verified ? "Marked unverified" : "Marked verified" });
     } catch {
       toast({ type: "error", title: "Couldn't update", message: "Please try again." });
+    } finally {
+      setVerifyBusy(false);
     }
   }
   async function doConfirm() {
-    if (!confirm) return;
+    if (!confirm || confirmBusy) return;
+    setConfirmBusy(true);
     try {
       const { kind, item } = confirm;
       const r = kind === "note" ? await deleteStudyMaterial(item.id)
               : kind === "qb"   ? await deleteStudyQB(item.id)
               :                   await deleteStudyBook(item.id);
-      if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); setConfirm(null); return; }
+      if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); return; }
       toast({ type: "success", title: "Removed", message: item.title });
       setConfirm(null);
     } catch {
       toast({ type: "error", title: "Couldn't remove", message: "Please try again." });
       setConfirm(null);
+    } finally {
+      setConfirmBusy(false);
     }
   }
 
@@ -1386,7 +1404,7 @@ export function StudyHubCourse({ sectionId, courseId }) {
         open={!!confirm} onClose={() => setConfirm(null)} icon="Trash2" tone="red"
         title={`Remove this ${confirmLabel}?`}
         description={confirm ? `"${confirm.item.title}" will be removed for everyone in the section.` : ""}
-        footer={<><Button variant="secondary" onClick={() => setConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={doConfirm}>Remove</Button></>}
+        footer={<><Button variant="secondary" onClick={() => setConfirm(null)} disabled={confirmBusy}>Cancel</Button><Button variant="destructive" onClick={doConfirm} disabled={confirmBusy}>Remove</Button></>}
       />
     </AppShell>
   );
