@@ -231,13 +231,16 @@ function AddMembersModal({ clubId, existingUserIds, onClose }) {
     setSelected((s) => (s.find((x) => x.id === u.id) ? s.filter((x) => x.id !== u.id) : [...s, u]));
 
   async function handleAdd() {
-    if (!selected.length) return;
+    if (saving || !selected.length) return;
     setSaving(true);
-    const { ok, error } = await addClubMembers(clubId, selected.map((u) => u.id));
-    setSaving(false);
-    if (!ok) { toast.error("Couldn't add members", error); return; }
-    toast.success(`${selected.length} member${selected.length > 1 ? "s" : ""} added.`);
-    onClose();
+    try {
+      const { ok, error } = await addClubMembers(clubId, selected.map((u) => u.id));
+      if (!ok) { toast.error("Couldn't add members", error); return; }
+      toast.success(`${selected.length} member${selected.length > 1 ? "s" : ""} added.`);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -545,20 +548,27 @@ export function ClubMembers({ id }) {
   ];
 
   async function handleRoleChange(userId, role) {
+    if (saving) return;
     setSaving(userId);
-    const { ok, error } = await updateClubMemberRole(id, userId, role);
-    setSaving(null);
-    if (!ok) toast.error("Couldn't change role", error);
+    try {
+      const { ok, error } = await updateClubMemberRole(id, userId, role);
+      if (!ok) toast.error("Couldn't change role", error);
+    } finally {
+      setSaving(null);
+    }
   }
   async function handleRemove() {
-    if (!removeTarget) return;
+    if (saving || !removeTarget) return;
     setSaving(removeTarget);
-    const isSelf = removeTarget === currentUser.id;
-    const { ok, error } = isSelf ? await leaveClub(id) : await removeClubMember(id, removeTarget);
-    setSaving(null);
-    setRemoveTarget(null);
-    if (!ok) toast.error("Action failed", error);
-    else if (isSelf) navigate("/clubs");
+    try {
+      const isSelf = removeTarget === currentUser?.id;
+      const { ok, error } = isSelf ? await leaveClub(id) : await removeClubMember(id, removeTarget);
+      setRemoveTarget(null);
+      if (!ok) toast.error("Action failed", error);
+      else if (isSelf) navigate("/clubs");
+    } finally {
+      setSaving(null);
+    }
   }
 
   // self: may leave unless president · others: managers may remove non-presidents
@@ -756,23 +766,26 @@ export function ClubPostForm({ id, postId }) {
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
   async function handleSave() {
-    if (!form.title.trim()) { toast.error("Title is required."); return; }
+    if (saving || !form.title.trim()) { if (!form.title.trim()) toast.error("Title is required."); return; }
     setSaving(true);
-    const payload = {
-      title: form.title, body: form.body, isPinned: form.isPinned,
-      imageFile: form.imageFile, attachmentFile: form.attachmentFile,
-      // removal intent (edit mode): had a file, now cleared, with no replacement
-      removeImage:      isEdit && form.hadImage && !form.imageFile && !form.imagePreview,
-      removeAttachment: isEdit && form.hadAttachment && !form.attachmentFile && !form.attachmentName,
-      clubId: id,
-    };
-    const result = isEdit
-      ? await updateClubPost(postId, payload)
-      : await addClubPost(id, payload);
-    setSaving(false);
-    if (!result.ok) { toast.error("Couldn't save post", result.error); return; }
-    toast.success(isEdit ? "Post updated." : "Post published.");
-    navigate(`/clubs/${id}`);
+    try {
+      const payload = {
+        title: form.title, body: form.body, isPinned: form.isPinned,
+        imageFile: form.imageFile, attachmentFile: form.attachmentFile,
+        // removal intent (edit mode): had a file, now cleared, with no replacement
+        removeImage:      isEdit && form.hadImage && !form.imageFile && !form.imagePreview,
+        removeAttachment: isEdit && form.hadAttachment && !form.attachmentFile && !form.attachmentName,
+        clubId: id,
+      };
+      const result = isEdit
+        ? await updateClubPost(postId, payload)
+        : await addClubPost(id, payload);
+      if (!result.ok) { toast.error("Couldn't save post", result.error); return; }
+      toast.success(isEdit ? "Post updated." : "Post published.");
+      navigate(`/clubs/${id}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const myRole = userRoleIn(id);
@@ -888,13 +901,16 @@ export function ClubManage({ id }) {
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
   async function handleSave() {
-    if (!form.name.trim()) { toast.error("Club name is required."); return; }
+    if (saving || !form.name.trim()) { if (!form.name.trim()) toast.error("Club name is required."); return; }
     setSaving(true);
-    const { ok, error } = await updateClubDetails(id, { ...form, facultyAdvisorId: form.facultyAdvisorId || null });
-    setSaving(false);
-    if (!ok) { toast.error("Couldn't save", error); return; }
-    toast.success("Club updated.");
-    navigate(`/clubs/${id}`);
+    try {
+      const { ok, error } = await updateClubDetails(id, { ...form, facultyAdvisorId: form.facultyAdvisorId || null });
+      if (!ok) { toast.error("Couldn't save", error); return; }
+      toast.success("Club updated.");
+      navigate(`/clubs/${id}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

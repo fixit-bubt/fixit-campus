@@ -328,13 +328,16 @@ function ReportModal({ job, open, onClose }) {
   const [saving, setSaving] = React.useState(false);
 
   async function submit() {
-    if (!reason) { toast({ type: "error", title: "Pick a reason" }); return; }
+    if (saving || !reason) { if (!reason) toast({ type: "error", title: "Pick a reason" }); return; }
     setSaving(true);
-    const r = await reportJob(job.id, reason, note.trim());
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't report", message: r.error }); return; }
-    onClose();
-    toast({ type: "success", title: "Thanks for flagging", message: "An admin will review this listing." });
+    try {
+      const r = await reportJob(job.id, reason, note.trim());
+      if (!r.ok) { toast({ type: "error", title: "Couldn't report", message: r.error }); return; }
+      onClose();
+      toast({ type: "success", title: "Thanks for flagging", message: "An admin will review this listing." });
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -663,7 +666,7 @@ function JobEditor({ id, existing }) {
     if (!form.location.trim()) er.location = "Where is it based?";
     if (!form.description.trim()) er.description = "Describe the role.";
     if (!form.deadline) er.deadline = "Set an application deadline.";
-    else if (form.deadline < dhakaToday()) er.deadline = "Deadline can't be in the past.";
+    else if (form.deadline < dhakaToday() && (!editing || form.deadline !== existing?.deadline)) er.deadline = "Deadline can't be in the past.";
     if (form.applyMethod === "link" && !form.applyValue.trim()) er.applyValue = "Add the application link.";
     if (form.applyMethod === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.applyValue.trim())) er.applyValue = "Add a valid email address.";
     if (form.applyMethod === "file" && !form.applyFile && !form.applyFileName) er.applyFile = "Upload the circular (PDF).";
@@ -677,19 +680,22 @@ function JobEditor({ id, existing }) {
     setErrors(er);
     if (Object.keys(er).length) { toast({ type: "error", title: "Check the form", message: "A few fields need attention." }); return; }
     setSaving(true);
-    const data = {
-      title: form.title.trim(), company: form.company.trim(), jobType: form.jobType,
-      workMode: form.workMode, location: form.location.trim(), stipend: form.stipend.trim(),
-      deadline: form.deadline, requirements: form.requirements.trim(), description: form.description.trim(),
-      clubId: form.clubId || null, applyMethod: form.applyMethod,
-      applyValue: form.applyMethod === "file" ? null : form.applyValue.trim(),
-      applyFile: form.applyFile, applyFileName: form.applyFileName,
-    };
-    const res = editing ? await updateJob(id, data) : await addJob(data);
-    setSaving(false);
-    if (!res.ok) { toast({ type: "error", title: editing ? "Couldn't update" : "Couldn't post", message: res.error }); return; }
-    if (editing) { toast({ type: "success", title: "Listing updated" }); navigate(`/jobs/${id}`); }
-    else { toast({ type: "success", title: "Listing posted", message: "It's now live on the board." }); navigate(`/jobs/${res.id}`); }
+    try {
+      const data = {
+        title: form.title.trim(), company: form.company.trim(), jobType: form.jobType,
+        workMode: form.workMode, location: form.location.trim(), stipend: form.stipend.trim(),
+        deadline: form.deadline, requirements: form.requirements.trim(), description: form.description.trim(),
+        clubId: form.clubId || null, applyMethod: form.applyMethod,
+        applyValue: form.applyMethod === "file" ? null : form.applyValue.trim(),
+        applyFile: form.applyFile, applyFileName: form.applyFileName,
+      };
+      const res = editing ? await updateJob(id, data) : await addJob(data);
+      if (!res.ok) { toast({ type: "error", title: editing ? "Couldn't update" : "Couldn't post", message: res.error }); return; }
+      if (editing) { toast({ type: "success", title: "Listing updated" }); navigate(`/jobs/${id}`); }
+      else { toast({ type: "success", title: "Listing posted", message: "It's now live on the board." }); navigate(`/jobs/${res.id}`); }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -824,13 +830,16 @@ export function ModerateJobs() {
   const reportsFor = (jobUuid) => (jobReports || []).filter((r) => r.jobId === jobUuid);
 
   async function doRemove() {
-    if (!removeReason) { toast({ type: "error", title: "Add a reason" }); return; }
+    if (busy || !removeReason) { if (!removeReason) toast({ type: "error", title: "Add a reason" }); return; }
     setBusy(true);
-    const r = await removeJob(removeTarget.id, removeReason);
-    setBusy(false);
-    setRemoveTarget(null); setRemoveReason("");
-    if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); return; }
-    toast({ type: "success", title: "Listing removed" });
+    try {
+      const r = await removeJob(removeTarget.id, removeReason);
+      setRemoveTarget(null); setRemoveReason("");
+      if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); return; }
+      toast({ type: "success", title: "Listing removed" });
+    } finally {
+      setBusy(false);
+    }
   }
   async function doRestore(job) {
     const r = await restoreJob(job.id);

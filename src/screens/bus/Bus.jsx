@@ -336,6 +336,7 @@ function BusRouteEditor({ id, existing }) {
 
   async function submit(e) {
     e.preventDefault();
+    if (saving) return;
     const splitList = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
     const splitLines = (s) => s.split("\n").map((x) => x.trim()).filter(Boolean);
     const stops = splitLines(form.stops);
@@ -362,10 +363,14 @@ function BusRouteEditor({ id, existing }) {
       fromDepartures,
     };
     setSaving(true);
-    const r = editing ? await updateBusRoute(id, payload) : await addBusRoute(payload);
-    if (!r.ok) { setSaving(false); toast({ type: "error", title: "Couldn't save route", message: r.error }); return; }
-    toast({ type: "success", title: editing ? "Route updated" : "Route added", message: `${form.name || "Route"} saved.` });
-    navigate(editing ? `/bus/${r.id}` : "/bus");
+    try {
+      const r = editing ? await updateBusRoute(id, payload) : await addBusRoute(payload);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't save route", message: r.error }); return; }
+      toast({ type: "success", title: editing ? "Route updated" : "Route added", message: `${form.name || "Route"} saved.` });
+      navigate(editing ? `/bus/${r.id}` : "/bus");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

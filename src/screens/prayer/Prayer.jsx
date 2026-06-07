@@ -162,26 +162,33 @@ export function PrayerTimes() {
 
   function openAdjust(p) { setAdjust(p); setAdjVal(p.jamaat); }
   async function saveAdjust() {
+    if (saving) return;
     setSaving(true);
-    const r = await updatePrayerJamaat(adjust.key, adjVal);
-    setSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
-    toast({ type: "success", title: "Jamaat time updated", message: `${adjust.en} jamaat set to ${fmtTime(adjVal)}.` });
-    setAdjust(null);
+    try {
+      const r = await updatePrayerJamaat(adjust.key, adjVal);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
+      toast({ type: "success", title: "Jamaat time updated", message: `${adjust.en} jamaat set to ${fmtTime(adjVal)}.` });
+      setAdjust(null);
+    } finally {
+      setSaving(false);
+    }
   }
 
   function openAddLoc() { setLocName(""); setLocFloor(""); setLocModal({ mode: "add" }); }
   function openEditLoc(loc) { setLocName(loc.name); setLocFloor(loc.floorDesc); setLocModal({ mode: "edit", loc }); }
   async function saveLocModal() {
-    if (!locName.trim()) return;
+    if (locSaving || !locName.trim()) return;
     setLocSaving(true);
-    const r = locModal.mode === "add"
-      ? await addMusallahLocation(locName.trim(), locFloor.trim())
-      : await updateMusallahLocation(locModal.loc.id, locName.trim(), locFloor.trim());
-    setLocSaving(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't save", message: r.error }); return; }
-    toast({ type: "success", title: locModal.mode === "add" ? "Location added" : "Location updated" });
-    setLocModal(null);
+    try {
+      const r = locModal.mode === "add"
+        ? await addMusallahLocation(locName.trim(), locFloor.trim())
+        : await updateMusallahLocation(locModal.loc.id, locName.trim(), locFloor.trim());
+      if (!r.ok) { toast({ type: "error", title: "Couldn't save", message: r.error }); return; }
+      toast({ type: "success", title: locModal.mode === "add" ? "Location added" : "Location updated" });
+      setLocModal(null);
+    } finally {
+      setLocSaving(false);
+    }
   }
   async function deleteLoc(loc) {
     const r = await deleteMusallahLocation(loc.id);

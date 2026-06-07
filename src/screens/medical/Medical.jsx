@@ -166,17 +166,21 @@ export function DoctorBooking({ id }) {
   const slots = slotsFor(doc);
 
   async function book() {
+    if (booking) return;
     setBooking(true);
-    const r = await addAppointment({ doctorId: doc.id, date, slot });
-    setBooking(false);
-    setConfirm(false);
-    if (!r.ok) {
-      toast({ type: "error", title: "Couldn't book", message: r.error });
-      setSlot(null);
-      getBookedSlots(doc.id, date).then((s) => setTaken(new Set(s))); // slot may be gone
-      return;
+    try {
+      const r = await addAppointment({ doctorId: doc.id, date, slot });
+      setConfirm(false);
+      if (!r.ok) {
+        toast({ type: "error", title: "Couldn't book", message: r.error });
+        setSlot(null);
+        getBookedSlots(doc.id, date).then((s) => setTaken(new Set(s))); // slot may be gone
+        return;
+      }
+      setDone(r.appt);
+    } finally {
+      setBooking(false);
     }
-    setDone(r.appt);
   }
 
   return (

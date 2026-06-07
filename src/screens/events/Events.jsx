@@ -173,6 +173,8 @@ export function EventDetail({ id }) {
   const toast = useToast();
   const ev = events.find((e) => e.id === id);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const [rsvpBusy, setRsvpBusy] = React.useState(false);
 
   if (!ev) {
     return (
@@ -187,10 +189,16 @@ export function EventDetail({ id }) {
   const ended = status === "Ended";
 
   async function onToggleRSVP() {
+    if (rsvpBusy) return;
     const wasGoing = going;
-    const r = await toggleRSVP(ev.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't update RSVP", message: r.error }); return; }
-    toast({ type: "success", title: wasGoing ? "RSVP cancelled" : "You're going!", message: wasGoing ? "" : ev.title });
+    setRsvpBusy(true);
+    try {
+      const r = await toggleRSVP(ev.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't update RSVP", message: r.error }); return; }
+      toast({ type: "success", title: wasGoing ? "RSVP cancelled" : "You're going!", message: wasGoing ? "" : ev.title });
+    } finally {
+      setRsvpBusy(false);
+    }
   }
 
   return (
@@ -235,7 +243,7 @@ export function EventDetail({ id }) {
                   <Icon name="CalendarPlus" size={16} /> Add to calendar
                 </a>
                 {!ended && (
-                  <Button variant={going ? "secondary" : "primary"} icon={going ? "Check" : "Ticket"} onClick={onToggleRSVP}>
+                  <Button variant={going ? "secondary" : "primary"} icon={going ? "Check" : "Ticket"} disabled={rsvpBusy} onClick={onToggleRSVP}>
                     {going ? "Going" : "RSVP"}
                   </Button>
                 )}
@@ -245,10 +253,10 @@ export function EventDetail({ id }) {
         </Card>
       </div>
 
-      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} icon="Trash2" tone="red"
+      <Modal open={confirmDelete} onClose={() => !deleteBusy && setConfirmDelete(false)} icon="Trash2" tone="red"
         title="Delete this event?" description={`"${ev.title}" and its RSVPs will be permanently removed.`}
-        footer={<><Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          <Button variant="destructive" onClick={async () => { const r = await deleteEvent(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Event deleted" }); navigate("/events"); }}>Delete event</Button></>} />
+        footer={<><Button variant="secondary" disabled={deleteBusy} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          <Button variant="destructive" disabled={deleteBusy} onClick={async () => { if (deleteBusy) return; setDeleteBusy(true); try { const r = await deleteEvent(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Event deleted" }); navigate("/events"); } finally { setDeleteBusy(false); } }}>Delete event</Button></>} />
     </AppShell>
   );
 }
