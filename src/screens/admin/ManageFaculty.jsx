@@ -150,12 +150,12 @@ export default function ManageFaculty() {
         if (!q) return true;
         const dept = deptMap[f.departmentId];
         return (
-          f.name.toLowerCase().includes(q) ||
+          (f.name ?? "").toLowerCase().includes(q) ||
           (f.designation ?? "").toLowerCase().includes(q) ||
-          (dept && dept.name.toLowerCase().includes(q))
+          (dept && (dept.name ?? "").toLowerCase().includes(q))
         );
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
   }, [faculty, query, deptMap]);
 
   if (dataLoading && faculty.length === 0) {

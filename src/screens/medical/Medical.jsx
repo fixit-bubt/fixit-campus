@@ -290,11 +290,14 @@ export function MyAppointments() {
   async function doCancel() {
     if (busy) return;
     setBusy(true);
-    const r = await cancelAppointment(toCancel.id);
-    setBusy(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't cancel", message: r.error }); return; }
-    toast({ type: "success", title: "Appointment cancelled", message: `Token ${toCancel.token} released.` });
-    setToCancel(null);
+    try {
+      const r = await cancelAppointment(toCancel.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't cancel", message: r.error }); return; }
+      toast({ type: "success", title: "Appointment cancelled", message: `Token ${toCancel.token} released.` });
+      setToCancel(null);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -357,11 +360,14 @@ export function DoctorQueue() {
   async function advance(a) {
     if (busyId) return;
     setBusyId(a.id);
-    const next = a.status === "Booked" ? "Confirmed" : a.status === "Confirmed" ? "Completed" : "Completed";
-    const r = await setAppointmentStatus(a.id, next);
-    setBusyId(null);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
-    toast({ type: "success", title: `Marked ${next}`, message: `Token ${a.token}.` });
+    try {
+      const next = a.status === "Booked" ? "Confirmed" : a.status === "Confirmed" ? "Completed" : "Completed";
+      const r = await setAppointmentStatus(a.id, next);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
+      toast({ type: "success", title: `Marked ${next}`, message: `Token ${a.token}.` });
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
