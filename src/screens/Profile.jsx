@@ -61,20 +61,24 @@ export default function Profile() {
 
   async function submit(e) {
     e.preventDefault();
+    if (saving) return;
     const er = {};
     if (!form.name.trim()) er.name = "Enter your name.";
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const res = await updateProfile(form);
-    setSaving(false);
-    if (!res.ok) {
-      toast({ type: "error", title: "Couldn't save profile", message: res.error });
-      return;
+    try {
+      const res = await updateProfile(form);
+      if (!res.ok) {
+        toast({ type: "error", title: "Couldn't save profile", message: res.error });
+        return;
+      }
+      toast({ type: "success", title: "Profile saved" });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
     }
-    toast({ type: "success", title: "Profile saved" });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   }
 
   return (

@@ -33,9 +33,9 @@ export default function ManageUsers() {
     .filter((u) => {
       const q = query.trim().toLowerCase();
       if (!q) return true;
-      return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+      return (u.name ?? "").toLowerCase().includes(q) || (u.email ?? "").toLowerCase().includes(q);
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 
   async function applyChange() {
     if (changing) return;

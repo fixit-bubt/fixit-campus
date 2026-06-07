@@ -968,7 +968,7 @@ export function AdminManageClubs() {
 
   if (dataLoading) return <AppShell activeKey="clubs-admin" title="Manage Clubs"><Loading /></AppShell>;
 
-  const allClubs = [...clubs].sort((a, b) => a.name.localeCompare(b.name));
+  const allClubs = [...clubs].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 
   async function handleSetActive(clubId, isActive) {
     setActioning(clubId);

@@ -409,29 +409,40 @@ export function JobDetail({ id }) {
     if (!r.ok) toast({ type: "error", title: "Couldn't update", message: r.error });
   }
   async function doWithdraw() {
+    if (busy) return;
     setBusy(true);
-    const r = await withdrawJob(job.id);
-    setBusy(false);
-    setConfirmWithdraw(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't withdraw", message: r.error }); return; }
-    toast({ type: "success", title: "Listing withdrawn" });
-    navigate("/jobs");
+    try {
+      const r = await withdrawJob(job.id);
+      setConfirmWithdraw(false);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't withdraw", message: r.error }); return; }
+      toast({ type: "success", title: "Listing withdrawn" });
+      navigate("/jobs");
+    } finally {
+      setBusy(false);
+    }
   }
   async function doRemove() {
-    if (!removeReason) { toast({ type: "error", title: "Add a reason" }); return; }
+    if (busy || !removeReason) { if (!removeReason) toast({ type: "error", title: "Add a reason" }); return; }
     setBusy(true);
-    const r = await removeJob(job.id, removeReason);
-    setBusy(false);
-    setRemoveOpen(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); return; }
-    toast({ type: "success", title: "Listing removed" });
+    try {
+      const r = await removeJob(job.id, removeReason);
+      setRemoveOpen(false);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); return; }
+      toast({ type: "success", title: "Listing removed" });
+    } finally {
+      setBusy(false);
+    }
   }
   async function doRestore() {
+    if (busy) return;
     setBusy(true);
-    const r = await restoreJob(job.id);
-    setBusy(false);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't restore", message: r.error }); return; }
-    toast({ type: "success", title: "Listing restored" });
+    try {
+      const r = await restoreJob(job.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't restore", message: r.error }); return; }
+      toast({ type: "success", title: "Listing restored" });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
