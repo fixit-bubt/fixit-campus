@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   UsersRound, Pin, Paperclip, Plus, ArrowRight, Pencil, Trash2,
-  Crown, UserMinus, UserPlus, ChevronDown, Search, X, Shield,
-  FileText, ImageIcon, MoreHorizontal, LogOut, Settings,
+  Crown, UserMinus, UserPlus, ChevronDown, Search, X,
+  FileText, MoreHorizontal, LogOut, Settings,
 } from "lucide-react";
 import {
   Button, Card, Badge, Field, Input, Textarea, Select, FileUpload,
@@ -12,7 +12,7 @@ import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { AccentTile } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
-import { relativeDate, fmtDate } from "../../lib/helpers.js";
+import { relativeDate } from "../../lib/helpers.js";
 
 // ============================================================================
 // Club Hub  (signature accent: purple)
@@ -20,8 +20,6 @@ import { relativeDate, fmtDate } from "../../lib/helpers.js";
 // managed (offline recruitment → officers add members). Non-members see nothing.
 // Roles: president | vp | editor | member
 // ============================================================================
-
-const ACCENT = "purple";
 
 const CATEGORIES = ["Tech", "Cultural", "Sports", "Professional", "Social"];
 
@@ -32,7 +30,15 @@ const CATEGORY_TONE = {
 
 const ROLE_LABEL = { president: "President", vp: "Vice President", editor: "Editor", member: "Member" };
 const ROLE_TONE  = { president: "purple", vp: "blue", editor: "teal", member: "slate" };
-const ROLE_ORDER = { president: 0, vp: 1, editor: 2, member: 3 };
+
+// useApp()'s toast is a bare push fn — wrap it so call sites read clearly.
+function useToasts() {
+  const toast = useToast();
+  return {
+    success: (title, message) => toast({ type: "success", title, message }),
+    error: (title, message) => toast({ type: "error", title, message }),
+  };
+}
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -55,13 +61,30 @@ function ClubBanner({ club, className = "" }) {
 }
 
 function RoleBadge({ role }) {
+  if (!role) return null;
   return <Badge tone={ROLE_TONE[role] || "slate"}>{ROLE_LABEL[role] || role}</Badge>;
+}
+
+// Post images live in the PRIVATE club-attachments bucket (member-only). Resolve
+// the stored path to a short-lived signed URL before rendering.
+function ClubImage({ path }) {
+  const { getClubFileUrl } = useApp();
+  const [url, setUrl] = useState(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let on = true;
+    getClubFileUrl(path).then((u) => { if (on) setUrl(u || null); }).catch(() => { if (on) setFailed(true); });
+    return () => { on = false; };
+  }, [path]);
+  if (failed) return null;
+  if (!url) return <div className="mt-3 h-40 w-full animate-pulse rounded-lg bg-slate-100" />;
+  return <img src={url} alt="" onError={() => setFailed(true)} className="mt-3 w-full rounded-lg object-cover max-h-64 border border-slate-100" />;
 }
 
 // ── Download attachment button ─────────────────────────────────────────────
 function AttachmentButton({ fileUrl, fileName }) {
   const { getClubFileUrl } = useApp();
-  const toast = useToast();
+  const toast = useToasts();
   const [loading, setLoading] = useState(false);
 
   async function handleDownload() {
@@ -88,12 +111,15 @@ function AttachmentButton({ fileUrl, fileName }) {
 
 // ── Post card ──────────────────────────────────────────────────────────────
 function PostCard({ post, clubId, onEdit, onDelete, onPin }) {
-  const { userById, currentUser, canPostIn, canManageClub, isPresident, userRoleIn } = useApp();
+  const { userById, currentUser, clubMembersIn, canPostIn, canManageClub } = useApp();
   const author = userById(post.authorId);
-  const myRole = userRoleIn(clubId);
-  const canEdit  = post.authorId === currentUser?.id || isPresident(clubId);
-  const canDel   = post.authorId === currentUser?.id || canManageClub(clubId);
-  const canPin   = canPostIn(clubId);
+  const authorRole = clubMembersIn(clubId).find((m) => m.userId === post.authorId)?.role;
+  const mine   = post.authorId === currentUser?.id;
+  // Mirrors RLS (migration 0054): edit/pin = own post as officer, or president/VP
+  // for any post; delete = own post, or president/VP.
+  const canEdit = (mine && canPostIn(clubId)) || canManageClub(clubId);
+  const canDel  = mine || canManageClub(clubId);
+  const canPin  = canEdit;
 
   return (
     <div className={`rounded-lg border bg-white ${post.isPinned ? "border-l-4 border-l-amber-400 border-slate-200 bg-amber-50/20" : "border-slate-200"} shadow-sm`}>
@@ -105,7 +131,7 @@ function PostCard({ post, clubId, onEdit, onDelete, onPin }) {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-sm font-medium text-slate-900 truncate">{author?.name || "Unknown"}</span>
-                {myRole && <RoleBadge role={userRoleIn(clubId) === myRole && post.authorId === currentUser?.id ? userRoleIn(clubId) : null} />}
+                <RoleBadge role={authorRole} />
               </div>
               <p className="text-xs text-slate-400">{relativeDate(post.createdAt)}</p>
             </div>
@@ -134,13 +160,8 @@ function PostCard({ post, clubId, onEdit, onDelete, onPin }) {
           )}
         </div>
 
-        {/* image */}
-        {post.imageUrl && (
-          <img
-            src={post.imageUrl} alt=""
-            className="mt-3 w-full rounded-lg object-cover max-h-64 border border-slate-100"
-          />
-        )}
+        {/* image (private — resolved to a signed URL) */}
+        {post.imageUrl && <ClubImage path={post.imageUrl} />}
 
         {/* attachment */}
         {post.fileUrl && (
@@ -192,18 +213,18 @@ function PostMenu({ isPinned, canEdit, canDel, canPin, onEdit, onDelete, onPin }
 // ── Add Members modal ──────────────────────────────────────────────────────
 function AddMembersModal({ clubId, existingUserIds, onClose }) {
   const { users, addClubMembers } = useApp();
-  const toast = useToast();
+  const toast = useToasts();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  // Officers load `users` from public_profiles, which exposes name/dept but NOT
+  // email — so search + display are name/department based.
   const eligible = users.filter(
     (u) =>
       u.role === "Student" &&
       !existingUserIds.has(u.id) &&
-      (query.trim() === "" ||
-        u.name.toLowerCase().includes(query.toLowerCase()) ||
-        u.email.toLowerCase().includes(query.toLowerCase()))
+      (query.trim() === "" || u.name.toLowerCase().includes(query.toLowerCase()))
   );
 
   const toggle = (u) =>
@@ -214,13 +235,13 @@ function AddMembersModal({ clubId, existingUserIds, onClose }) {
     setSaving(true);
     const { ok, error } = await addClubMembers(clubId, selected.map((u) => u.id));
     setSaving(false);
-    if (!ok) { toast.error(error); return; }
+    if (!ok) { toast.error("Couldn't add members", error); return; }
     toast.success(`${selected.length} member${selected.length > 1 ? "s" : ""} added.`);
     onClose();
   }
 
   return (
-    <Modal title="Add Members" onClose={onClose}>
+    <Modal open title="Add Members" onClose={onClose}>
       <div className="flex flex-col gap-4">
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -228,7 +249,7 @@ function AddMembersModal({ clubId, existingUserIds, onClose }) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search students by name or email…"
+            placeholder="Search students by name…"
             className="h-9 w-full rounded-lg border border-slate-200 pl-8 pr-3 text-sm outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
           />
         </div>
@@ -259,7 +280,7 @@ function AddMembersModal({ clubId, existingUserIds, onClose }) {
                   <Avatar name={u.name} size={30} src={u.avatar} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-slate-900 truncate">{u.name}</p>
-                    <p className="text-xs text-slate-400 truncate">{u.email}</p>
+                    {u.dept && <p className="text-xs text-slate-400 truncate">{u.dept}</p>}
                   </div>
                   {isSelected && <div className="h-4 w-4 rounded-full bg-purple-600 flex items-center justify-center"><svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 12 12"><path d="M10 3L5 8.5 2 5.5 1 6.5l4 4 6-7z"/></svg></div>}
                 </button>
@@ -272,7 +293,7 @@ function AddMembersModal({ clubId, existingUserIds, onClose }) {
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button
             onClick={handleAdd}
-            disabled={!selected.length || saving}
+            disabled={!selected.length}
             loading={saving}
             className="bg-purple-600 text-white hover:bg-purple-700"
           >
@@ -308,7 +329,7 @@ function ClubCard({ club, role }) {
 // Screen 1 — My Clubs  (/clubs)
 // ============================================================================
 export function ClubsHome() {
-  const { myClubs, userRoleIn, currentUser, dataLoading } = useApp();
+  const { myClubs, userRoleIn, dataLoading } = useApp();
   const clubs = myClubs();
 
   return (
@@ -340,9 +361,9 @@ export function ClubsHome() {
 export function ClubHome({ id }) {
   const {
     clubById, clubMembersIn, clubPostsIn, userRoleIn, canPostIn, canManageClub,
-    facultyById, deleteClubPost, toggleClubPin, dataLoading, currentUser,
+    facultyById, deleteClubPost, toggleClubPin, dataLoading,
   } = useApp();
-  const toast = useToast();
+  const toast = useToasts();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -359,7 +380,7 @@ export function ClubHome({ id }) {
           <ClubBanner club={club} className="h-40 w-full" />
           <div className="p-6 text-center">
             <h2 className="text-lg font-semibold text-slate-900">{club.name}</h2>
-            <Badge tone={CATEGORY_TONE[club.category]} className="mt-2">{club.category}</Badge>
+            <div className="mt-2 flex justify-center"><Badge tone={CATEGORY_TONE[club.category]}>{club.category}</Badge></div>
             <p className="mt-4 text-sm text-slate-500">Club membership is by invitation only. Speak to a club officer to join.</p>
           </div>
         </div>
@@ -377,12 +398,12 @@ export function ClubHome({ id }) {
     const { ok, error } = await deleteClubPost(deleteTarget);
     setDeleting(false);
     setDeleteTarget(null);
-    if (!ok) toast.error(error); else toast.success("Post deleted.");
+    if (!ok) toast.error("Couldn't delete", error); else toast.success("Post deleted.");
   }
 
   async function handlePin(postId) {
     const { ok, error } = await toggleClubPin(postId);
-    if (!ok) toast.error(error);
+    if (!ok) toast.error("Couldn't pin", error);
   }
 
   return (
@@ -406,14 +427,14 @@ export function ClubHome({ id }) {
           </div>
 
           {/* Meta chips */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {advisor && (
+          {advisor && (
+            <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={() => navigate(`/faculty/${advisor.id}`)} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-100">
                 <span className="h-4 w-4 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-[10px] font-bold">F</span>
                 {advisor.name}
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Collapsible about */}
           {club.about && (
@@ -479,7 +500,7 @@ export function ClubHome({ id }) {
 
       {/* Delete confirmation */}
       {deleteTarget && (
-        <Modal title="Delete post?" onClose={() => setDeleteTarget(null)}>
+        <Modal open title="Delete post?" onClose={() => setDeleteTarget(null)}>
           <p className="text-sm text-slate-600">This post will be permanently removed. This cannot be undone.</p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
@@ -499,7 +520,7 @@ export function ClubMembers({ id }) {
     clubById, clubMembersIn, userRoleIn, canManageClub, isPresident,
     updateClubMemberRole, removeClubMember, leaveClub, dataLoading, currentUser,
   } = useApp();
-  const toast = useToast();
+  const toast = useToasts();
   const [showAdd, setShowAdd] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [saving, setSaving] = useState(null);
@@ -515,33 +536,34 @@ export function ClubMembers({ id }) {
   const officers = members.filter((m) => ["president", "vp", "editor"].includes(m.role));
   const regular  = members.filter((m) => m.role === "member");
 
+  // Only the president can change roles (matches club_members_update RLS), and
+  // never to/from president here — handover is admin-only via Manage Clubs.
+  const roleOptions = [
+    { value: "member", label: "Member" },
+    { value: "editor", label: "Editor" },
+    { value: "vp",     label: "Vice President" },
+  ];
+
   async function handleRoleChange(userId, role) {
     setSaving(userId);
     const { ok, error } = await updateClubMemberRole(id, userId, role);
     setSaving(null);
-    if (!ok) toast.error(error);
+    if (!ok) toast.error("Couldn't change role", error);
   }
   async function handleRemove() {
     if (!removeTarget) return;
     setSaving(removeTarget);
-    const fn = removeTarget === currentUser.id ? leaveClub : removeClubMember;
-    const args = removeTarget === currentUser.id ? [id] : [id, removeTarget];
-    const { ok, error } = await fn(...args);
+    const isSelf = removeTarget === currentUser.id;
+    const { ok, error } = isSelf ? await leaveClub(id) : await removeClubMember(id, removeTarget);
     setSaving(null);
     setRemoveTarget(null);
-    if (!ok) toast.error(error);
-    else if (removeTarget === currentUser.id) navigate("/clubs");
+    if (!ok) toast.error("Action failed", error);
+    else if (isSelf) navigate("/clubs");
   }
 
-  const roleOptions = (currentRole) => {
-    const opts = [
-      { value: "member",  label: "Member" },
-      { value: "editor",  label: "Editor" },
-      { value: "vp",      label: "Vice President" },
-    ];
-    if (isPresident(id)) opts.push({ value: "president", label: "President" });
-    return opts.filter((o) => o.value !== "president" || currentRole !== "president");
-  };
+  // self: may leave unless president · others: managers may remove non-presidents
+  const rowCanRemove = (m) =>
+    m.userId === currentUser.id ? myRole !== "president" : (canManageClub(id) && m.role !== "president");
 
   return (
     <AppShell activeKey="clubs" title="Members">
@@ -567,11 +589,11 @@ export function ClubMembers({ id }) {
           <div className="flex flex-col gap-2">
             {officers.map((m) => (
               <MemberRow
-                key={m.id} member={m} clubId={id} myRole={myRole}
+                key={m.id} member={m}
                 isMe={m.userId === currentUser.id}
                 canChangeRole={isPresident(id) && m.userId !== currentUser.id}
-                canRemove={(canManageClub(id) && m.userId !== currentUser.id) || m.userId === currentUser.id}
-                roleOptions={roleOptions(m.role)}
+                canRemove={rowCanRemove(m)}
+                roleOptions={roleOptions}
                 saving={saving === m.userId}
                 onRoleChange={(role) => handleRoleChange(m.userId, role)}
                 onRemove={() => setRemoveTarget(m.userId)}
@@ -588,11 +610,11 @@ export function ClubMembers({ id }) {
           <Card className="divide-y divide-slate-100 overflow-hidden">
             {regular.map((m) => (
               <MemberRow
-                key={m.id} member={m} clubId={id} myRole={myRole}
+                key={m.id} member={m}
                 isMe={m.userId === currentUser.id}
-                canChangeRole={canManageClub(id) && m.userId !== currentUser.id}
-                canRemove={(canManageClub(id) && m.userId !== currentUser.id) || m.userId === currentUser.id}
-                roleOptions={roleOptions(m.role)}
+                canChangeRole={isPresident(id) && m.userId !== currentUser.id}
+                canRemove={rowCanRemove(m)}
+                roleOptions={roleOptions}
                 saving={saving === m.userId}
                 onRoleChange={(role) => handleRoleChange(m.userId, role)}
                 onRemove={() => setRemoveTarget(m.userId)}
@@ -625,7 +647,7 @@ export function ClubMembers({ id }) {
 
       {/* Remove/leave confirmation */}
       {removeTarget && (
-        <Modal title={removeTarget === currentUser.id ? "Leave club?" : "Remove member?"} onClose={() => setRemoveTarget(null)}>
+        <Modal open title={removeTarget === currentUser.id ? "Leave club?" : "Remove member?"} onClose={() => setRemoveTarget(null)}>
           <p className="text-sm text-slate-600">
             {removeTarget === currentUser.id
               ? "You will lose access to this club's posts and will need to be re-added by an officer."
@@ -643,7 +665,7 @@ export function ClubMembers({ id }) {
   );
 }
 
-function MemberRow({ member, clubId, isMe, canChangeRole, canRemove, roleOptions, saving, onRoleChange, onRemove }) {
+function MemberRow({ member, isMe, canChangeRole, canRemove, roleOptions, saving, onRoleChange, onRemove }) {
   const { userById } = useApp();
   const user = userById(member.userId);
 
@@ -654,7 +676,7 @@ function MemberRow({ member, clubId, isMe, canChangeRole, canRemove, roleOptions
         <p className="text-sm font-medium text-slate-900 truncate">
           {user?.name || "Unknown"}{isMe && <span className="ml-1 text-xs text-slate-400">(you)</span>}
         </p>
-        <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+        {user?.dept && <p className="text-xs text-slate-400 truncate">{user.dept}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {saving ? (
@@ -686,26 +708,50 @@ function MemberRow({ member, clubId, isMe, canChangeRole, canRemove, roleOptions
 // Screen 4 — Post Form  (/clubs/:id/post/new  &  /clubs/:id/post/:postId/edit)
 // ============================================================================
 export function ClubPostForm({ id, postId }) {
-  const { clubById, clubPostsIn, addClubPost, updateClubPost, userRoleIn, canPostIn, dataLoading } = useApp();
-  const toast = useToast();
+  const { clubById, clubPostsIn, addClubPost, updateClubPost, userRoleIn, canPostIn, getClubFileUrl, dataLoading } = useApp();
+  const toast = useToasts();
 
   const isEdit = !!postId;
   const club = clubById(id);
   const existing = isEdit ? clubPostsIn(id).find((p) => p.id === postId) : null;
 
   const [form, setForm] = useState({
-    title:          existing?.title      || "",
-    body:           existing?.body       || "",
-    isPinned:       existing?.isPinned   || false,
+    title:          existing?.title    || "",
+    body:           existing?.body     || "",
+    isPinned:       existing?.isPinned || false,
     imageFile:      null,
-    imagePreview:   existing?.imageUrl   || null,
+    imagePreview:   null, // resolved signed URL for an existing image, or a blob: URL for a new pick
+    hadImage:       isEdit && !!existing?.imageUrl,
     attachmentFile: null,
-    attachmentName: existing?.fileName   || null,
+    attachmentName: existing?.fileName || null,
+    hadAttachment:  isEdit && !!existing?.fileName,
   });
   const [saving, setSaving] = useState(false);
 
+  // Resolve the existing (private) post image to a signed URL for the preview.
+  useEffect(() => {
+    let on = true;
+    if (isEdit && existing?.imageUrl) {
+      getClubFileUrl(existing.imageUrl).then((u) => {
+        if (on && u) setForm((f) => (f.imageFile || f.imagePreview ? f : { ...f, imagePreview: u }));
+      });
+    }
+    return () => { on = false; };
+  }, [existing?.imageUrl]);
+
   if (dataLoading) return <AppShell activeKey="clubs" title="Post"><Loading /></AppShell>;
   if (!club || !canPostIn(id)) return <AppShell activeKey="clubs" title="Post"><EmptyState icon={FileText} title="Not allowed" message="You don't have permission to post here." /></AppShell>;
+  if (isEdit && !existing) {
+    return (
+      <AppShell activeKey="clubs" title="Post">
+        <EmptyState
+          icon={FileText} title="Post not found"
+          message="This post may have been deleted, or you don't have access to it."
+          action={<Button onClick={() => navigate(`/clubs/${id}`)} className="bg-purple-600 text-white hover:bg-purple-700">Back to club</Button>}
+        />
+      </AppShell>
+    );
+  }
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -715,13 +761,16 @@ export function ClubPostForm({ id, postId }) {
     const payload = {
       title: form.title, body: form.body, isPinned: form.isPinned,
       imageFile: form.imageFile, attachmentFile: form.attachmentFile,
+      // removal intent (edit mode): had a file, now cleared, with no replacement
+      removeImage:      isEdit && form.hadImage && !form.imageFile && !form.imagePreview,
+      removeAttachment: isEdit && form.hadAttachment && !form.attachmentFile && !form.attachmentName,
       clubId: id,
     };
     const result = isEdit
       ? await updateClubPost(postId, payload)
       : await addClubPost(id, payload);
     setSaving(false);
-    if (!result.ok) { toast.error(result.error); return; }
+    if (!result.ok) { toast.error("Couldn't save post", result.error); return; }
     toast.success(isEdit ? "Post updated." : "Post published.");
     navigate(`/clubs/${id}`);
   }
@@ -753,8 +802,7 @@ export function ClubPostForm({ id, postId }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Image" hint="Optional cover image.">
             <FileUpload
-              accept="image/*"
-              preview={form.imagePreview}
+              value={form.imagePreview}
               onChange={(url, file) => setForm((f) => ({ ...f, imageFile: file, imagePreview: url }))}
             />
           </Field>
@@ -809,36 +857,42 @@ export function ClubPostForm({ id, postId }) {
 }
 
 // ============================================================================
-// Screen 5 — Club Manage  (/clubs/:id/manage)  — President + Admin
+// Screen 5 — Club Settings  (/clubs/:id/manage)  — President / VP
+// Officers edit text fields here; the cover image is set by an admin.
 // ============================================================================
 export function ClubManage({ id }) {
-  const { clubById, updateClubDetails, faculty, userRoleIn, canManageClub, dataLoading } = useApp();
-  const toast = useToast();
+  const { clubById, updateClubDetails, faculty, canManageClub, dataLoading } = useApp();
+  const toast = useToasts();
   const club = clubById(id);
-  const myRole = userRoleIn(id);
 
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [coverFile, setCoverFile] = useState(null);
+
+  // Hydrate the form once the club is available (keyed on id so a background
+  // refresh never clobbers in-progress edits).
+  useEffect(() => {
+    if (club && !form) {
+      setForm({
+        name: club.name, tagline: club.tagline, about: club.about,
+        category: club.category, facultyAdvisorId: club.facultyAdvisorId || "",
+      });
+    }
+  }, [club?.id]);
 
   if (dataLoading) return <AppShell activeKey="clubs" title="Settings"><Loading /></AppShell>;
   if (!club || !canManageClub(id)) {
-    return <AppShell activeKey="clubs" title="Settings"><EmptyState icon={Settings} title="Not allowed" message="Only the President can access club settings." /></AppShell>;
+    return <AppShell activeKey="clubs" title="Settings"><EmptyState icon={Settings} title="Not allowed" message="Only the President or VP can access club settings." /></AppShell>;
   }
-
-  if (!form) {
-    setForm({ name: club.name, tagline: club.tagline, about: club.about, category: club.category, facultyAdvisorId: club.facultyAdvisorId || "", coverPreview: club.coverUrl });
-    return null;
-  }
+  if (!form) return <AppShell activeKey="clubs" title="Settings"><Loading /></AppShell>;
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
   async function handleSave() {
     if (!form.name.trim()) { toast.error("Club name is required."); return; }
     setSaving(true);
-    const { ok, error } = await updateClubDetails(id, { ...form, coverFile, facultyAdvisorId: form.facultyAdvisorId || null });
+    const { ok, error } = await updateClubDetails(id, { ...form, facultyAdvisorId: form.facultyAdvisorId || null });
     setSaving(false);
-    if (!ok) { toast.error(error); return; }
+    if (!ok) { toast.error("Couldn't save", error); return; }
     toast.success("Club updated.");
     navigate(`/clubs/${id}`);
   }
@@ -872,13 +926,7 @@ export function ClubManage({ id }) {
             {(faculty || []).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </Select>
         </Field>
-        <Field label="Cover Image" hint="Recommended: 800×300px or wider.">
-          <FileUpload
-            accept="image/*"
-            preview={form.coverPreview}
-            onChange={(url, file) => { setCoverFile(file); setForm((f) => ({ ...f, coverPreview: url })); }}
-          />
-        </Field>
+        <p className="text-xs text-slate-400">The cover image is managed by an administrator.</p>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={() => navigate(`/clubs/${id}`)}>Cancel</Button>
@@ -894,7 +942,7 @@ export function ClubManage({ id }) {
 // ============================================================================
 export function AdminManageClubs() {
   const { clubs, clubMembersIn, users, createClub, updateClubDetails, setClubActive, assignClubPresident, faculty, dataLoading } = useApp();
-  const toast = useToast();
+  const toast = useToasts();
 
   const [showCreate, setShowCreate]             = useState(false);
   const [editTarget, setEditTarget]             = useState(null);
@@ -902,7 +950,7 @@ export function AdminManageClubs() {
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [actioning, setActioning]               = useState(null);
 
-  if (dataLoading) return <AppShell activeKey="dashboard" title="Manage Clubs"><Loading /></AppShell>;
+  if (dataLoading) return <AppShell activeKey="clubs-admin" title="Manage Clubs"><Loading /></AppShell>;
 
   const allClubs = [...clubs].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -910,12 +958,12 @@ export function AdminManageClubs() {
     setActioning(clubId);
     const { ok, error } = await setClubActive(clubId, isActive);
     setActioning(null);
-    if (!ok) toast.error(error);
+    if (!ok) toast.error("Action failed", error);
     setDeactivateTarget(null);
   }
 
   return (
-    <AppShell activeKey="dashboard" title="Manage Clubs">
+    <AppShell activeKey="clubs-admin" title="Manage Clubs">
       <PageHeader
         title="Manage Clubs"
         subtitle={`${allClubs.length} club${allClubs.length !== 1 ? "s" : ""}`}
@@ -993,7 +1041,7 @@ export function AdminManageClubs() {
           users={users}
           onSave={async (data) => {
             const { ok, error } = await createClub(data);
-            if (!ok) { toast.error(error); return false; }
+            if (!ok) { toast.error("Couldn't create club", error); return false; }
             toast.success("Club created."); setShowCreate(false); return true;
           }}
           onClose={() => setShowCreate(false)}
@@ -1008,7 +1056,7 @@ export function AdminManageClubs() {
           users={users}
           onSave={async (data) => {
             const { ok, error } = await updateClubDetails(editTarget.id, data);
-            if (!ok) { toast.error(error); return false; }
+            if (!ok) { toast.error("Couldn't update club", error); return false; }
             toast.success("Club updated."); setEditTarget(null); return true;
           }}
           onClose={() => setEditTarget(null)}
@@ -1023,7 +1071,7 @@ export function AdminManageClubs() {
           clubMembers={clubMembersIn(reassignTarget.id)}
           onSave={async (userId) => {
             const { ok, error } = await assignClubPresident(reassignTarget.id, userId);
-            if (!ok) { toast.error(error); return false; }
+            if (!ok) { toast.error("Couldn't reassign", error); return false; }
             toast.success("President reassigned."); setReassignTarget(null); return true;
           }}
           onClose={() => setReassignTarget(null)}
@@ -1032,7 +1080,7 @@ export function AdminManageClubs() {
 
       {/* Deactivate confirm */}
       {deactivateTarget && (
-        <Modal title={deactivateTarget.isActive ? "Deactivate club?" : "Reactivate club?"} onClose={() => setDeactivateTarget(null)}>
+        <Modal open title={deactivateTarget.isActive ? "Deactivate club?" : "Reactivate club?"} onClose={() => setDeactivateTarget(null)}>
           <p className="text-sm text-slate-600">
             {deactivateTarget.isActive
               ? "Members will no longer be able to access this club. The data is preserved and can be restored."
@@ -1072,12 +1120,12 @@ function ClubFormModal({ initial, faculty, users, onSave, onClose }) {
   async function handleSave() {
     if (!form.name.trim()) return;
     setSaving(true);
-    const ok = await onSave({ ...form, facultyAdvisorId: form.facultyAdvisorId || null, presidentId: form.presidentId || null });
+    await onSave({ ...form, facultyAdvisorId: form.facultyAdvisorId || null, presidentId: form.presidentId || null });
     setSaving(false);
   }
 
   return (
-    <Modal title={isCreate ? "New Club" : `Edit — ${initial.name}`} onClose={onClose}>
+    <Modal open title={isCreate ? "New Club" : `Edit — ${initial.name}`} onClose={onClose} size="lg">
       <div className="flex flex-col gap-4">
         <Field label="Club Name" required>
           <Input autoFocus value={form.name} onChange={(e) => set("name")(e.target.value)} placeholder="e.g. BUBT Robotics Club" />
@@ -1109,8 +1157,7 @@ function ClubFormModal({ initial, faculty, users, onSave, onClose }) {
         </Field>
         <Field label="Cover Image">
           <FileUpload
-            accept="image/*"
-            preview={form.coverPreview}
+            value={form.coverPreview}
             onChange={(url, file) => { set("coverFile")(file); setForm((f) => ({ ...f, coverPreview: url })); }}
           />
         </Field>
@@ -1146,7 +1193,7 @@ function ReassignPresidentModal({ club, users, clubMembers, onSave, onClose }) {
   }
 
   return (
-    <Modal title={`Reassign President — ${club.name}`} onClose={onClose}>
+    <Modal open title={`Reassign President — ${club.name}`} onClose={onClose}>
       <div className="flex flex-col gap-4">
         <p className="text-sm text-slate-500">The current president will be demoted to member. The new president will have full control.</p>
         <div className="relative">
@@ -1158,7 +1205,9 @@ function ReassignPresidentModal({ club, users, clubMembers, onSave, onClose }) {
           />
         </div>
         <div className="max-h-52 overflow-y-auto divide-y divide-slate-100 rounded-lg border border-slate-200">
-          {candidates.slice(0, 30).map((u) => (
+          {candidates.length === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-400">No students match.</p>
+          ) : candidates.slice(0, 30).map((u) => (
             <button
               key={u.id}
               onClick={() => setSelected(u)}
@@ -1185,7 +1234,9 @@ function ReassignPresidentModal({ club, users, clubMembers, onSave, onClose }) {
 // Dashboard widget
 // ============================================================================
 export function ClubsWidget() {
-  const { myClubs, userRoleIn } = useApp();
+  const { myClubs, userRoleIn, currentUser } = useApp();
+  // Clubs is a student-only feature; don't surface the widget to staff/admin.
+  if (currentUser?.role !== "Student") return null;
   const clubs = myClubs();
 
   return (
