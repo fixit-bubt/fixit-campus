@@ -659,9 +659,9 @@ export function AppProvider({ children }) {
 
   // ── Club Hub mappers ────────────────────────────────────────────────────────
   function toClub(r) {
-    const coverUrl = r.cover_url
-      ? supabase.storage.from("club-covers").getPublicUrl(r.cover_url).data.publicUrl
-      : null;
+    // cover_url stores the full public URL (set by createClub/updateClubDetails),
+    // mirroring how post image_url is stored — pass it through unchanged.
+    const coverUrl = r.cover_url || null;
     return {
       id: r.id, name: r.name, tagline: r.tagline || "", about: r.about || "",
       coverUrl, category: r.category, facultyAdvisorId: r.faculty_advisor_id,
@@ -687,27 +687,38 @@ export function AppProvider({ children }) {
     const clear = () => { setClubs([]); setClubMembers([]); setClubPosts([]); };
     if (!currentUser) { clear(); return; }
     const uid = currentUser.id;
+    const isAdmin = currentUser.role === "Admin";
+    // Admins manage ALL clubs (incl. inactive) and need every roster to show
+    // accurate member counts + presidents. Members see only active clubs and
+    // only the rosters/posts of clubs they belong to. (Admins are excluded from
+    // club_posts by RLS, so we don't fetch posts for them.)
     const [clubsRes, myRes] = await Promise.all([
-      supabase.from("clubs").select("*").eq("is_active", true).order("name"),
+      isAdmin
+        ? supabase.from("clubs").select("*").order("name")
+        : supabase.from("clubs").select("*").eq("is_active", true).order("name"),
       supabase.from("club_members").select("*").eq("user_id", currentUser.id),
     ]);
     if (!stillCurrent(uid)) return;
     if (clubsRes.error || myRes.error) { setDataError(true); return; }
     const myClubIds = (myRes.data || []).map((m) => m.club_id);
     const [membersRes, postsRes] = await Promise.all([
-      myClubIds.length
-        ? supabase.from("club_members").select("*").in("club_id", myClubIds)
-        : { data: [], error: null },
-      myClubIds.length
-        ? supabase.from("club_posts").select("*").in("club_id", myClubIds).order("created_at", { ascending: false })
-        : { data: [], error: null },
+      isAdmin
+        ? supabase.from("club_members").select("*")
+        : (myClubIds.length
+            ? supabase.from("club_members").select("*").in("club_id", myClubIds)
+            : { data: [], error: null }),
+      isAdmin
+        ? { data: [], error: null }
+        : (myClubIds.length
+            ? supabase.from("club_posts").select("*").in("club_id", myClubIds).order("created_at", { ascending: false })
+            : { data: [], error: null }),
     ]);
     if (!stillCurrent(uid)) return;
     if (membersRes.error || postsRes.error) { setDataError(true); return; }
     setClubs((clubsRes.data || []).map(toClub));
     setClubMembers((membersRes.data || []).map(toClubMember));
     setClubPosts((postsRes.data || []).map(toClubPost));
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.role]);
 
   useEffect(() => {
     let active = true;
@@ -1883,7 +1894,7 @@ export function AppProvider({ children }) {
   // --- selectors ---
   const myClubs = () => {
     const myIds = new Set(clubMembers.filter((m) => m.userId === currentUser?.id).map((m) => m.clubId));
-    return clubs.filter((c) => myIds.has(c.id));
+    return clubs.filter((c) => c.isActive && myIds.has(c.id));
   };
   const clubById = (id) => clubs.find((c) => c.id === id);
   const ROLE_ORDER = { president: 0, vp: 1, editor: 2, member: 3 };
@@ -1928,14 +1939,16 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
   async function removeClubMember(clubId, userId) {
-    const { error } = await supabase.from("club_members").delete().match({ club_id: clubId, user_id: userId });
+    const { data: rows, error } = await supabase.from("club_members").delete().match({ club_id: clubId, user_id: userId }).select("id");
     if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) return { ok: false, error: "You don't have permission to remove this member." };
     await loadClubs();
     return { ok: true };
   }
   async function updateClubMemberRole(clubId, userId, role) {
-    const { error } = await supabase.from("club_members").update({ role }).match({ club_id: clubId, user_id: userId });
+    const { data: rows, error } = await supabase.from("club_members").update({ role }).match({ club_id: clubId, user_id: userId }).select("id");
     if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) return { ok: false, error: "Only the president can change member roles." };
     await loadClubs();
     return { ok: true };
   }
@@ -1950,7 +1963,13 @@ export function AppProvider({ children }) {
   async function addClubPost(clubId, data) {
     let imageUrl = null, fileUrl = null, fileName = null;
     try {
-      if (data.imageFile) imageUrl = await uploadPhoto(data.imageFile, "club-posts");
+      // Post images go to the PRIVATE, member-gated club-attachments bucket
+      // (stored as a path, rendered via a signed URL) so non-members can't see
+      // them — posts are member-only by design.
+      if (data.imageFile) {
+        const img = await uploadClubAttachment(data.imageFile, clubId);
+        imageUrl = img.path;
+      }
       if (data.attachmentFile) {
         const att = await uploadClubAttachment(data.attachmentFile, clubId);
         fileUrl = att.path; fileName = att.name;
@@ -1967,35 +1986,54 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
   async function updateClubPost(postId, data) {
+    const prev = clubPosts.find((p) => p.id === postId);
     const updates = {
       title: data.title.trim(), body: data.body?.trim() || null,
       is_pinned: data.isPinned || false,
     };
     try {
-      if (data.imageFile) updates.image_url = await uploadPhoto(data.imageFile, "club-posts");
+      if (data.imageFile) {
+        const img = await uploadClubAttachment(data.imageFile, data.clubId);
+        updates.image_url = img.path;
+      } else if (data.removeImage) {
+        updates.image_url = null;
+      }
       if (data.attachmentFile) {
         const att = await uploadClubAttachment(data.attachmentFile, data.clubId);
         updates.file_url = att.path; updates.file_name = att.name;
+      } else if (data.removeAttachment) {
+        updates.file_url = null; updates.file_name = null;
       }
     } catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
-    const { error } = await supabase.from("club_posts").update(updates).eq("id", postId);
+    // .select() so an RLS-blocked (0-row) update surfaces as an error, not a
+    // silent false success.
+    const { data: rows, error } = await supabase.from("club_posts").update(updates).eq("id", postId).select("id");
     if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) return { ok: false, error: "You don't have permission to edit this post." };
+    // best-effort cleanup of replaced/removed files (own uploads only per storage RLS).
+    const stale = [];
+    if (prev?.imageUrl && (data.imageFile || data.removeImage)) stale.push(prev.imageUrl);
+    if (prev?.fileUrl && (data.attachmentFile || data.removeAttachment)) stale.push(prev.fileUrl);
+    if (stale.length) await supabase.storage.from("club-attachments").remove(stale);
     await loadClubs();
     return { ok: true };
   }
   async function deleteClubPost(postId) {
     const post = clubPosts.find((p) => p.id === postId);
-    const { error } = await supabase.from("club_posts").delete().eq("id", postId);
+    const { data: rows, error } = await supabase.from("club_posts").delete().eq("id", postId).select("id");
     if (error) return { ok: false, error: error.message };
-    if (post?.fileUrl) await supabase.storage.from("club-attachments").remove([post.fileUrl]);
+    if (!rows || rows.length === 0) return { ok: false, error: "You don't have permission to delete this post." };
+    const stale = [post?.imageUrl, post?.fileUrl].filter(Boolean);
+    if (stale.length) await supabase.storage.from("club-attachments").remove(stale);
     await loadClubs();
     return { ok: true };
   }
   async function toggleClubPin(postId) {
     const post = clubPosts.find((p) => p.id === postId);
     if (!post) return { ok: false, error: "Post not found." };
-    const { error } = await supabase.from("club_posts").update({ is_pinned: !post.isPinned }).eq("id", postId);
+    const { data: rows, error } = await supabase.from("club_posts").update({ is_pinned: !post.isPinned }).eq("id", postId).select("id");
     if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) return { ok: false, error: "You don't have permission to pin this post." };
     await loadClubs();
     return { ok: true };
   }
@@ -2020,27 +2058,43 @@ export function AppProvider({ children }) {
     }).select().single();
     if (error) return { ok: false, error: error.message };
     if (data.presidentId) {
-      await supabase.from("club_members").insert({ club_id: club.id, user_id: data.presidentId, role: "president", added_by: currentUser.id });
+      const { error: pe } = await supabase.from("club_members")
+        .insert({ club_id: club.id, user_id: data.presidentId, role: "president", added_by: currentUser.id });
+      if (pe) {
+        // roll back so we never leave a president-less, half-created club
+        await supabase.from("clubs").delete().eq("id", club.id);
+        return { ok: false, error: "President assignment failed: " + pe.message };
+      }
     }
     await loadClubs();
     return { ok: true, id: club.id };
   }
   async function updateClubDetails(clubId, data) {
-    const updates = {
-      name: data.name.trim(), tagline: data.tagline?.trim() || null,
-      about: data.about?.trim() || null, category: data.category,
-      faculty_advisor_id: data.facultyAdvisorId || null,
-    };
+    // Cover upload stays admin-gated (club-covers storage policy is admin-only),
+    // so only the admin path passes a coverFile. A new cover yields a public
+    // URL; null leaves the existing cover unchanged (RPC coalesces).
+    let coverUrl = null;
     try {
       if (data.coverFile) {
         const ext = (data.coverFile.name?.split(".").pop() || "jpg").toLowerCase();
         const path = `${crypto.randomUUID()}.${ext}`;
         const { error: ue } = await supabase.storage.from("club-covers").upload(path, data.coverFile, { cacheControl: "3600", upsert: false });
         if (ue) return { ok: false, error: "Cover upload failed: " + ue.message };
-        updates.cover_url = supabase.storage.from("club-covers").getPublicUrl(path).data.publicUrl;
+        coverUrl = supabase.storage.from("club-covers").getPublicUrl(path).data.publicUrl;
       }
     } catch (e) { return { ok: false, error: e.message }; }
-    const { error } = await supabase.from("clubs").update(updates).eq("id", clubId);
+    // Routed through a SECURITY DEFINER RPC (migration 0054) so a President/VP
+    // — not just an admin — can edit their club. The RPC authorizes
+    // club_can_manage OR is_admin and writes only safe columns.
+    const { error } = await supabase.rpc("club_update_details", {
+      p_club_id: clubId,
+      p_name: data.name.trim(),
+      p_tagline: data.tagline?.trim() || null,
+      p_about: data.about?.trim() || null,
+      p_category: data.category,
+      p_advisor: data.facultyAdvisorId || null,
+      p_cover_url: coverUrl,
+    });
     if (error) return { ok: false, error: error.message };
     await loadClubs();
     return { ok: true };
@@ -2052,10 +2106,11 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
   async function assignClubPresident(clubId, newPresidentId) {
-    // Demote the current president (if any) to member before elevating the new one.
-    await supabase.from("club_members").update({ role: "member" }).match({ club_id: clubId, role: "president" });
-    const { error } = await supabase.from("club_members")
-      .upsert({ club_id: clubId, user_id: newPresidentId, role: "president", added_by: currentUser.id }, { onConflict: "club_id,user_id" });
+    // Atomic demote-then-promote inside a SECURITY DEFINER RPC (migration 0054)
+    // so a failure can never leave a club president-less or with two presidents.
+    const { error } = await supabase.rpc("club_set_president", {
+      p_club_id: clubId, p_user_id: newPresidentId,
+    });
     if (error) return { ok: false, error: error.message };
     await loadClubs();
     return { ok: true };
