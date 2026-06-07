@@ -22,14 +22,16 @@
 --            club_is_president()
 -- Changes:   events.club_id FK added; can_create_events() extended
 -- Storage:   club-covers (public), club-attachments (private, member-gated)
---
--- ┌───────────────────────────────────────────────────────────────────────┐
--- │ ACTION REQUIRED before applying:                                      │
--- │   Create these two storage buckets in the Supabase dashboard:         │
--- │     club-covers      → Public bucket                                  │
--- │     club-attachments → Private bucket                                 │
--- └───────────────────────────────────────────────────────────────────────┘
 -- ============================================================================
+
+
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║ 0. Storage buckets                                                         ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+insert into storage.buckets (id, name, public) values
+  ('club-covers',      'club-covers',      true),
+  ('club-attachments', 'club-attachments', false)
+on conflict (id) do nothing;
 
 
 -- ╔══════════════════════════════════════════════════════════════════════════╗
