@@ -17,7 +17,7 @@ export default function EditReport({ id }) {
       navigate("/reports");
       return;
     }
-    if (report.studentId !== currentUser.id || report.status !== "Open") {
+    if (!currentUser || report.studentId !== currentUser.id || report.status !== "Open") {
       navigate(`/reports/${id}`);
     }
   }, [report, id]);
