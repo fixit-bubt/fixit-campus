@@ -18,6 +18,7 @@ export const ACCENT_TILE = {
   fuchsia: "bg-fuchsia-100 text-fuchsia-700",
   amber: "bg-amber-100 text-amber-700",
   blue: "bg-blue-100 text-blue-700",
+  purple: "bg-purple-100 text-purple-700",
   slate: "bg-slate-100 text-slate-600",
 };
 
@@ -30,6 +31,7 @@ export const ACCENT_SOFT = {
   red: "bg-red-50 border-red-200",
   fuchsia: "bg-fuchsia-50 border-fuchsia-200",
   amber: "bg-amber-50 border-amber-200",
+  purple: "bg-purple-50 border-purple-200",
 };
 
 // Accent icon tile (matches the StatCard tile look). `icon` is a lucide name.

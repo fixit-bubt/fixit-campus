@@ -20,6 +20,7 @@ const STUDY_HUB = { key: "study-hub", label: "Study Hub", icon: "BookMarked", pa
 // Shared "Campus Life" group (grows as features ship: prayer, events…).
 const CAMPUS_LIFE = [
   { key: "faculty", label: "Faculty", icon: "GraduationCap", path: "/faculty" },
+  { key: "clubs", label: "Clubs", icon: "UsersRound", path: "/clubs" },
   { key: "bus", label: "Bus Schedule", icon: "Bus", path: "/bus" },
   { key: "prayer", label: "Prayer Times", icon: "Moon", path: "/prayer" },
   { key: "events", label: "Events", icon: "CalendarDays", path: "/events" },
@@ -73,6 +74,7 @@ const NAV_BY_ROLE = {
       { key: "users", label: "Manage Users", icon: "Users", path: "/admin/users" },
       { key: "faculty-admin", label: "Faculty Profiles", icon: "GraduationCap", path: "/admin/faculty" },
       { key: "studyhub-admin", label: "Study Hub", icon: "BookMarked", path: "/admin/study-hub" },
+      { key: "clubs-admin", label: "Clubs", icon: "UsersRound", path: "/admin/clubs" },
     ]},
     { section: "Campus Life", items: CAMPUS_LIFE },
     { section: "Services", items: [
