@@ -183,7 +183,7 @@ export default function ManageUsers() {
             <TriangleAlert size={16} className="mt-0.5 shrink-0" />
             <span>This is the last admin — promote another admin first, or you'll lock everyone out of admin tools.</span>
           </div>
-        ) : pending && pending.user.id === currentUser.id && pending.newRole !== "Admin" ? (
+        ) : pending && pending.user.id === currentUser?.id && pending.newRole !== "Admin" ? (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
             <TriangleAlert size={16} className="mt-0.5 shrink-0" />
             <span>You're changing your own role — you'll lose admin access immediately.</span>
