@@ -522,7 +522,7 @@ export function AppProvider({ children }) {
     if (!stillCurrent(uid)) return;
     if (e1 || e2) { setDataError(true); return; }
     const readSet = new Set((reads || []).map((r) => r.announcement_id));
-    setAnnouncements((rows || []).map((r) => toAnnouncement(r, readSet.has(r.id), currentUser.id)));
+    setAnnouncements((rows || []).map((r) => toAnnouncement(r, readSet.has(r.id), uid)));
   }, [currentUser?.id]);
 
   const loadListings = useCallback(async () => {
@@ -558,7 +558,8 @@ export function AppProvider({ children }) {
   const loadRides = useCallback(async () => {
     if (!currentUser) { setRides([]); return; }
     const uid = currentUser.id;
-    await supabase.rpc("delete_expired_rides");
+    const { error: expErr } = await supabase.rpc("delete_expired_rides");
+    if (expErr) console.warn("[loadRides] delete_expired_rides:", expErr.message);
     const now = new Date().toISOString();
     const [{ data: rows, error: e1 }, { data: reqs, error: e2 }, { data: stat }] = await Promise.all([
       supabase.from("rides").select("*").order("date", { ascending: true }),
@@ -833,7 +834,12 @@ export function AppProvider({ children }) {
     }
     // Email-confirmation ON: account created but no session yet — not an error.
     if (!data.session) return { ok: true, needsConfirm: true };
-    return { ok: true, user: { name: name.trim(), role: "Student" } };
+    // Auto-signed-in: read the profile row to confirm the DB trigger ran and
+    // set currentUser directly so RequireRole sees it before the navigate fires.
+    const { data: p } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
+    const user = toUser(p) || { name: name.trim(), role: "Student" };
+    setCurrentUser(user);
+    return { ok: true, user };
   }
 
   async function logout() {
@@ -842,6 +848,16 @@ export function AppProvider({ children }) {
       await supabase.auth.signOut();
     } finally {
       setCurrentUser(null);
+      setUsers([]); setReports([]); setItems([]); setClaims([]);
+      setAnnouncements([]); setListings([]); setEvents([]); setEventOrganizers([]);
+      setRides([]); setRidesPosted(0); setBloodRequests([]); setDonors([]);
+      setDoctors([]); setAppointments([]); setBusRoutes([]); setSavedBusRoutes([]);
+      setPrayerTimes([]); setMusallahLocations([]); setDepartments([]); setFaculty([]);
+      setFacultyBookmarks([]); setStudyIntakes([]); setStudySections([]); setStudyMembers([]);
+      setStudyCourses([]); setStudyMaterials([]); setStudyQuestionBank([]); setStudyBooks([]);
+      setStudyPins([]); setStudyCRSections([]); setStudySectionRequests([]); setStudyIntakeVotes([]);
+      setStudyIntakeBallots([]); setClubs([]); setClubMembers([]); setClubPosts([]);
+      setJobs([]); setJobReports([]); setJobBookmarks([]);
       navigate("/");
     }
   }
@@ -902,8 +918,9 @@ export function AppProvider({ children }) {
     // Don't let the last admin be demoted (DB also enforces this in 0009).
     const target = users.find((u) => u.id === userId);
     if (target && target.role === "Admin" && role !== "Admin") {
-      const admins = users.filter((u) => u.role === "Admin").length;
-      if (admins <= 1) {
+      const { count } = await supabase
+        .from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin");
+      if ((count ?? 0) <= 1) {
         return { ok: false, error: "You can't remove the last admin — promote another admin first." };
       }
     }
@@ -937,7 +954,7 @@ export function AppProvider({ children }) {
     const { error } = await supabase.from("profiles").update(patch).eq("id", currentUser.id);
     if (error) return { ok: false, error: error.message };
     const { data } = await supabase.from("profiles").select("*").eq("id", currentUser.id).single();
-    setCurrentUser(toUser(data));
+    if (data) setCurrentUser(toUser(data));
     await refreshUsers();
     return { ok: true };
   }
@@ -2051,7 +2068,8 @@ export function AppProvider({ children }) {
   }
   // Called on manage-page load to auto-close votes whose 48-hour window has expired.
   async function checkExpiredVotes() {
-    await supabase.rpc("check_expired_intake_votes");
+    const { error: expErr } = await supabase.rpc("check_expired_intake_votes");
+    if (expErr) console.warn("[checkExpiredVotes]:", expErr.message);
     await loadStudyHub();
   }
 

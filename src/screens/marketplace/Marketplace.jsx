@@ -172,6 +172,7 @@ export function ListingDetail({ id }) {
   const listing = listings.find((l) => l.id === id);
   const [confirmSold, setConfirmSold] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [actionBusy, setActionBusy] = React.useState(false);
 
   if (!listing) {
     return (
@@ -181,8 +182,8 @@ export function ListingDetail({ id }) {
     );
   }
   const seller = userById(listing.sellerId);
-  const isOwner = listing.sellerId === currentUser.id;
-  const isAdmin = currentUser.role === "Admin";
+  const isOwner = !!currentUser && listing.sellerId === currentUser.id;
+  const isAdmin = currentUser?.role === "Admin";
   const canModerate = isOwner || isAdmin;
   const sold = listing.status === "Sold";
 
@@ -236,15 +237,15 @@ export function ListingDetail({ id }) {
         </div>
       </div>
 
-      <Modal open={confirmSold} onClose={() => setConfirmSold(false)} icon="BadgeCheck" tone="emerald"
+      <Modal open={confirmSold} onClose={() => !actionBusy && setConfirmSold(false)} icon="BadgeCheck" tone="emerald"
         title="Mark as sold?" description={`"${listing.title}" will be shown as Sold and removed from active listings.`}
-        footer={<><Button variant="secondary" onClick={() => setConfirmSold(false)}>Cancel</Button>
-          <Button onClick={async () => { const r = await markListingSold(id); setConfirmSold(false); if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; } toast({ type: "success", title: "Marked as sold" }); }}>Mark as Sold</Button></>} />
+        footer={<><Button variant="secondary" disabled={actionBusy} onClick={() => setConfirmSold(false)}>Cancel</Button>
+          <Button disabled={actionBusy} onClick={async () => { if (actionBusy) return; setActionBusy(true); try { const r = await markListingSold(id); setConfirmSold(false); if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; } toast({ type: "success", title: "Marked as sold" }); } finally { setActionBusy(false); } }}>Mark as Sold</Button></>} />
 
-      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} icon="Trash2" tone="red"
+      <Modal open={confirmDelete} onClose={() => !actionBusy && setConfirmDelete(false)} icon="Trash2" tone="red"
         title="Delete this listing?" description={`"${listing.title}" will be permanently removed.`}
-        footer={<><Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-          <Button variant="destructive" onClick={async () => { const r = await deleteListing(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Listing deleted" }); navigate("/marketplace"); }}>Delete</Button></>} />
+        footer={<><Button variant="secondary" disabled={actionBusy} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          <Button variant="destructive" disabled={actionBusy} onClick={async () => { if (actionBusy) return; setActionBusy(true); try { const r = await deleteListing(id); if (!r.ok) { toast({ type: "error", title: "Couldn't delete", message: r.error }); return; } toast({ type: "success", title: "Listing deleted" }); navigate("/marketplace"); } finally { setActionBusy(false); } }}>Delete</Button></>} />
     </AppShell>
   );
 }
@@ -301,16 +302,20 @@ function ListingEditor({ id, existing }) {
 
   async function submit(e) {
     e.preventDefault();
+    if (saving) return;
     const er = validate();
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
-    const data = { title: form.title.trim(), price: Number(form.price), category: form.category, condition: form.condition, negotiable: form.negotiable, description: form.description.trim(), photo: form.photo, photoFile: form.photoFile };
-    const res = editing ? await updateListing(id, data) : await addListing(data);
-    setSaving(false);
-    if (!res.ok) { toast({ type: "error", title: editing ? "Couldn't update listing" : "Couldn't post listing", message: res.error }); return; }
-    if (editing) { toast({ type: "success", title: "Listing updated" }); navigate(`/marketplace/${id}`); }
-    else { toast({ type: "success", title: "Listing posted", message: "It's now live." }); navigate(`/marketplace/${res.id}`); }
+    try {
+      const data = { title: form.title.trim(), price: Number(form.price), category: form.category, condition: form.condition, negotiable: form.negotiable, description: form.description.trim(), photo: form.photo, photoFile: form.photoFile };
+      const res = editing ? await updateListing(id, data) : await addListing(data);
+      if (!res.ok) { toast({ type: "error", title: editing ? "Couldn't update listing" : "Couldn't post listing", message: res.error }); return; }
+      if (editing) { toast({ type: "success", title: "Listing updated" }); navigate(`/marketplace/${id}`); }
+      else { toast({ type: "success", title: "Listing posted", message: "It's now live." }); navigate(`/marketplace/${res.id}`); }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

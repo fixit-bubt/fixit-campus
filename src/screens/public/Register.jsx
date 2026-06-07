@@ -27,6 +27,7 @@ export default function Register() {
 
   async function submit(e) {
     e.preventDefault();
+    if (loading) return;
     const er = validate();
     setErrors(er);
     if (Object.keys(er).length) return;

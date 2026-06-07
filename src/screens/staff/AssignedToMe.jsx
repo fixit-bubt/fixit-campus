@@ -24,9 +24,9 @@ export default function AssignedToMe() {
     .filter((r) => {
       const q = query.trim().toLowerCase();
       if (!q) return true;
-      return r.category.toLowerCase().includes(q) || r.description.toLowerCase().includes(q) || r.building.toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
+      return (r.category ?? "").toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q) || (r.building ?? "").toLowerCase().includes(q) || (r.id ?? "").toLowerCase().includes(q);
     })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "") || (b.id ?? "").localeCompare(a.id ?? ""));
 
   return (
     <AppShell activeKey="assigned" title="Assigned to Me">

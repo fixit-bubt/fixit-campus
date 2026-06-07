@@ -1118,10 +1118,13 @@ function ClubFormModal({ initial, faculty, users, onSave, onClose }) {
   const isCreate = !initial;
 
   async function handleSave() {
-    if (!form.name.trim()) return;
+    if (saving || !form.name.trim()) return;
     setSaving(true);
-    await onSave({ ...form, facultyAdvisorId: form.facultyAdvisorId || null, presidentId: form.presidentId || null });
-    setSaving(false);
+    try {
+      await onSave({ ...form, facultyAdvisorId: form.facultyAdvisorId || null, presidentId: form.presidentId || null });
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -1186,10 +1189,13 @@ function ReassignPresidentModal({ club, users, clubMembers, onSave, onClose }) {
   );
 
   async function handleSave() {
-    if (!selected) return;
+    if (saving || !selected) return;
     setSaving(true);
-    await onSave(selected.id);
-    setSaving(false);
+    try {
+      await onSave(selected.id);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

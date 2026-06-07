@@ -49,6 +49,7 @@ export default function MyReports() {
   const [filter, setFilter] = useState("All");
   const [toDelete, setToDelete] = useState(null);
   const [busy, setBusy] = useState(false);
+  if (!currentUser) return null;
 
   const mine = reports.filter((r) => r.studentId === currentUser.id);
   const statuses = ["All", "Open", "In Progress", "Resolved", "Rejected", "Closed"];

@@ -28,6 +28,7 @@ function StatusBadge({ status }) {
 export default function StudentDirectory() {
   const { currentUser, getStudentDirectory, sendConnectionRequest, respondConnection, cancelConnectionRequest } = useApp();
   const toast = useToast();
+  if (!currentUser) return null;
   const hidden = currentUser.directoryVisible === false;
   const [list, setList] = useState(null); // null = still loading
   const [loadError, setLoadError] = useState(false);
@@ -59,38 +60,47 @@ export default function StudentDirectory() {
   async function connect(s) {
     if (busy) return;
     setBusy(true);
-    const res = await sendConnectionRequest(s.id);
-    if (res.ok) toast({ type: "success", title: "Request sent", message: `${s.name} will see your connection request.` });
-    else toast({ type: "error", title: "Couldn't send request", message: res.error });
-    await refresh();
-    setBusy(false);
+    try {
+      const res = await sendConnectionRequest(s.id);
+      if (res.ok) toast({ type: "success", title: "Request sent", message: `${s.name} will see your connection request.` });
+      else toast({ type: "error", title: "Couldn't send request", message: res.error });
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function respond(s, accept) {
     if (busy) return;
     setBusy(true);
-    const res = await respondConnection(s.id, accept);
-    if (res.ok) {
-      toast({
-        type: "success",
-        title: accept ? "Connected" : "Request declined",
-        message: accept ? `You and ${s.name} can now see each other's contact.` : "",
-      });
-    } else {
-      toast({ type: "error", title: "Couldn't update", message: res.error });
+    try {
+      const res = await respondConnection(s.id, accept);
+      if (res.ok) {
+        toast({
+          type: "success",
+          title: accept ? "Connected" : "Request declined",
+          message: accept ? `You and ${s.name} can now see each other's contact.` : "",
+        });
+      } else {
+        toast({ type: "error", title: "Couldn't update", message: res.error });
+      }
+      await refresh();
+      if (res.ok && !accept) setSelected(null); // declined — don't leave a "Connect" prompt open
+    } finally {
+      setBusy(false);
     }
-    await refresh();
-    if (res.ok && !accept) setSelected(null); // declined — don't leave a "Connect" prompt open
-    setBusy(false);
   }
 
   async function cancel(s) {
     if (busy) return;
     setBusy(true);
-    const res = await cancelConnectionRequest(s.id);
-    if (!res.ok) toast({ type: "error", title: "Couldn't cancel", message: res.error });
-    await refresh();
-    setBusy(false);
+    try {
+      const res = await cancelConnectionRequest(s.id);
+      if (!res.ok) toast({ type: "error", title: "Couldn't cancel", message: res.error });
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   const all = list || [];
@@ -100,7 +110,7 @@ export default function StudentDirectory() {
     .filter((s) => {
       const q = query.trim().toLowerCase();
       if (!q) return true;
-      return [s.name, s.intake, s.section, s.department].filter(Boolean).some((v) => v.toLowerCase().includes(q));
+      return [s.name, s.intake, s.section, s.department].filter((v) => v != null).some((v) => String(v).toLowerCase().includes(q));
     });
 
   return (

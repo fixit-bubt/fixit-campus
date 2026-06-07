@@ -13,7 +13,7 @@ export default function AdminDashboard() {
   const count = (s) => reports.filter((r) => r.status === s).length;
   const unassigned = reports
     .filter((r) => r.status === "Open" && !r.assignedStaffId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   const [assignTarget, setAssignTarget] = useState(null);
 
   return (

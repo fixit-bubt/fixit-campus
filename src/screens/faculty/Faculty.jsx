@@ -52,14 +52,15 @@ const shortDept = (name) => (name || "").replace(/^Department of\s+/i, "");
 // Rank order for listing faculty within a department (chairman always first).
 function rankIndex(desig = "") {
   const d = desig.toLowerCase();
-  if (d.includes("associate professor")) return 1;
-  if (d.includes("assistant professor")) return 2;
-  if (d.includes("professor")) return 0;
-  if (d.includes("senior lecturer")) return 3;
-  if (d.includes("lecturer")) return 4;
-  if (d.includes("teaching assistant")) return 5;
-  if (d.includes("demonstrator")) return 6;
-  return 7;
+  if (d.includes("associate professor")) return 2;
+  if (d.includes("assistant professor")) return 3;
+  if (d.includes("adjunct") || d.includes("visiting")) return 4;
+  if (d.includes("professor")) return 1;
+  if (d.includes("senior lecturer")) return 5;
+  if (d.includes("lecturer")) return 6;
+  if (d.includes("teaching assistant")) return 7;
+  if (d.includes("demonstrator")) return 8;
+  return 9;
 }
 function sortFaculty(list) {
   return [...list].sort((a, b) => {

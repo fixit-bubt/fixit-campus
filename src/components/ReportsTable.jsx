@@ -5,7 +5,7 @@ import { useApp } from "../data/store.jsx";
 import { CATEGORY_ICON, fmtDate } from "../lib/helpers.js";
 
 // Reports table with a per-row Assign/Reassign action (admin).
-export function ReportsTable({ rows, onAssign, onOpen }) {
+export function ReportsTable({ rows = [], onAssign, onOpen }) {
   const { userById } = useApp();
   return (
     <Card className="overflow-hidden">

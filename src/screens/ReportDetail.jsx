@@ -10,6 +10,7 @@ import { AppShell } from "../components/AppShell.jsx";
 import { CATEGORY_ICON, fmtDate } from "../lib/helpers.js";
 
 function StatusTimeline({ report }) {
+  if (!report.timeline?.length) return null;
   const flow = ["Open", "In Progress", "Resolved"];
   const reached = {};
   report.timeline.forEach((t) => { reached[t.status] = t.date; });

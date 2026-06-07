@@ -21,9 +21,9 @@ export default function LostFoundBrowse() {
     .filter((i) => {
       const q = query.trim().toLowerCase();
       if (!q) return true;
-      return i.title.toLowerCase().includes(q) || i.description.toLowerCase().includes(q) || i.location.toLowerCase().includes(q);
+      return i.title.toLowerCase().includes(q) || (i.description ?? "").toLowerCase().includes(q) || (i.location ?? "").toLowerCase().includes(q);
     })
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
 
   return (
     <AppShell activeKey="lost-found" title="Lost & Found">

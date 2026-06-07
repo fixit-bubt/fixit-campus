@@ -63,11 +63,17 @@ function DownloadButton({ path, name }) {
   const toast = useToast();
   const [busy, setBusy] = React.useState(false);
   async function go() {
+    if (busy) return;
     setBusy(true);
-    const url = await getStudyFileUrl(path);
-    setBusy(false);
-    if (!url) { toast({ type: "error", title: "Couldn't open file", message: "Please try again." }); return; }
-    await downloadFile(url, name);
+    try {
+      const url = await getStudyFileUrl(path);
+      if (!url) { toast({ type: "error", title: "Couldn't open file", message: "Please try again." }); return; }
+      await downloadFile(url, name);
+    } catch {
+      toast({ type: "error", title: "Download failed", message: "Please try again." });
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <Button size="sm" variant="secondary" icon="Download" onClick={go} disabled={busy}>
@@ -486,7 +492,7 @@ function StudyHubPending({ pendingCreate }) {
       </AppShell>
     );
   }
-  const row = studyMembers.find((m) => m.userId === currentUser.id && m.status === "pending");
+  const row = studyMembers.find((m) => m.userId === currentUser?.id && m.status === "pending");
   const section = row && studySectionById(row.sectionId);
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
@@ -1093,16 +1099,25 @@ export function StudyHubSection({ sectionId }) {
   const courses = studyCoursesIn(section.id);
 
   async function unpin(pin) {
-    const r = await deleteStudyPin(pin.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't unpin", message: r.error }); return; }
-    toast({ type: "success", title: "Unpinned" });
+    try {
+      const r = await deleteStudyPin(pin.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't unpin", message: r.error }); return; }
+      toast({ type: "success", title: "Unpinned" });
+    } catch {
+      toast({ type: "error", title: "Couldn't unpin", message: "Please try again." });
+    }
   }
   async function doConfirm() {
     if (!confirm) return;
-    const r = await deleteStudyCourse(confirm.item.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); setConfirm(null); return; }
-    toast({ type: "success", title: "Subject removed", message: confirm.item.code });
-    setConfirm(null);
+    try {
+      const r = await deleteStudyCourse(confirm.item.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); setConfirm(null); return; }
+      toast({ type: "success", title: "Subject removed", message: confirm.item.code });
+      setConfirm(null);
+    } catch {
+      toast({ type: "error", title: "Couldn't remove", message: "Please try again." });
+      setConfirm(null);
+    }
   }
 
   return (
@@ -1140,7 +1155,7 @@ export function StudyHubSection({ sectionId }) {
 function SectionHeader({ section, dept, intake, manager }) {
   const { studyPersonName } = useApp();
   const crName = section.crIds[0] ? studyPersonName(section.crIds[0]) : null;
-  const editors = section.editorIds.length;
+  const editors = (section.editorIds || []).length;
   const subtitle = [
     crName ? `${crName} (CR)` : section.hasCR ? null : "No CR yet",
     editors > 0 ? `${editors} editor${editors === 1 ? "" : "s"}` : null,
@@ -1310,19 +1325,28 @@ export function StudyHubCourse({ sectionId, courseId }) {
   const books = studyBooksInCourse(course.id);
 
   async function verifyQB(paper) {
-    const r = await setQBVerified(paper.id, !paper.verified);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
-    toast({ type: "success", title: paper.verified ? "Marked unverified" : "Marked verified" });
+    try {
+      const r = await setQBVerified(paper.id, !paper.verified);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
+      toast({ type: "success", title: paper.verified ? "Marked unverified" : "Marked verified" });
+    } catch {
+      toast({ type: "error", title: "Couldn't update", message: "Please try again." });
+    }
   }
   async function doConfirm() {
     if (!confirm) return;
-    const { kind, item } = confirm;
-    const r = kind === "note" ? await deleteStudyMaterial(item.id)
-            : kind === "qb"   ? await deleteStudyQB(item.id)
-            :                   await deleteStudyBook(item.id);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); setConfirm(null); return; }
-    toast({ type: "success", title: "Removed", message: item.title });
-    setConfirm(null);
+    try {
+      const { kind, item } = confirm;
+      const r = kind === "note" ? await deleteStudyMaterial(item.id)
+              : kind === "qb"   ? await deleteStudyQB(item.id)
+              :                   await deleteStudyBook(item.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't remove", message: r.error }); setConfirm(null); return; }
+      toast({ type: "success", title: "Removed", message: item.title });
+      setConfirm(null);
+    } catch {
+      toast({ type: "error", title: "Couldn't remove", message: "Please try again." });
+      setConfirm(null);
+    }
   }
 
   const confirmLabel = { note: "note", qb: "question paper", book: "book" }[confirm?.kind] || "item";
@@ -1402,7 +1426,7 @@ function MembersTab({ section, members, onAct }) {
           <Card className="divide-y divide-slate-200 overflow-hidden">
             {pending.map((m) => (
               <MemberRow key={m.id} member={m} label="Wants to join"
-                actions={<><Button size="sm" variant="secondary" onClick={() => onAct("deny", m)}>Deny</Button><Button size="sm" icon="Check" onClick={() => onAct("approve", m)}>Approve</Button></>} />
+                actions={<><Button size="sm" variant="secondary" onClick={() => onAct("deny", m)} disabled={actBusy}>Deny</Button><Button size="sm" icon="Check" onClick={() => onAct("approve", m)} disabled={actBusy}>Approve</Button></>} />
             ))}
           </Card>
         )}
@@ -1417,11 +1441,11 @@ function MembersTab({ section, members, onAct }) {
           ))}
           {editors.map((m) => (
             <MemberRow key={m.id} member={m} label="Editor"
-              actions={<><Button size="sm" variant="secondary" onClick={() => onAct("demote", m)}>Make member</Button><Button size="sm" variant="secondary" icon="UserMinus" onClick={() => onAct("remove", m)}>Remove</Button></>} />
+              actions={<><Button size="sm" variant="secondary" onClick={() => onAct("demote", m)} disabled={actBusy}>Make member</Button><Button size="sm" variant="secondary" icon="UserMinus" onClick={() => onAct("remove", m)} disabled={actBusy}>Remove</Button></>} />
           ))}
           {plain.map((m) => (
             <MemberRow key={m.id} member={m} label="Member"
-              actions={<><Button size="sm" variant="secondary" icon="UserPlus" onClick={() => onAct("promote", m)}>Make editor</Button><Button size="sm" variant="secondary" icon="UserMinus" onClick={() => onAct("remove", m)}>Remove</Button></>} />
+              actions={<><Button size="sm" variant="secondary" icon="UserPlus" onClick={() => onAct("promote", m)} disabled={actBusy}>Make editor</Button><Button size="sm" variant="secondary" icon="UserMinus" onClick={() => onAct("remove", m)} disabled={actBusy}>Remove</Button></>} />
           ))}
           {approved.length === 0 && <div className="p-4 text-sm text-slate-500">No approved members yet.</div>}
         </Card>
@@ -1433,7 +1457,7 @@ function MembersTab({ section, members, onAct }) {
 // ============================================================================
 // Settings tab — join code, section privacy, intake vote
 // ============================================================================
-function SettingsTab({ section, intake, onTogglePublic }) {
+function SettingsTab({ section, intake, onTogglePublic, toggleBusy }) {
   const { intakeVoteFor, intakeBallotsFor, myBallotFor, initiateIntakeVote, castIntakeVote } = useApp();
   const toast = useToast();
   const [copied, setCopied] = React.useState(false);
@@ -1504,7 +1528,7 @@ function SettingsTab({ section, intake, onTogglePublic }) {
                   : "Only approved members can see this section's content."}
               </p>
             </div>
-            <Button size="sm" variant="secondary" icon={section.isPublic ? "Lock" : "Unlock"} onClick={() => onTogglePublic(!section.isPublic)}>
+            <Button size="sm" variant="secondary" icon={section.isPublic ? "Lock" : "Unlock"} onClick={() => onTogglePublic(!section.isPublic)} disabled={toggleBusy}>
               {section.isPublic ? "Make private" : "Make public"}
             </Button>
           </div>
@@ -1535,7 +1559,9 @@ function SettingsTab({ section, intake, onTogglePublic }) {
                 <span className="text-red-600 font-medium">{againstCount} against</span>
               </div>
               <p className="text-xs text-slate-400">Closes {closesAt}</p>
-              {myBallot ? (
+              {vote.status !== "open" ? (
+                <p className="text-xs text-slate-500">Vote closed · result: <strong>{vote.result ?? "—"}</strong></p>
+              ) : myBallot ? (
                 <p className="text-xs text-slate-500">Your vote: <strong>{myBallot.inFavor ? "In favour" : "Against"}</strong></p>
               ) : (
                 <div className="flex gap-2">
@@ -1564,6 +1590,8 @@ export function StudyHubManage({ sectionId }) {
   } = useApp();
   const toast = useToast();
   const [tab, setTab] = React.useState("Members");
+  const [actBusy, setActBusy] = React.useState(false);
+  const [toggleBusy, setToggleBusy] = React.useState(false);
 
   React.useEffect(() => { checkExpiredVotes(); }, []); // auto-close expired intake votes on load
 
@@ -1598,20 +1626,36 @@ export function StudyHubManage({ sectionId }) {
   const pendingCount = members.filter((m) => m.status === "pending").length;
 
   async function onAct(kind, m) {
-    let r;
-    if (kind === "approve") r = await approveMember(m.id);
-    else if (kind === "deny" || kind === "remove") r = await removeMember(m.id);
-    else if (kind === "promote") r = await setMemberRole(m.id, "editor");
-    else if (kind === "demote") r = await setMemberRole(m.id, "member");
-    if (r && !r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
-    const titles = { approve: "Member approved", deny: "Request denied", remove: "Member removed", promote: "Promoted to editor", demote: "Set to member" };
-    toast({ type: "success", title: titles[kind] });
+    if (actBusy) return;
+    setActBusy(true);
+    try {
+      let r;
+      if (kind === "approve") r = await approveMember(m.id);
+      else if (kind === "deny" || kind === "remove") r = await removeMember(m.id);
+      else if (kind === "promote") r = await setMemberRole(m.id, "editor");
+      else if (kind === "demote") r = await setMemberRole(m.id, "member");
+      if (!r || !r.ok) { toast({ type: "error", title: "Couldn't update", message: r?.error }); return; }
+      const titles = { approve: "Member approved", deny: "Request denied", remove: "Member removed", promote: "Promoted to editor", demote: "Set to member" };
+      toast({ type: "success", title: titles[kind] });
+    } catch {
+      toast({ type: "error", title: "Couldn't update", message: "Please try again." });
+    } finally {
+      setActBusy(false);
+    }
   }
 
   async function handleTogglePublic(isPublic) {
-    const r = await toggleSectionPublic(section.id, isPublic);
-    if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
-    toast({ type: "success", title: isPublic ? "Section is now public" : "Section is now private" });
+    if (toggleBusy) return;
+    setToggleBusy(true);
+    try {
+      const r = await toggleSectionPublic(section.id, isPublic);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't update", message: r.error }); return; }
+      toast({ type: "success", title: isPublic ? "Section is now public" : "Section is now private" });
+    } catch {
+      toast({ type: "error", title: "Couldn't update visibility", message: "Please try again." });
+    } finally {
+      setToggleBusy(false);
+    }
   }
 
   return (
@@ -1628,7 +1672,7 @@ export function StudyHubManage({ sectionId }) {
         />
       </div>
       {tab === "Members" && <MembersTab section={section} members={members} onAct={onAct} />}
-      {tab === "Settings" && <SettingsTab section={section} intake={intake} onTogglePublic={handleTogglePublic} />}
+      {tab === "Settings" && <SettingsTab section={section} intake={intake} onTogglePublic={handleTogglePublic} toggleBusy={toggleBusy} />}
     </AppShell>
   );
 }

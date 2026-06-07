@@ -9,6 +9,7 @@ import { CampusToday } from "../../components/CampusToday.jsx";
 
 export default function StudentDashboard() {
   const { currentUser, reports, dataLoading } = useApp();
+  if (!currentUser) return null;
   const mine = reports.filter((r) => r.studentId === currentUser.id);
   const count = (s) => mine.filter((r) => r.status === s).length;
   const recent = [...mine].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
