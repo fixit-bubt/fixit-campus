@@ -252,6 +252,7 @@ function AddMembersModal({ clubId, existingUserIds, onClose }) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search students by name"
             placeholder="Search students by name…"
             className="h-9 w-full rounded-lg border border-slate-200 pl-8 pr-3 text-sm outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
           />
@@ -1229,6 +1230,7 @@ function ReassignPresidentModal({ club, users, clubMembers, onSave, onClose }) {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={query} onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search students"
             placeholder="Search students…"
             className="h-9 w-full rounded-lg border border-slate-200 pl-8 pr-3 text-sm outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
           />

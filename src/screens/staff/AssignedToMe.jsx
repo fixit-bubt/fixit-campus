@@ -38,6 +38,7 @@ export default function AssignedToMe() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search assigned reports"
             placeholder="Search assigned reports…"
             className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30"
           />
