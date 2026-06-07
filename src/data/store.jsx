@@ -385,6 +385,11 @@ export function AppProvider({ children }) {
   const [clubMembers, setClubMembers] = useState([]);
   const [clubPosts, setClubPosts] = useState([]);
 
+  // ---- jobs & internships ----
+  const [jobs, setJobs] = useState([]);
+  const [jobReports, setJobReports] = useState([]); // admin-only: flags awaiting review
+  const [jobBookmarks, setJobBookmarks] = useState([]); // job ids this user saved
+
   // Latest signed-in user id — loaders compare against this after their await so a
   // slow response from a previous account can't overwrite the new account's data.
   const currentUidRef = useRef(null);
@@ -720,14 +725,62 @@ export function AppProvider({ children }) {
     setClubPosts((postsRes.data || []).map(toClubPost));
   }, [currentUser?.id, currentUser?.role]);
 
+  // ── Jobs & Internships mappers + loader ─────────────────────────────────────
+  // apply_file_url stores the full PUBLIC URL (job-circulars bucket), mirroring
+  // how announcement attachment_url is stored — pass it through unchanged.
+  function toJob(r, reportCount) {
+    return {
+      id: r.code, uuid: r.id,
+      title: r.title, company: r.company, jobType: r.job_type,
+      location: r.location, workMode: r.work_mode,
+      description: r.description, requirements: r.requirements || "",
+      stipend: r.stipend || "", deadline: day(r.deadline),
+      applyMethod: r.apply_method, applyValue: r.apply_value || "",
+      applyFileUrl: r.apply_file_url || null, applyFileName: r.apply_file_name || null,
+      postedById: r.posted_by, postedByName: r.posted_by_name || "", clubId: r.club_id || null,
+      removed: !!r.deleted_at, removedReason: r.removed_reason || "",
+      reportCount: reportCount || 0,
+      createdAt: r.created_at, updatedAt: r.updated_at,
+    };
+  }
+  function toJobReport(r) {
+    return { id: r.id, jobId: r.job_id, reporterId: r.reporter_id, reason: r.reason, note: r.note || "", createdAt: r.created_at };
+  }
+
+  // Campus-wide board: every signed-in user reads active listings (RLS hides
+  // removed ones from non-admins). Admins also load reports to build the
+  // moderation queue + per-listing report counts.
+  const loadJobs = useCallback(async () => {
+    if (!currentUser) { setJobs([]); setJobReports([]); setJobBookmarks([]); return; }
+    const uid = currentUser.id;
+    const isAdmin = currentUser.role === "Admin";
+    const [jobsRes, repsRes, bmRes] = await Promise.all([
+      supabase.from("jobs").select("*").order("created_at", { ascending: false }),
+      isAdmin
+        ? supabase.from("job_reports").select("*").order("created_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      supabase.from("job_bookmarks").select("job_id"),
+    ]);
+    if (!stillCurrent(uid)) return;
+    if (jobsRes.error || repsRes.error) { setDataError(true); return; }
+    const counts = {};
+    (repsRes.data || []).forEach((r) => { counts[r.job_id] = (counts[r.job_id] || 0) + 1; });
+    setJobs((jobsRes.data || []).map((r) => toJob(r, counts[r.id])));
+    setJobReports((repsRes.data || []).map(toJobReport));
+    // Bookmarks are non-critical: if migration 0056 isn't applied yet (table
+    // missing) or the read fails, show no saved items rather than breaking the
+    // whole board.
+    setJobBookmarks(bmRes.error ? [] : (bmRes.data || []).map((r) => r.job_id));
+  }, [currentUser?.id, currentUser?.role]);
+
   useEffect(() => {
     let active = true;
     if (currentUser?.id) { setDataLoading(true); setDataError(false); }
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs(), loadJobs()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs]);
+  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs, loadJobs]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -1325,6 +1378,134 @@ export function AppProvider({ children }) {
     const { error } = await supabase.from("events").delete().eq("code", id);
     if (error) return { ok: false, error: error.message };
     await loadEvents();
+    return { ok: true };
+  }
+
+  // ---- jobs & internships (LIVE Supabase) ----
+  // Mirrors can_post_jobs() used by RLS: an admin, an event organizer, or a club
+  // president/VP may post to the campus-wide jobs board.
+  const canPostJobs = !!currentUser &&
+    (currentUser.role === "Admin" ||
+     eventOrganizers.includes(currentUser.id) ||
+     clubMembers.some((m) => m.userId === currentUser.id && ["president", "vp"].includes(m.role)));
+
+  // Upload an optional PDF circular to the public job-circulars bucket; returns
+  // { url, name }. Insert is gated by can_post_jobs() + own-folder path (RLS).
+  async function uploadJobCircular(file) {
+    if (!currentUser) throw new Error("Not signed in.");
+    const ext = (file.name?.split(".").pop() || "pdf").toLowerCase();
+    const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("job-circulars").upload(path, file, { cacheControl: "3600", upsert: false });
+    if (error) throw error;
+    return { url: supabase.storage.from("job-circulars").getPublicUrl(path).data.publicUrl, name: file.name };
+  }
+
+  // Extract the storage path from a job-circulars public URL, for best-effort
+  // cleanup of a replaced/removed PDF (the poster owns their own uploads).
+  function jobCircularPath(url) {
+    if (!url) return null;
+    const m = String(url).split("?")[0].match(/\/job-circulars\/(.+)$/);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  // Build the insert/update column payload (uploads the circular if a new file
+  // was chosen). On edit, an unchanged 'file' apply method keeps the existing
+  // circular (we just don't overwrite apply_file_url); switching to link/email
+  // clears it.
+  async function jobCols(data) {
+    const cols = {
+      title: data.title, company: data.company, job_type: data.jobType,
+      location: data.location, work_mode: data.workMode,
+      description: data.description, requirements: data.requirements || null,
+      stipend: data.stipend || null, deadline: data.deadline,
+      club_id: data.clubId || null, apply_method: data.applyMethod,
+      apply_value: data.applyValue || null,
+    };
+    if (data.applyMethod === "file") {
+      cols.apply_value = null; // a file listing never carries a link/email (constraint)
+      if (data.applyFile) {
+        const f = await uploadJobCircular(data.applyFile);
+        cols.apply_file_url = f.url; cols.apply_file_name = f.name;
+      }
+    } else {
+      cols.apply_file_url = null; cols.apply_file_name = null;
+    }
+    return cols;
+  }
+
+  async function addJob(data) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    let cols;
+    try { cols = await jobCols(data); }
+    catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
+    const { data: row, error } = await supabase
+      .from("jobs")
+      .insert({ ...cols, posted_by: currentUser.id, posted_by_name: currentUser.name })
+      .select("code")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    await loadJobs();
+    return { ok: true, id: row.code };
+  }
+  async function updateJob(id, data) {
+    const prev = jobs.find((j) => j.id === id);
+    let cols;
+    try { cols = await jobCols(data); }
+    catch (e) { return { ok: false, error: "Upload failed: " + e.message }; }
+    // .select() so an RLS-blocked (0-row) update surfaces as an error, not a
+    // silent false success.
+    const { data: rows, error } = await supabase.from("jobs").update(cols).eq("code", id).select("id");
+    if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) return { ok: false, error: "You don't have permission to edit this listing." };
+    // Best-effort cleanup: if the old circular was replaced or the apply method
+    // moved off 'file', delete the orphaned PDF (own uploads only, per storage RLS).
+    if (prev?.applyFileUrl && (data.applyMethod !== "file" || !!data.applyFile)) {
+      const path = jobCircularPath(prev.applyFileUrl);
+      if (path) await supabase.storage.from("job-circulars").remove([path]);
+    }
+    await loadJobs();
+    return { ok: true };
+  }
+  // Poster withdraws their own listing (soft-delete via RPC).
+  async function withdrawJob(id) {
+    const { error } = await supabase.rpc("job_withdraw", { p_code: id });
+    if (error) return { ok: false, error: error.message };
+    await loadJobs();
+    return { ok: true };
+  }
+  // Admin removes a listing with a reason (soft-delete + reason via RPC).
+  async function removeJob(id, reason) {
+    const { error } = await supabase.rpc("job_admin_remove", { p_code: id, p_reason: reason });
+    if (error) return { ok: false, error: error.message };
+    await loadJobs();
+    return { ok: true };
+  }
+  // Admin restores a removed listing.
+  async function restoreJob(id) {
+    const { error } = await supabase.rpc("job_admin_restore", { p_code: id });
+    if (error) return { ok: false, error: error.message };
+    await loadJobs();
+    return { ok: true };
+  }
+  // Any signed-in user flags a listing that isn't their own; one report/user
+  // (the RPC enforces both; a duplicate surfaces as 23505).
+  async function reportJob(id, reason, note) {
+    const { error } = await supabase.rpc("job_report", { p_code: id, p_reason: reason, p_note: note || null });
+    if (error) {
+      return { ok: false, error: error.code === "23505" ? "You've already reported this listing." : error.message };
+    }
+    await loadJobs();
+    return { ok: true };
+  }
+  // Save / unsave a listing to the user's personal shortlist (optimistic).
+  async function toggleJobBookmark(jobUuid) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const saved = jobBookmarks.includes(jobUuid);
+    const { error } = saved
+      ? await supabase.from("job_bookmarks").delete().eq("user_id", currentUser.id).eq("job_id", jobUuid)
+      : await supabase.from("job_bookmarks").insert({ user_id: currentUser.id, job_id: jobUuid });
+    if (error) return { ok: false, error: error.message };
+    setJobBookmarks((s) => (saved ? s.filter((x) => x !== jobUuid) : [...s, jobUuid]));
     return { ok: true };
   }
 
@@ -2121,6 +2302,7 @@ export function AppProvider({ children }) {
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
     listings, addListing, updateListing, deleteListing, markListingSold, getListingContact,
     events, canCreateEvents, addEvent, toggleRSVP, deleteEvent,
+    jobs, jobReports, jobBookmarks, canPostJobs, addJob, updateJob, withdrawJob, removeJob, restoreJob, reportJob, toggleJobBookmark,
     rides, addRide, requestSeat, deleteRide, getRideContact,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor, getDonorContact, getBloodRequesterContact,
     doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
