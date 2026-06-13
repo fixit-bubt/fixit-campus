@@ -63,8 +63,12 @@ function RequireAuth({ children }) {
 // Restrict a route to a single role; others are redirected to their own dashboard.
 function RequireRole({ role, children }) {
   const { currentUser, dashboardPath } = useApp();
-  if (!currentUser) { navigate("/login"); return null; }
-  if (currentUser.role !== role) { navigate(dashboardPath(currentUser.role)); return null; }
+  const ok = !!currentUser && currentUser.role === role;
+  useEffect(() => {
+    if (!currentUser) navigate("/login");
+    else if (currentUser.role !== role) navigate(dashboardPath(currentUser.role));
+  }, [currentUser, role]);
+  if (!ok) return null;
   return children;
 }
 

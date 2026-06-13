@@ -183,7 +183,7 @@ export default function Profile() {
               <h3 className="text-base font-semibold text-slate-900">Change Password</h3>
             </div>
             <div className="space-y-4">
-              <Field label="New password" htmlFor="pw-new" hint="Minimum 8 characters." error={pwError && pwForm.newPw.length > 0 ? undefined : undefined}>
+              <Field label="New password" htmlFor="pw-new" hint="Minimum 8 characters.">
                 <Input id="pw-new" type="password" placeholder="Enter new password" value={pwForm.newPw}
                   onChange={(e) => { setPwError(""); setPwForm((f) => ({ ...f, newPw: e.target.value })); }} />
               </Field>

@@ -1611,11 +1611,11 @@ export function StudyHubManage({ sectionId }) {
   const [actBusy, setActBusy] = React.useState(false);
   const [toggleBusy, setToggleBusy] = React.useState(false);
 
-  React.useEffect(() => { checkExpiredVotes(); }, []); // auto-close expired intake votes on load
-
   const section = studySectionById(sectionId);
   const intake = section && studyIntakes.find((i) => i.id === section.intakeId);
   const dept = intake && departments.find((d) => d.id === intake.deptId);
+
+  React.useEffect(() => { if (intake?.id) checkExpiredVotes(intake.id); }, [intake?.id]); // auto-close expired intake votes on load
 
   if (!section || !intake || !dept) {
     return (

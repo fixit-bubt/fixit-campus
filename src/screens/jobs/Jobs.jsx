@@ -119,14 +119,21 @@ function SaveButton({ saved, onClick, className = "" }) {
 function JobCard({ job, onOpen }) {
   const { clubById, jobBookmarks, toggleJobBookmark } = useApp();
   const toast = useToast();
+  const [saveBusy, setSaveBusy] = React.useState(false);
   const status = jobStatus(job);
   const source = sourceLabel(job, clubById);
   const saved = jobBookmarks.includes(job.uuid);
   const dim = status === "Expired" || status === "Removed";
 
   async function toggleSave() {
-    const r = await toggleJobBookmark(job.uuid);
-    if (!r.ok) toast({ type: "error", title: "Couldn't update", message: r.error });
+    if (saveBusy) return;
+    setSaveBusy(true);
+    try {
+      const r = await toggleJobBookmark(job.uuid);
+      if (!r.ok) toast({ type: "error", title: "Couldn't update", message: r.error });
+    } finally {
+      setSaveBusy(false);
+    }
   }
 
   // A div (not a <button>) so the inner bookmark toggle is valid markup.
