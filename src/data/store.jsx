@@ -307,8 +307,8 @@ const toStudyIntake  = (r) => ({ id: r.id, deptId: r.department_id, number: r.nu
 const toStudySection = (r) => ({ id: r.id, intakeId: r.intake_id, number: r.number, joinCode: r.join_code || null, isPublic: r.is_public !== false });
 const toStudyMember  = (r) => ({ id: r.id, sectionId: r.section_id, userId: r.user_id, role: r.role, status: r.status, joinedVia: r.joined_via || null });
 const toStudySectionRequest = (r) => ({ id: r.id, deptId: r.department_id, intakeId: r.intake_id, sectionNumber: r.section_number, requestedBy: r.requested_by, status: r.status, adminNote: r.admin_note || null, createdAt: day(r.created_at) });
-const toStudyIntakeVote   = (r) => ({ id: r.id, intakeId: r.intake_id, proposedBy: r.proposed_by, targetPublic: r.target_is_public, opensAt: r.opens_at, closesAt: r.closes_at, status: r.status, result: r.result || null });
-const toStudyIntakeBallot = (r) => ({ id: r.id, voteId: r.vote_id, userId: r.user_id, inFavor: r.in_favor });
+const toStudyIntakeVote   = (r) => ({ id: r.id, intakeId: r.intake_id, proposedBy: r.initiated_by, targetPublic: r.proposal === "public", closesAt: r.closes_at, status: r.status, result: r.result || null });
+const toStudyIntakeBallot = (r) => ({ id: r.id, voteId: r.vote_id, userId: r.cr_id, inFavor: r.ballot === "yes" });
 const toStudyCourse  = (r) => ({ id: r.id, sectionId: r.section_id, code: r.code, name: r.name, createdBy: r.created_by, createdAt: day(r.created_at) });
 const toStudyMaterial = (r) => ({ id: r.id, courseId: r.course_id, title: r.title, type: r.type, kind: r.file_kind || "", sizeMB: bytesToMB(r.size_bytes), path: r.storage_path, byId: r.uploaded_by, createdAt: day(r.created_at) });
 const toStudyQB      = (r) => ({ id: r.id, sectionId: r.section_id, courseId: r.course_id || null, exam: r.exam, title: r.title, kind: r.file_kind || "", sizeMB: bytesToMB(r.size_bytes), path: r.storage_path, verified: !!r.verified, byId: r.uploaded_by, createdAt: day(r.created_at) });
@@ -2052,7 +2052,7 @@ export function AppProvider({ children }) {
   }
   // CR: start a 48-hour vote on changing intake visibility.
   async function initiateIntakeVote(intakeId, targetPublic) {
-    const { data, error } = await supabase.rpc("initiate_intake_vote", { p_intake_id: intakeId, p_target_is_public: targetPublic });
+    const { data, error } = await supabase.rpc("initiate_intake_vote", { p_intake_id: intakeId, p_proposal: targetPublic ? "public" : "private" });
     if (error) return { ok: false, error: error.message };
     if (!data?.ok) return { ok: false, error: data?.error || "Could not start vote." };
     await loadStudyHub();
@@ -2060,15 +2060,16 @@ export function AppProvider({ children }) {
   }
   // CR: cast their ballot in an intake vote.
   async function castIntakeVote(voteId, inFavor) {
-    const { data, error } = await supabase.rpc("cast_intake_vote", { p_vote_id: voteId, p_in_favor: inFavor });
+    const { data, error } = await supabase.rpc("cast_intake_vote", { p_vote_id: voteId, p_ballot: inFavor ? "yes" : "no" });
     if (error) return { ok: false, error: error.message };
     if (!data?.ok) return { ok: false, error: data?.error || "Vote failed." };
     await loadStudyHub();
     return { ok: true };
   }
   // Called on manage-page load to auto-close votes whose 48-hour window has expired.
-  async function checkExpiredVotes() {
-    const { error: expErr } = await supabase.rpc("check_expired_intake_votes");
+  async function checkExpiredVotes(intakeId) {
+    if (!intakeId) return;
+    const { error: expErr } = await supabase.rpc("check_expired_intake_votes", { p_intake_id: intakeId });
     if (expErr) console.warn("[checkExpiredVotes]:", expErr.message);
     await loadStudyHub();
   }

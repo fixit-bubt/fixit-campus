@@ -187,6 +187,7 @@ export function EventDetail({ id }) {
   const going = ev.attendees.includes(currentUser?.id);
   const canManage = currentUser?.role === "Admin" || ev.createdById === currentUser?.id;
   const ended = status === "Ended";
+  const full = ev.capacity != null && ev.attendees.length >= ev.capacity;
 
   async function onToggleRSVP() {
     if (rsvpBusy) return;
@@ -242,7 +243,10 @@ export function EventDetail({ id }) {
                 <a href={gcalLink(ev)} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
                   <Icon name="CalendarPlus" size={16} /> Add to calendar
                 </a>
-                {!ended && (
+                {!ended && !going && full && (
+                  <span className="inline-flex h-10 items-center rounded-lg bg-slate-100 px-4 text-sm font-medium text-slate-500">Event full</span>
+                )}
+                {!ended && (going || !full) && (
                   <Button variant={going ? "secondary" : "primary"} icon={going ? "Check" : "Ticket"} disabled={rsvpBusy} onClick={onToggleRSVP}>
                     {going ? "Going" : "RSVP"}
                   </Button>

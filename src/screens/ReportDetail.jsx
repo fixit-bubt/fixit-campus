@@ -78,7 +78,7 @@ export default function ReportDetail({ id }) {
 
   useEffect(() => {
     if (report) setAssignTo(report.assignedStaffId || "");
-  }, [report?.uuid, report?.assignedStaffId]);
+  }, [report?.id, report?.assignedStaffId]);
 
   if (!report) {
     return (
