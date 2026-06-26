@@ -28,6 +28,12 @@ function toUser(p) {
     whatsapp: p.whatsapp ?? "",
     intake: p.intake ?? "",
     section: p.section ?? "",
+    // 0065 onboarding fields
+    studentId: p.student_id ?? "",
+    program: p.program ?? "",
+    bloodGroup: p.blood_group ?? "",
+    phone: p.phone ?? "",
+    address: p.address ?? "",
     avatar: p.avatar_url ?? null,
     directoryVisible: p.directory_visible ?? true,
     showWhatsapp: p.show_whatsapp ?? false,
@@ -107,6 +113,51 @@ function toAnnouncement(r, readByMe, userId) {
     attachmentUrl: r.attachment_url || null, // real download URL
     date: day(r.created_at),
     readBy: readByMe ? [userId] : [],
+  };
+}
+
+// DB notification row -> screen shape. createdAt kept as raw ISO so the screen
+// can bucket (new/today/earlier) and render relative "2h" times.
+function toNotification(r) {
+  return {
+    id: r.id,
+    sector: r.sector,
+    title: r.title,
+    body: r.body || "",
+    read: r.read,
+    refId: r.reference_id || null,
+    refType: r.reference_type || null,
+    createdAt: r.created_at,
+  };
+}
+
+// DB academic_calendar row -> screen shape.
+function toCalendarEvent(r) {
+  return {
+    id: r.id,
+    title: r.title,
+    description: r.description || "",
+    date: r.event_date,            // 'YYYY-MM-DD'
+    endDate: r.end_date || null,
+    type: r.event_type,            // holiday | exam | semester | general
+    createdAt: r.created_at,
+  };
+}
+
+// DB routines row -> screen shape.
+function toRoutine(r) {
+  return {
+    id: r.id,
+    type: r.type,                  // class | exam
+    title: r.title,
+    department: r.department || "",
+    semester: r.semester || "",
+    intake: r.intake || "",
+    section: r.section || "",
+    fileUrl: r.file_url || null,
+    imageUrl: r.image_url || null,
+    publishedBy: r.published_by || null,
+    createdAt: r.created_at,
   };
 }
 
@@ -405,6 +456,14 @@ export function AppProvider({ children }) {
   const [jobReports, setJobReports] = useState([]); // admin-only: flags awaiting review
   const [jobBookmarks, setJobBookmarks] = useState([]); // job ids this user saved
 
+  // ---- notifications ----
+  const [notifications, setNotifications] = useState([]); // this user's rows, newest first
+  const [notifPrefs, setNotifPrefs] = useState({});       // { [sector]: {enabled,push,email,inapp}, _paused:{enabled}, _quiet:{enabled} }
+
+  // ---- academic calendar + routines ----
+  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [routines, setRoutines] = useState([]);
+
   // Latest signed-in user id — loaders compare against this after their await so a
   // slow response from a previous account can't overwrite the new account's data.
   const currentUidRef = useRef(null);
@@ -533,6 +592,46 @@ export function AppProvider({ children }) {
     if (!stillCurrent(uid)) return;
     if (error) { setDataError(true); return; }
     setListings((data || []).map(toListing));
+  }, [currentUser?.id]);
+
+  // Notifications (own rows, RLS-scoped) + per-sector preferences. Both keyed to
+  // the signed-in user; a stale response from a previous account is discarded.
+  const loadNotifications = useCallback(async () => {
+    if (!currentUser) { setNotifications([]); setNotifPrefs({}); return; }
+    const uid = currentUser.id;
+    const [{ data: rows, error: e1 }, { data: prefs, error: e2 }] = await Promise.all([
+      supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("notif_prefs").select("*"),
+    ]);
+    if (!stillCurrent(uid)) return;
+    if (e1 || e2) { setDataError(true); return; }
+    setNotifications((rows || []).map(toNotification));
+    const map = {};
+    (prefs || []).forEach((p) => {
+      map[p.sector] = { enabled: p.enabled, push: p.push, email: p.email, inapp: p.inapp };
+    });
+    setNotifPrefs(map);
+  }, [currentUser?.id]);
+
+  // Academic calendar (read by all; admin curates) + class/exam routines.
+  const loadCalendar = useCallback(async () => {
+    if (!currentUser) { setCalendarEvents([]); return; }
+    const uid = currentUser.id;
+    const { data, error } = await supabase
+      .from("academic_calendar").select("*").order("event_date", { ascending: true });
+    if (!stillCurrent(uid)) return;
+    if (error) { setDataError(true); return; }
+    setCalendarEvents((data || []).map(toCalendarEvent));
+  }, [currentUser?.id]);
+
+  const loadRoutines = useCallback(async () => {
+    if (!currentUser) { setRoutines([]); return; }
+    const uid = currentUser.id;
+    const { data, error } = await supabase
+      .from("routines").select("*").order("created_at", { ascending: false });
+    if (!stillCurrent(uid)) return;
+    if (error) { setDataError(true); return; }
+    setRoutines((data || []).map(toRoutine));
   }, [currentUser?.id]);
 
   // Events + RSVPs (aggregated into each event's `attendees` array) + the
@@ -808,11 +907,11 @@ export function AppProvider({ children }) {
   useEffect(() => {
     let active = true;
     if (currentUser?.id) { setDataLoading(true); setDataError(false); }
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs(), loadJobs()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs(), loadJobs(), loadNotifications(), loadCalendar(), loadRoutines()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs, loadJobs]);
+  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs, loadJobs, loadNotifications, loadCalendar, loadRoutines]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -858,6 +957,7 @@ export function AppProvider({ children }) {
       setStudyPins([]); setStudyCRSections([]); setStudySectionRequests([]); setStudyIntakeVotes([]);
       setStudyIntakeBallots([]); setClubs([]); setClubMembers([]); setClubPosts([]);
       setJobs([]); setJobReports([]); setJobBookmarks([]);
+      setNotifications([]); setNotifPrefs({}); setCalendarEvents([]); setRoutines([]);
       navigate("/");
     }
   }
@@ -944,10 +1044,16 @@ export function AppProvider({ children }) {
       full_name: form.name.trim(),
       whatsapp: form.whatsapp?.trim() || null,
       avatar_url,
+      // 0065 fields available to everyone
+      blood_group: form.bloodGroup?.trim() || null,
+      phone: form.phone?.trim() || null,
+      address: form.address?.trim() || null,
     };
     if (currentUser.role === "Student") {
       patch.intake = form.intake?.trim() || null;
       patch.section = form.section?.trim() || null;
+      patch.student_id = form.studentId?.trim() || null;
+      patch.program = form.program?.trim() || null;
       patch.directory_visible = form.directoryVisible !== false;
       patch.show_whatsapp = form.showWhatsapp === true;
     }
@@ -1184,6 +1290,8 @@ export function AppProvider({ children }) {
       department: r.department,
       intake: r.intake,
       section: r.section,
+      program: r.program ?? "",        // 0065 — exposed by student_directory()
+      bloodGroup: r.blood_group ?? "", // 0065
       status: r.status, // 'none' | 'pending_outgoing' | 'pending_incoming' | 'accepted'
       email: r.email,
       whatsapp: r.whatsapp,
@@ -1320,6 +1428,149 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
+  // ---- notifications (LIVE Supabase) ----
+  // The default for a sector with no saved pref row is "everything on".
+  const DEFAULT_NOTIF_PREF = { enabled: true, push: true, email: false, inapp: true };
+
+  // Mark one as read (optimistic; RLS scopes the update to the owner).
+  async function markNotifRead(id) {
+    const n = notifications.find((x) => x.id === id);
+    if (!n || n.read) return;
+    setNotifications((ns) => ns.map((x) => (x.id === id ? { ...x, read: true } : x)));
+    const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
+    if (error) loadNotifications(); // re-sync to DB truth on failure
+  }
+
+  async function markAllNotifsRead() {
+    if (!currentUser) return;
+    if (!notifications.some((n) => !n.read)) return;
+    setNotifications((ns) => ns.map((x) => ({ ...x, read: true })));
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", currentUser.id)
+      .eq("read", false);
+    if (error) loadNotifications();
+  }
+
+  async function deleteNotification(id) {
+    setNotifications((ns) => ns.filter((x) => x.id !== id));
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) loadNotifications();
+  }
+
+  // Upsert a per-sector preference (merges over the current/default values).
+  async function saveNotifPref(sector, update) {
+    if (!currentUser) return;
+    const next = { ...(notifPrefs[sector] || DEFAULT_NOTIF_PREF), ...update };
+    setNotifPrefs((p) => ({ ...p, [sector]: next }));
+    const { error } = await supabase
+      .from("notif_prefs")
+      .upsert({ user_id: currentUser.id, sector, ...next }, { onConflict: "user_id,sector" });
+    if (error) loadNotifications();
+  }
+
+  // Master rows ('_paused' / '_quiet') persist only the enabled flag.
+  async function saveNotifMaster(sector, on) {
+    if (!currentUser) return;
+    setNotifPrefs((p) => ({ ...p, [sector]: { ...(p[sector] || DEFAULT_NOTIF_PREF), enabled: on } }));
+    const { error } = await supabase
+      .from("notif_prefs")
+      .upsert({ user_id: currentUser.id, sector, enabled: on }, { onConflict: "user_id,sector" });
+    if (error) loadNotifications();
+  }
+
+  // Turn every listed sector on/off in one shot (used by the "turn all" button).
+  async function setAllNotifSectors(sectorIds, on) {
+    if (!currentUser) return;
+    setNotifPrefs((p) => {
+      const copy = { ...p };
+      sectorIds.forEach((s) => { copy[s] = { ...(copy[s] || DEFAULT_NOTIF_PREF), enabled: on }; });
+      return copy;
+    });
+    const results = await Promise.all(
+      sectorIds.map((s) =>
+        supabase.from("notif_prefs").upsert(
+          { user_id: currentUser.id, sector: s, ...(notifPrefs[s] || DEFAULT_NOTIF_PREF), enabled: on },
+          { onConflict: "user_id,sector" }
+        )
+      )
+    );
+    if (results.some((r) => r.error)) loadNotifications();
+  }
+
+  // ---- academic calendar (admin-curated; RLS enforces the writer role) ----
+  function calendarPayload(form) {
+    return {
+      title: form.title.trim(),
+      description: form.description?.trim() || null,
+      event_date: form.date,
+      end_date: form.endDate || null,
+      event_type: form.type || "general",
+    };
+  }
+  async function addCalendarEvent(form) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const { error } = await supabase
+      .from("academic_calendar")
+      .insert({ ...calendarPayload(form), created_by: currentUser.id });
+    if (error) return { ok: false, error: error.message };
+    await loadCalendar();
+    return { ok: true };
+  }
+  async function updateCalendarEvent(id, form) {
+    const { error } = await supabase.from("academic_calendar").update(calendarPayload(form)).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    await loadCalendar();
+    return { ok: true };
+  }
+  async function deleteCalendarEvent(id) {
+    const { error } = await supabase.from("academic_calendar").delete().eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    await loadCalendar();
+    return { ok: true };
+  }
+
+  // ---- routines (staff/admin post; uploads to the public 'routines' bucket) ----
+  async function addRoutine(form) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    let fileUrl = null;
+    let imageUrl = null;
+    if (form.file) {
+      try {
+        const ext = (form.file.name?.split(".").pop() || "bin").toLowerCase();
+        const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("routines").upload(path, form.file, { cacheControl: "3600", upsert: false });
+        if (upErr) throw upErr;
+        const url = supabase.storage.from("routines").getPublicUrl(path).data.publicUrl;
+        if ((form.file.type || "").startsWith("image/")) imageUrl = url; else fileUrl = url;
+      } catch (e) {
+        return { ok: false, error: "File upload failed: " + e.message };
+      }
+    }
+    const { error } = await supabase.from("routines").insert({
+      type: form.type || "class",
+      title: form.title.trim(),
+      department: form.department?.trim() || null,
+      semester: form.semester?.trim() || null,
+      intake: form.intake?.trim() || null,
+      section: form.section?.trim() || null,
+      file_url: fileUrl,
+      image_url: imageUrl,
+      published_by: currentUser.id,
+    });
+    if (error) return { ok: false, error: error.message };
+    await loadRoutines();
+    return { ok: true };
+  }
+  async function deleteRoutine(id) {
+    const { error } = await supabase.from("routines").delete().eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    await loadRoutines();
+    return { ok: true };
+  }
+
   // ---- marketplace listings (LIVE Supabase) ----
   // Build the insert/update column payload (uploads the photo if a new file).
   async function listingCols(data) {
@@ -1415,19 +1666,38 @@ export function AppProvider({ children }) {
     await loadEvents();
     return { ok: true, id: row.code }; // screen navigates to /events/:id
   }
-  // Add/remove the current user's own RSVP (idempotent via the join-table PK).
+  // Add/remove the current user's own RSVP.
+  // Joining goes through the rsvp_event() RPC (migration 0064): it locks the
+  // event row so the capacity check + insert are atomic — a client-only check
+  // lets two concurrent users RSVP past capacity. Cancelling has no capacity
+  // risk, so it stays a plain delete.
   async function toggleRSVP(id) {
     if (!currentUser) return { ok: false, error: "Not signed in." };
     const ev = events.find((e) => e.id === id);
     if (!ev) return { ok: false, error: "Event not found." };
     const going = ev.attendees.includes(currentUser.id);
-    const { error } = going
-      ? await supabase.from("event_rsvps").delete().eq("event_id", ev.uuid).eq("user_id", currentUser.id)
-      : await supabase.from("event_rsvps").insert({ event_id: ev.uuid, user_id: currentUser.id });
-    // A racing duplicate RSVP (23505) just means we're already going — reconcile, don't error.
-    if (error && error.code !== "23505") return { ok: false, error: error.message };
+    if (going) {
+      const { error } = await supabase
+        .from("event_rsvps")
+        .delete()
+        .eq("event_id", ev.uuid)
+        .eq("user_id", currentUser.id);
+      if (error) return { ok: false, error: error.message };
+      await loadEvents();
+      return { ok: true, going: false };
+    }
+    const { data, error } = await supabase.rpc("rsvp_event", { p_event_id: ev.uuid });
+    if (error) return { ok: false, error: error.message };
+    if (data && data.ok === false) {
+      const reason = {
+        full: "This event is full.",
+        auth: "Not signed in.",
+        not_found: "Event not found.",
+      }[data.reason] || "Could not RSVP.";
+      return { ok: false, error: reason };
+    }
     await loadEvents();
-    return { ok: true, going: !going };
+    return { ok: true, going: true };
   }
   async function deleteEvent(id) {
     const { error } = await supabase.from("events").delete().eq("code", id);
@@ -2466,6 +2736,15 @@ export function AppProvider({ children }) {
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
+    // notifications
+    notifications, notifPrefs, unreadNotifCount: notifications.filter((n) => !n.read).length,
+    reloadNotifications: loadNotifications, markNotifRead, markAllNotifsRead, deleteNotification,
+    saveNotifPref, saveNotifMaster, setAllNotifSectors,
+    // academic calendar + routines
+    calendarEvents, canManageCalendar: currentUser?.role === "Admin",
+    addCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
+    routines, canPostRoutines: currentUser?.role === "Admin" || currentUser?.role === "Staff",
+    addRoutine, deleteRoutine,
     listings, addListing, updateListing, deleteListing, markListingSold, getListingContact,
     events, canCreateEvents, addEvent, toggleRSVP, deleteEvent,
     jobs, jobReports, jobBookmarks, canPostJobs, addJob, updateJob, withdrawJob, removeJob, restoreJob, reportJob, toggleJobBookmark,
