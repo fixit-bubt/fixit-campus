@@ -29,6 +29,7 @@ import EditItem from "./screens/lostfound/EditItem.jsx";
 import ItemDetail from "./screens/lostfound/ItemDetail.jsx";
 
 import Profile from "./screens/Profile.jsx";
+import Onboarding from "./screens/public/Onboarding.jsx";
 import NotFound from "./screens/NotFound.jsx";
 
 import { Announcements, AnnouncementDetail, AnnouncementForm } from "./screens/announcements/Announcements.jsx";
@@ -43,6 +44,10 @@ import { MedicalCenter, DoctorBooking, MyAppointments, DoctorQueue } from "./scr
 import { StudyHub, StudyHubBrowse, StudyHubDept, StudyHubIntake, StudyHubSection, StudyHubCourse, StudyHubManage } from "./screens/studyhub/StudyHub.jsx";
 import { ClubsHome, ClubHome, ClubMembers, ClubPostForm, ClubManage, AdminManageClubs } from "./screens/clubs/Clubs.jsx";
 import { Jobs, JobDetail, JobForm, ModerateJobs, SavedJobs } from "./screens/jobs/Jobs.jsx";
+import { Notifications, NotifSettings } from "./screens/notifications/Notifications.jsx";
+import CoverPage from "./screens/coverpage/CoverPage.jsx";
+import { AcademicCalendar } from "./screens/calendar/Calendar.jsx";
+import { Routines } from "./screens/routines/Routines.jsx";
 
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
@@ -104,6 +109,13 @@ export default function App() {
     );
   }
 
+  // ---- Onboarding gate ----
+  // A signed-in student can't reach any screen until they've set a Student ID.
+  // Mirrors CampusOne's mandatory onboarding. Staff/admin skip it.
+  if (currentUser && currentUser.role === "Student" && !currentUser.studentId) {
+    return <Onboarding />;
+  }
+
   // ---- Public routes ----
   if (path === "/" || path === "") return <Landing />;
   if (path === "/login") {
@@ -137,6 +149,10 @@ export default function App() {
   if (path === "/admin/study-hub") return <RequireRole role="Admin"><ManageStudyHub /></RequireRole>;
   if (path === "/admin/clubs") return <RequireRole role="Admin"><AdminManageClubs /></RequireRole>;
 
+  // ---- Notifications (any signed-in user) ----
+  if (path === "/notifications") return <RequireAuth><Notifications /></RequireAuth>;
+  if (path === "/notifications/settings") return <RequireAuth><NotifSettings /></RequireAuth>;
+
   // ---- Profile (any signed-in user) ----
   if (path === "/profile") return <RequireAuth><Profile /></RequireAuth>;
 
@@ -156,6 +172,13 @@ export default function App() {
   if (path === "/bus/new") return <RequireRole role="Admin"><BusRouteForm /></RequireRole>;
   if ((m = matchRoute("/bus/:id/edit", path))) return <RequireRole role="Admin"><BusRouteForm id={m.id} /></RequireRole>;
   if ((m = matchRoute("/bus/:id", path))) return <RequireAuth><BusDetail id={m.id} /></RequireAuth>;
+
+  // ---- Cover Page Generator (students only) ----
+  if (path === "/cover-page") return <RequireRole role="Student"><CoverPage /></RequireRole>;
+
+  // ---- Academic Calendar + Routines (any signed-in user; admin/staff curate) ----
+  if (path === "/calendar") return <RequireAuth><AcademicCalendar /></RequireAuth>;
+  if (path === "/routines") return <RequireAuth><Routines /></RequireAuth>;
 
   // ---- Campus Life: Study Hub (students only) ----
   // Section content (notes / question bank / books) is student-owned; staff and

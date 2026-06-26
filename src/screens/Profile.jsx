@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Save, Mail, Check, Lock } from "lucide-react";
 import { useApp } from "../data/store.jsx";
-import { Card, Button, Field, Input, FileUpload, Avatar, Badge, Spinner, useToast } from "../components/ui.jsx";
+import { Card, Button, Field, Input, Select, FileUpload, Avatar, Badge, Spinner, useToast } from "../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../components/AppShell.jsx";
 import { Icon } from "../components/Icon.jsx";
 
@@ -48,8 +48,13 @@ export default function Profile() {
   const [form, setForm] = useState({
     name: currentUser?.name || "",
     whatsapp: currentUser?.whatsapp || "",
+    phone: currentUser?.phone || "",
+    bloodGroup: currentUser?.bloodGroup || "",
+    address: currentUser?.address || "",
     intake: currentUser?.intake || "",
     section: currentUser?.section || "",
+    studentId: currentUser?.studentId || "",
+    program: currentUser?.program || "",
     avatar: currentUser?.avatar || null,
     avatarFile: null,
     directoryVisible: currentUser?.directoryVisible !== false,
@@ -135,8 +140,32 @@ export default function Profile() {
               <Input id="pf-wa" type="tel" placeholder="e.g. +8801XXXXXXXXX" value={form.whatsapp} onChange={set("whatsapp")} />
             </Field>
 
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Phone" htmlFor="pf-phone" hint="Optional — a call number for your profile.">
+                <Input id="pf-phone" type="tel" placeholder="e.g. 01XXXXXXXXX" value={form.phone} onChange={set("phone")} />
+              </Field>
+              <Field label="Blood group" htmlFor="pf-blood" hint={isStudent ? "Shown in the Student Directory." : "Optional."}>
+                <Select id="pf-blood" value={form.bloodGroup} onChange={set("bloodGroup")}>
+                  <option value="">Select…</option>
+                  {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+
+            <Field label="Address" htmlFor="pf-address" hint="Optional — your home/hostel address.">
+              <Input id="pf-address" placeholder="e.g. Mirpur, Dhaka" value={form.address} onChange={set("address")} />
+            </Field>
+
             {isStudent && (
               <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Student ID" htmlFor="pf-sid" hint="e.g. 20214103001">
+                  <Input id="pf-sid" placeholder="Student ID" value={form.studentId} onChange={set("studentId")} />
+                </Field>
+                <Field label="Program" htmlFor="pf-program" hint="e.g. B.Sc. in CSE">
+                  <Input id="pf-program" placeholder="Program" value={form.program} onChange={set("program")} />
+                </Field>
                 <Field label="Intake" htmlFor="pf-intake" hint="e.g. 49">
                   <Input id="pf-intake" placeholder="Intake" value={form.intake} onChange={set("intake")} />
                 </Field>

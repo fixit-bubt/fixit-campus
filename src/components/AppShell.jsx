@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, X, Bell } from "lucide-react";
 import { useApp } from "../data/store.jsx";
 import { navigate, Link } from "../lib/router.jsx";
 import { Avatar, Badge } from "./ui.jsx";
@@ -16,6 +16,8 @@ import { Logo } from "./Brand.jsx";
 // Study Hub is students-only (staff/admins don't have a section), so it's added
 // to the Student nav explicitly rather than to the shared CAMPUS_LIFE group.
 const STUDY_HUB = { key: "study-hub", label: "Study Hub", icon: "BookMarked", path: "/study-hub" };
+// Cover Page Generator is also students-only (BUBT assignment/lab/report covers).
+const COVER_PAGE = { key: "cover-page", label: "Cover Page", icon: "FileBadge", path: "/cover-page" };
 
 // Shared "Campus Life" group (grows as features ship: prayer, events…).
 const CAMPUS_LIFE = [
@@ -24,6 +26,8 @@ const CAMPUS_LIFE = [
   { key: "bus", label: "Bus Schedule", icon: "Bus", path: "/bus" },
   { key: "prayer", label: "Prayer Times", icon: "Moon", path: "/prayer" },
   { key: "events", label: "Events", icon: "CalendarDays", path: "/events" },
+  { key: "calendar", label: "Academic Calendar", icon: "CalendarRange", path: "/calendar" },
+  { key: "routines", label: "Class Routines", icon: "ClipboardList", path: "/routines" },
   { key: "jobs", label: "Jobs & Internships", icon: "Briefcase", path: "/jobs" },
   { key: "announcements", label: "Announcements", icon: "Megaphone", path: "/announcements" },
 ];
@@ -40,7 +44,7 @@ const NAV_BY_ROLE = {
       { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/dashboard" },
       { key: "reports", label: "My Reports", icon: "FileText", path: "/reports" },
     ]},
-    { section: "Campus Life", items: [STUDY_HUB, ...CAMPUS_LIFE] },
+    { section: "Campus Life", items: [STUDY_HUB, COVER_PAGE, ...CAMPUS_LIFE] },
     { section: "Services", items: [
       { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
       { key: "report-new", label: "Report an Issue", icon: "CirclePlus", path: "/reports/new" },
@@ -134,7 +138,7 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
 }
 
 export function AppShell({ activeKey, title, actions, children }) {
-  const { currentUser, logout, dataError, retryData } = useApp();
+  const { currentUser, logout, dataError, retryData, unreadNotifCount = 0 } = useApp();
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Close the mobile drawer on Escape (it's an aria-modal dialog).
   React.useEffect(() => {
@@ -193,6 +197,19 @@ export function AppShell({ activeKey, title, actions, children }) {
 
           <div className="flex items-center gap-2 sm:gap-3">
             {actions}
+            <button
+              onClick={() => navigate("/notifications")}
+              title="Notifications"
+              aria-label={unreadNotifCount > 0 ? `Notifications, ${unreadNotifCount} unread` : "Notifications"}
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+            >
+              <Bell size={19} />
+              {unreadNotifCount > 0 && (
+                <span className="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-none text-white">
+                  {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => navigate("/profile")}
               title="My profile"
