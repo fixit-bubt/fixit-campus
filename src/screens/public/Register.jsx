@@ -59,7 +59,7 @@ export default function Register() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-700">Log in</Link>
+          <Link to="/login" className="font-semibold text-brand hover:text-brand-700">Log in</Link>
         </>
       }
     >
@@ -76,9 +76,9 @@ export default function Register() {
         <Field label="Confirm password" htmlFor="reg-confirm" required error={errors.confirm}>
           <Input id="reg-confirm" type="password" placeholder="••••••••" value={form.confirm} error={!!errors.confirm} onChange={set("confirm")} />
         </Field>
-        <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
-          <Info size={14} className="shrink-0 text-slate-400" />
-          New accounts start with the <span className="font-medium text-slate-600">Student</span> role. Staff &amp; Admin accounts are created by an administrator.
+        <div className="flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2.5 text-xs text-ink-3">
+          <Info size={14} className="shrink-0" />
+          New accounts start with the <span className="font-semibold text-ink-2">Student</span> role. Staff &amp; Admin accounts are created by an administrator.
         </div>
         <Button type="submit" full disabled={loading}>
           {loading ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Create Account"}

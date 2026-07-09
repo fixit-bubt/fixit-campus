@@ -31,9 +31,9 @@ export default function StaffDashboard() {
 
       <div className="mt-8">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">Active work</h3>
+          <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-3">Active work</h3>
           {mine.length > 0 && (
-            <Link to="/staff/assigned" className="text-sm font-medium text-blue-600 hover:text-blue-700">View all assigned</Link>
+            <Link to="/staff/assigned" className="text-base font-semibold text-brand hover:text-brand-700">View all assigned</Link>
           )}
         </div>
         {dataLoading ? (
@@ -41,7 +41,7 @@ export default function StaffDashboard() {
         ) : active.length === 0 ? (
           <EmptyState icon={CheckCheck} title="All caught up" message="You have no open or in-progress reports right now." />
         ) : (
-          <Card className="divide-y divide-slate-200 overflow-hidden">
+          <Card className="divide-y divide-brd overflow-hidden">
             {recent.map((r) => (
               <ReportListRow key={r.id} report={r} onOpen={() => navigate(`/reports/${r.id}`)} />
             ))}

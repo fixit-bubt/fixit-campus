@@ -54,18 +54,18 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-bg">
       <header className="flex items-center justify-between px-6 py-5">
         <Logo />
-        <button onClick={() => logout()} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => logout()} className="inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <LogOut size={16} /> Sign out
         </button>
       </header>
       <div className="flex flex-1 items-start justify-center px-6 pb-16 pt-6">
         <div className="w-full max-w-lg">
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Complete your profile</h1>
-            <p className="mt-1.5 text-sm text-slate-500">
+            <h1 className="text-4xl font-extrabold tracking-tight text-ink">Complete your profile</h1>
+            <p className="mt-1.5 text-base text-ink-2">
               Welcome{currentUser?.name ? `, ${currentUser.name.split(" ")[0]}` : ""}! Add your academic details to get started.
             </p>
           </div>
@@ -94,11 +94,11 @@ export default function Onboarding() {
                 </Field>
                 <Field label="Phone" htmlFor="ob-ph" hint="Optional"><Input id="ob-ph" type="tel" value={form.phone} onChange={set("phone")} placeholder="01XXXXXXXXX" /></Field>
               </div>
-              {error && form.studentId.trim() && <p className="text-sm text-red-600">{error}</p>}
+              {error && form.studentId.trim() && <p className="text-base text-danger">{error}</p>}
               <Button type="submit" full iconRight={ArrowRight} loading={saving}>Continue to FixIt</Button>
             </form>
           </Card>
-          <p className="mt-4 text-center text-xs text-slate-400">You can edit these anytime from My Profile.</p>
+          <p className="mt-4 text-center text-xs text-ink-3">You can edit these anytime from My Profile.</p>
         </div>
       </div>
     </div>

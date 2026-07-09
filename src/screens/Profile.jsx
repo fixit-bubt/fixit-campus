@@ -10,11 +10,11 @@ function Toggle({ checked, onChange, label, hint }) {
   return (
     <button type="button" onClick={() => onChange(!checked)} className="flex w-full items-start justify-between gap-3 text-left">
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-slate-700">{label}</span>
-        {hint && <span className="mt-0.5 block text-xs text-slate-400">{hint}</span>}
+        <span className="block text-base font-semibold text-ink-2">{label}</span>
+        {hint && <span className="mt-0.5 block text-xs text-ink-3">{hint}</span>}
       </span>
-      <span className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-slate-300"}`}>
-        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+      <span className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${checked ? "bg-brand" : "bg-brd-2"}`}>
+        <span className={`inline-block h-5 w-5 transform rounded-full bg-surface shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
       </span>
     </button>
   );
@@ -101,10 +101,10 @@ export default function Profile() {
             <div className="flex items-center gap-4">
               <Avatar name={form.name} src={form.avatar} size={56} />
               <div className="min-w-0">
-                <p className="truncate text-base font-semibold text-slate-900">{form.name || "Your name"}</p>
+                <p className="truncate text-xl font-semibold text-ink">{form.name || "Your name"}</p>
                 <div className="mt-0.5 flex items-center gap-2">
                   <Badge tone={ROLE_TONE[currentUser.role]}>{currentUser.role}</Badge>
-                  {currentUser.dept && <span className="text-xs text-slate-400">{currentUser.dept}</span>}
+                  {currentUser.dept && <span className="text-xs text-ink-3">{currentUser.dept}</span>}
                 </div>
               </div>
             </div>
@@ -122,8 +122,8 @@ export default function Profile() {
             </Field>
 
             <Field label="Email" htmlFor="pf-email" hint="Your login email can't be changed here.">
-              <div className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">
-                <Mail size={15} className="text-slate-400" />
+              <div className="flex h-10 items-center gap-2 rounded-md border border-brd bg-surface-2 px-3 text-base text-ink-3">
+                <Mail size={15} className="text-ink-3" />
                 {currentUser.email}
               </div>
             </Field>
@@ -176,8 +176,8 @@ export default function Profile() {
             )}
 
             {isStudent && (
-              <div className="space-y-4 border-t border-slate-100 pt-5">
-                <p className="text-sm font-semibold text-slate-900">Student Directory</p>
+              <div className="space-y-4 border-t border-brd pt-5">
+                <p className="text-base font-semibold text-ink">Student Directory</p>
                 <Toggle
                   checked={form.directoryVisible}
                   onChange={setToggle("directoryVisible")}
@@ -196,7 +196,7 @@ export default function Profile() {
 
           <div className="flex items-center justify-end gap-3">
             {saved && !saving && (
-              <span className="text-sm font-medium text-emerald-600">Changes saved</span>
+              <span className="text-base font-semibold text-success">Changes saved</span>
             )}
             <Button type="submit" variant={saved ? "secondary" : "primary"} icon={saved ? Check : Save} disabled={saving}>
               {saving ? <Spinner size={16} className="border-white/40 border-t-white" /> : saved ? "Saved" : "Save changes"}
@@ -208,8 +208,8 @@ export default function Profile() {
         <form onSubmit={submitPassword} className="mt-6">
           <Card className="p-6">
             <div className="flex items-center gap-2 mb-5">
-              <Icon name="Lock" size={18} className="text-slate-500" />
-              <h3 className="text-base font-semibold text-slate-900">Change Password</h3>
+              <Icon name="Lock" size={18} className="text-ink-3" />
+              <h3 className="text-xl font-semibold text-ink">Change Password</h3>
             </div>
             <div className="space-y-4">
               <Field label="New password" htmlFor="pw-new" hint="Minimum 8 characters.">

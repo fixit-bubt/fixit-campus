@@ -34,13 +34,13 @@ export default function AssignedToMe() {
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search assigned reports"
             placeholder="Search assigned reports…"
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30"
+            className="h-11 w-full rounded-md border border-brd bg-surface pl-9 pr-3 text-base text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         </div>
         <FilterTabs options={statuses} value={filter} onChange={setFilter} counts={counts} />
@@ -53,7 +53,7 @@ export default function AssignedToMe() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={SearchX} title="No matching reports" message="Try a different search or filter." action={<Button variant="secondary" onClick={() => { setQuery(""); setFilter("All"); }}>Clear filters</Button>} />
       ) : (
-        <Card className="divide-y divide-slate-200 overflow-hidden">
+        <Card className="divide-y divide-brd overflow-hidden">
           {filtered.map((r) => (
             <ReportListRow key={r.id} report={r} onOpen={() => navigate(`/reports/${r.id}`)} />
           ))}
