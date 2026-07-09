@@ -28,7 +28,7 @@ export function MktPhoto({ listing, className = "" }) {
   if (listing.photo) return <img src={listing.photo} alt={listing.title} className={`object-cover ${className}`} />;
   const PlaceholderIcon = MKT_CATEGORY_ICON[listing.category] || "Package";
   return (
-    <div className={`flex items-center justify-center bg-slate-100 text-slate-300 ${className}`}>
+    <div className={`flex items-center justify-center bg-surface-3 text-ink-3 ${className}`}>
       <Icon name={PlaceholderIcon} size={40} strokeWidth={1.5} />
     </div>
   );
@@ -38,7 +38,7 @@ export function MktPhoto({ listing, className = "" }) {
 export function ListingCard({ listing, seller, onOpen }) {
   const sold = listing.status === "Sold";
   return (
-    <button onClick={onOpen} className="group flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-left shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
+    <button onClick={onOpen} className="group flex flex-col overflow-hidden rounded-md border border-brd bg-surface text-left shadow-sm transition-all hover:border-brd-2 hover:shadow-md">
       <div className="relative h-40 w-full overflow-hidden">
         <MktPhoto listing={listing} className={`h-full w-full transition-transform group-hover:scale-105 ${sold ? "opacity-60" : ""}`} />
         <div className="absolute left-3 top-3"><Badge tone="violet" icon={MKT_CATEGORY_ICON[listing.category]}>{listing.category}</Badge></div>
@@ -46,16 +46,16 @@ export function ListingCard({ listing, seller, onOpen }) {
       </div>
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-1 text-sm font-semibold text-slate-900">{listing.title}</h3>
+          <h3 className="line-clamp-1 text-base font-semibold text-ink">{listing.title}</h3>
         </div>
         <div className="mt-1 flex items-center gap-2">
-          <span className="text-base font-bold text-slate-900">{taka(listing.price)}</span>
+          <span className="text-xl font-bold text-ink">{taka(listing.price)}</span>
           {listing.negotiable && <Badge tone="violet">Negotiable</Badge>}
         </div>
         <div className="mt-2 flex items-center gap-2">
           <Badge tone={CONDITION_TONE[listing.condition]}>{listing.condition}</Badge>
         </div>
-        <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
+        <div className="mt-3 flex items-center gap-2 border-t border-brd pt-3 text-xs text-ink-3">
           <Avatar name={seller?.name || "?"} size={20} />
           <span className="truncate">{seller?.name || "Unknown"}</span>
         </div>
@@ -95,9 +95,9 @@ export function Marketplace() {
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-xs">
-          <Icon name="Search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Icon name="Search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search listings" placeholder="Search listings…"
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30" />
+            className="h-10 w-full rounded-md border border-brd bg-surface pl-9 pr-3 text-base placeholder:text-ink-3 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-100" />
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <FilterTabs options={statuses} value={status} onChange={setStatus} />
@@ -139,7 +139,7 @@ function SellerContact({ code, sellerName }) {
   if (phase !== "done") {
     return (
       <button onClick={reveal} disabled={phase === "loading"}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-60">
+        className="flex w-full items-center justify-center gap-2 rounded-md border border-success-bg bg-success-bg px-4 py-2.5 text-base font-semibold text-success transition-colors hover:bg-success-bg disabled:opacity-60">
         <Icon name="MessageCircle" size={16} /> {phase === "loading" ? "Getting contact…" : "Contact on WhatsApp"}
       </button>
     );
@@ -147,19 +147,19 @@ function SellerContact({ code, sellerName }) {
 
   const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
   return (
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-      <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+    <div className="rounded-md border border-success-bg bg-success-bg p-4">
+      <div className="flex items-center gap-1.5 text-base font-semibold text-success">
         <Icon name="CircleCheck" size={16} /> {contact?.name || sellerName || "Seller"}
       </div>
       {wa ? (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
-          <p className="truncate text-sm text-slate-600">{contact.whatsapp}</p>
-          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700">
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface p-3">
+          <p className="truncate text-base text-ink-2">{contact.whatsapp}</p>
+          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95">
             <Icon name="MessageCircle" size={16} /> WhatsApp
           </a>
         </div>
       ) : (
-        <p className="mt-1 text-xs text-slate-500">This seller hasn't shared a WhatsApp number. They can enable it in their profile.</p>
+        <p className="mt-1 text-xs text-ink-3">This seller hasn't shared a WhatsApp number. They can enable it in their profile.</p>
       )}
     </div>
   );
@@ -190,7 +190,7 @@ export function ListingDetail({ id }) {
   return (
     <AppShell activeKey="marketplace" title="Listing">
       <div className="mx-auto max-w-4xl">
-        <button onClick={() => navigate("/marketplace")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/marketplace")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to Marketplace
         </button>
 
@@ -207,14 +207,14 @@ export function ListingDetail({ id }) {
               <Badge tone={CONDITION_TONE[listing.condition]}>{listing.condition}</Badge>
               {sold && <Badge tone="slate">Sold</Badge>}
             </div>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">{listing.title}</h2>
+            <h2 className="mt-3 text-4xl font-bold tracking-tight text-ink">{listing.title}</h2>
             <div className="mt-2 flex items-center gap-2.5">
-              <span className="text-2xl font-bold text-slate-900">{taka(listing.price)}</span>
+              <span className="text-4xl font-bold text-ink">{taka(listing.price)}</span>
               {listing.negotiable && <Badge tone="violet">Negotiable</Badge>}
             </div>
-            <p className="mt-4 text-sm leading-relaxed text-slate-700">{listing.description}</p>
+            <p className="mt-4 text-base leading-relaxed text-ink-2">{listing.description}</p>
 
-            <div className="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-sm text-slate-500">
+            <div className="mt-5 flex items-center gap-2 border-t border-brd pt-4 text-base text-ink-3">
               <Avatar name={seller?.name || "?"} size={26} /> Listed by {isOwner ? "you" : seller?.name || "Unknown"} · {fmtDate(listing.createdAt)}
             </div>
 
@@ -223,11 +223,11 @@ export function ListingDetail({ id }) {
                 <div className="flex flex-wrap gap-2">
                   {!sold && <Button variant="secondary" icon="BadgeCheck" onClick={() => setConfirmSold(true)}>Mark as Sold</Button>}
                   {isOwner && <Button variant="secondary" icon="Pencil" onClick={() => navigate(`/marketplace/${id}/edit`)}>Edit</Button>}
-                  <Button variant="secondary" icon="Trash2" className="text-red-600" onClick={() => setConfirmDelete(true)}>Delete</Button>
+                  <Button variant="secondary" icon="Trash2" className="text-danger" onClick={() => setConfirmDelete(true)}>Delete</Button>
                 </div>
               ) : sold ? (
-                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                  <Icon name="BadgeCheck" size={16} className="text-slate-400" /> This item has been sold.
+                <div className="flex items-center gap-2 rounded-md border border-brd bg-surface-2 px-4 py-3 text-base text-ink-3">
+                  <Icon name="BadgeCheck" size={16} className="text-ink-3" /> This item has been sold.
                 </div>
               ) : (
                 <SellerContact code={id} sellerName={seller?.name} />
@@ -321,7 +321,7 @@ function ListingEditor({ id, existing }) {
   return (
     <AppShell activeKey="marketplace" title={editing ? "Edit Listing" : "Post an Item"}>
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate(editing ? `/marketplace/${id}` : "/marketplace")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate(editing ? `/marketplace/${id}` : "/marketplace")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back
         </button>
         <PageHeader title={editing ? "Edit Listing" : "Post an Item"} subtitle="Sell something to fellow students." />
@@ -350,22 +350,22 @@ function ListingEditor({ id, existing }) {
                   const active = form.condition === c;
                   return (
                     <button type="button" key={c} onClick={() => set("condition", c)}
-                      className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${active ? "border-violet-300 bg-violet-50 text-violet-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>
+                      className={`rounded-md border px-3 py-2 text-base font-semibold transition-colors ${active ? "border-violet-300 dark:border-violet-500/40 bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-brd bg-surface text-ink-2 hover:bg-surface-2"}`}>
                       {c}
                     </button>
                   );
                 })}
               </div>
             </Field>
-            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-4 py-3">
-              <input type="checkbox" checked={form.negotiable} onChange={(e) => set("negotiable", e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
-              <span className="text-sm text-slate-700">Price is negotiable</span>
+            <label className="flex cursor-pointer items-center gap-3 rounded-md border border-brd px-4 py-3">
+              <input type="checkbox" checked={form.negotiable} onChange={(e) => set("negotiable", e.target.checked)} className="h-4 w-4 rounded border-brd-2 text-violet-600 dark:text-violet-300 focus:ring-violet-500" />
+              <span className="text-base text-ink-2">Price is negotiable</span>
             </label>
             <Field label="Description" htmlFor="lf-desc" required error={errors.description}>
               <Textarea id="lf-desc" rows={4} placeholder="Describe the item — condition, age, reason for selling…" value={form.description} error={!!errors.description} onChange={(e) => set("description", e.target.value)} />
             </Field>
-            <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
-              <Icon name="Lock" size={14} className="shrink-0 text-slate-400" /> Buyers contact you on WhatsApp — your number is shown only when they choose to reach out.
+            <div className="flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2.5 text-xs text-ink-3">
+              <Icon name="Lock" size={14} className="shrink-0 text-ink-3" /> Buyers contact you on WhatsApp — your number is shown only when they choose to reach out.
             </div>
           </Card>
           <div className="flex justify-end gap-3">
@@ -407,13 +407,13 @@ export function MarketplaceWidget() {
   const { listings } = useApp();
   const available = listings.filter((l) => l.status === "Available").length;
   return (
-    <button onClick={() => navigate("/marketplace")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-violet-300 hover:bg-violet-50/40">
+    <button onClick={() => navigate("/marketplace")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-violet-300 dark:hover:border-violet-500/40 hover:bg-violet-50/40 dark:hover:bg-violet-500/10">
       <AccentTile icon="Store" tone="violet" size={44} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900">Marketplace</p>
-        <p className="truncate text-xs text-slate-500">{available} item{available === 1 ? "" : "s"} for sale right now</p>
+        <p className="text-base font-semibold text-ink">Marketplace</p>
+        <p className="truncate text-xs text-ink-3">{available} item{available === 1 ? "" : "s"} for sale right now</p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-violet-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-violet-500 dark:group-hover:text-violet-300" />
     </button>
   );
 }

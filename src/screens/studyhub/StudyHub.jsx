@@ -90,16 +90,16 @@ function DocField({ file, onChange }) {
       <button
         type="button"
         onClick={() => inputRef.current && inputRef.current.click()}
-        className="flex w-full items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-left transition-colors hover:bg-slate-100"
+        className="flex w-full items-center gap-3 rounded-md border border-dashed border-brd-2 bg-surface-2 px-4 py-3 text-left transition-colors hover:bg-surface-3"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 shadow-sm">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface text-ink-3 shadow-sm">
           <Icon name="Paperclip" size={16} />
         </span>
         <span className="min-w-0 flex-1">
           {file
-            ? <span className="block truncate text-sm font-medium text-slate-700">{file.name}</span>
-            : <span className="block text-sm text-slate-500">Choose a file</span>}
-          <span className="block text-xs text-slate-400">PDF, DOC, PPT, ZIP · up to 10 MB</span>
+            ? <span className="block truncate text-base font-semibold text-ink-2">{file.name}</span>
+            : <span className="block text-base text-ink-3">Choose a file</span>}
+          <span className="block text-xs text-ink-3">PDF, DOC, PPT, ZIP · up to 10 MB</span>
         </span>
       </button>
       <input
@@ -119,12 +119,12 @@ function ActivityRow({ ev }) {
     <div className="flex items-center gap-3 p-4">
       <AccentTile icon={ev.kind === "pin" ? "Pin" : "FileText"} tone={ACCENT} size={36} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-900">{ev.title}</p>
-        <p className="truncate text-xs text-slate-500">
+        <p className="truncate text-base font-semibold text-ink">{ev.title}</p>
+        <p className="truncate text-xs text-ink-3">
           {ev.context}{ev.context && " · "}{studyPersonName(ev.byId)}
         </p>
       </div>
-      <span className="shrink-0 text-xs text-slate-400">{relativeDate(ev.createdAt)}</span>
+      <span className="shrink-0 text-xs text-ink-3">{relativeDate(ev.createdAt)}</span>
     </div>
   );
 }
@@ -134,19 +134,19 @@ function CourseRow({ course, sectionId, onDelete }) {
   const { studyFilesIn } = useApp();
   const count = studyFilesIn(course.id).length;
   return (
-    <div className="group flex items-center transition-colors hover:bg-slate-50">
+    <div className="group flex items-center transition-colors hover:bg-surface-2">
       <button
         onClick={() => navigate(`/study-hub/section/${sectionId}/course/${course.id}`)}
         className="flex min-w-0 flex-1 items-center gap-3 p-4 text-left"
       >
         <AccentTile icon="BookOpen" tone={ACCENT} size={40} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-teal-700">
+          <p className="truncate text-base font-semibold text-ink group-hover:text-teal-700 dark:group-hover:text-teal-300">
             {course.code} — {course.name}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">{count} material{count === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-xs text-ink-3">{count} material{count === 1 ? "" : "s"}</p>
         </div>
-        {!onDelete && <Icon name="ArrowRight" size={18} className="shrink-0 text-slate-300 group-hover:text-teal-500" />}
+        {!onDelete && <Icon name="ArrowRight" size={18} className="shrink-0 text-ink-3 group-hover:text-teal-500 dark:group-hover:text-teal-300" />}
       </button>
       {onDelete && <div className="pr-3"><DeleteIcon onClick={() => onDelete(course)} title="Remove course" /></div>}
     </div>
@@ -159,12 +159,12 @@ function CRBanner({ section, sectionNumber }) {
   const pending = studyMembers.filter((m) => m.sectionId === section.id && m.status === "pending").length;
   const editors = (section.editorIds || []).length;
   return (
-    <div className="mb-6 flex flex-col gap-3 rounded-lg border border-teal-200 bg-teal-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-6 flex flex-col gap-3 rounded-md border border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/15 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
         <AccentTile icon="ShieldCheck" tone={ACCENT} size={40} />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-900">You're the CR of Section {sectionNumber}</p>
-          <p className="text-xs text-slate-600">
+          <p className="text-base font-semibold text-ink">You're the CR of Section {sectionNumber}</p>
+          <p className="text-xs text-ink-2">
             {pending} join request{pending === 1 ? "" : "s"} pending · {editors} editor{editors === 1 ? "" : "s"}
           </p>
         </div>
@@ -224,37 +224,37 @@ export function StudyHub() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <button
           onClick={() => navigate(`/study-hub/section/${section.id}`)}
-          className="group flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-teal-300 hover:bg-teal-50/40"
+          className="group flex items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-teal-300 dark:hover:border-teal-500/40 hover:bg-teal-50/40 dark:hover:bg-teal-500/10"
         >
-          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-teal-100 text-teal-700"><Icon name="FolderOpen" size={22} /></span>
+          <span className="flex h-11 w-11 items-center justify-center rounded-md bg-teal-100 dark:bg-teal-500/15 text-teal-700 dark:text-teal-300"><Icon name="FolderOpen" size={22} /></span>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-900">Open my section</p>
-            <p className="text-xs text-slate-500">Pinned notices and your subjects.</p>
+            <p className="text-base font-semibold text-ink">Open my section</p>
+            <p className="text-xs text-ink-3">Pinned notices and your subjects.</p>
           </div>
-          <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-teal-500" />
+          <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-teal-500 dark:group-hover:text-teal-300" />
         </button>
         <button
           onClick={() => navigate(`/study-hub/intake/${section.intakeId}`)}
-          className="group flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-teal-300 hover:bg-teal-50/40"
+          className="group flex items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-teal-300 dark:hover:border-teal-500/40 hover:bg-teal-50/40 dark:hover:bg-teal-500/10"
         >
-          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-600"><Icon name="Library" size={22} /></span>
+          <span className="flex h-11 w-11 items-center justify-center rounded-md bg-surface-3 text-ink-2"><Icon name="Library" size={22} /></span>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-900">Study Materials</p>
-            <p className="text-xs text-slate-500">Notes, questions & books from every section — and senior intakes.</p>
+            <p className="text-base font-semibold text-ink">Study Materials</p>
+            <p className="text-xs text-ink-3">Notes, questions & books from every section — and senior intakes.</p>
           </div>
-          <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-teal-500" />
+          <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-teal-500 dark:group-hover:text-teal-300" />
         </button>
       </div>
 
       <div className="mt-8">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">Recent activity</h3>
-          <button onClick={() => navigate(`/study-hub/section/${section.id}`)} className="text-sm font-medium text-teal-700 hover:text-teal-800">Open section</button>
+          <h3 className="text-base font-semibold text-ink">Recent activity</h3>
+          <button onClick={() => navigate(`/study-hub/section/${section.id}`)} className="text-base font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-800 dark:hover:text-teal-300">Open section</button>
         </div>
         {activity.length === 0 ? (
           <EmptyState icon="FileText" title="Nothing yet" message="New materials and pins will show up here." />
         ) : (
-          <Card className="divide-y divide-slate-200 overflow-hidden">
+          <Card className="divide-y divide-brd overflow-hidden">
             {activity.map((ev) => <ActivityRow key={ev.id} ev={ev} />)}
           </Card>
         )}
@@ -262,18 +262,18 @@ export function StudyHub() {
 
       <div className="mt-8">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">Your courses</h3>
-          <span className="text-xs text-slate-400">{courses.length} total</span>
+          <h3 className="text-base font-semibold text-ink">Your courses</h3>
+          <span className="text-xs text-ink-3">{courses.length} total</span>
         </div>
         {courses.length === 0 ? (
           <EmptyState icon="BookOpen" title="No courses yet" message="Courses your CR or editors add will appear here." />
         ) : (
-          <Card className="divide-y divide-slate-200 overflow-hidden">
+          <Card className="divide-y divide-brd overflow-hidden">
             {shownCourses.map((c) => <CourseRow key={c.id} course={c} sectionId={section.id} />)}
             {courses.length > shownCourses.length && (
               <button
                 onClick={() => navigate(`/study-hub/section/${section.id}`)}
-                className="flex w-full items-center justify-center gap-1.5 p-3 text-sm font-medium text-teal-700 hover:bg-slate-50"
+                className="flex w-full items-center justify-center gap-1.5 p-3 text-base font-semibold text-teal-700 dark:text-teal-300 hover:bg-surface-2"
               >
                 View all {courses.length} courses <Icon name="ArrowRight" size={15} />
               </button>
@@ -371,8 +371,8 @@ function StudyHubSetup() {
           <div className="mb-6 flex items-start gap-4">
             <AccentTile icon="BookMarked" tone={ACCENT} size={48} />
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-slate-900">Get started</h3>
-              <p className="mt-1 text-sm text-slate-500">Join your class section to share notes, questions, and books — or request a new section if yours hasn't been created yet.</p>
+              <h3 className="text-base font-semibold text-ink">Get started</h3>
+              <p className="mt-1 text-base text-ink-3">Join your class section to share notes, questions, and books — or request a new section if yours hasn't been created yet.</p>
             </div>
           </div>
 
@@ -397,7 +397,7 @@ function StudyHubSetup() {
                       id="su-code" value={code} error={!!codeError} maxLength={6}
                       onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "")); setCodeError(""); }}
                       placeholder="e.g. A3B7C2"
-                      className="tracking-widest font-mono text-center text-lg"
+                      className="tracking-widest font-mono text-center text-2xl"
                     />
                   </Field>
                   <div className="flex justify-end">
@@ -428,10 +428,10 @@ function StudyHubSetup() {
                     </Field>
                   </div>
                   {!sections.length && (
-                    <p className="text-xs text-slate-400">No sections here yet — switch to "Request new section" to create yours.</p>
+                    <p className="text-xs text-ink-3">No sections here yet — switch to "Request new section" to create yours.</p>
                   )}
                   <div className="flex items-center justify-between gap-3 pt-1">
-                    <button type="button" onClick={() => navigate("/study-hub/browse")} className="text-sm font-medium text-slate-500 hover:text-slate-700">Browse first</button>
+                    <button type="button" onClick={() => navigate("/study-hub/browse")} className="text-base font-semibold text-ink-3 hover:text-ink-2">Browse first</button>
                     <Button type="submit" icon="Send" disabled={findSaving || !activeSectionId}>
                       {findSaving ? <Spinner size={16} /> : "Request to join"}
                     </Button>
@@ -443,7 +443,7 @@ function StudyHubSetup() {
 
           {mode === "create" && (
             <form onSubmit={submitCreate} className="mt-5 space-y-4">
-              <p className="text-xs text-slate-500">Tell us your intake and the section number you want. Admin will review and set you as Class Representative.</p>
+              <p className="text-xs text-ink-3">Tell us your intake and the section number you want. Admin will review and set you as Class Representative.</p>
               <Field label="Department" htmlFor="cr-dept">
                 <Select id="cr-dept" value={crActiveDeptId} onChange={(e) => { setCrDeptId(e.target.value); setCrIntakeId(""); }}>
                   {departments.map((d) => <option key={d.id} value={d.id}>{shortDept(d.name)}</option>)}
@@ -460,7 +460,7 @@ function StudyHubSetup() {
                     onChange={(e) => { setCrNumber(e.target.value); setCrError(""); }} placeholder="e.g. 3" />
                 </Field>
               </div>
-              {crError && <p className="text-xs text-red-600">{crError}</p>}
+              {crError && <p className="text-xs text-danger">{crError}</p>}
               <div className="flex justify-end pt-1">
                 <Button type="submit" icon="Send" disabled={crSaving}>
                   {crSaving ? <Spinner size={16} /> : "Request to create"}
@@ -516,14 +516,14 @@ function DepartmentCard({ dept, count }) {
   return (
     <button
       onClick={() => navigate(`/study-hub/dept/${dept.id}`)}
-      className="group flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-teal-300 hover:bg-teal-50/40"
+      className="group flex items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-teal-300 dark:hover:border-teal-500/40 hover:bg-teal-50/40 dark:hover:bg-teal-500/10"
     >
       <AccentTile icon={BRANCH_ICON[dept.branch] || "GraduationCap"} tone={ACCENT} size={44} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">{shortDept(dept.name)}</p>
-        <p className="mt-0.5 truncate text-xs text-slate-400">{count} intake{count === 1 ? "" : "s"}</p>
+        <p className="truncate text-base font-semibold text-ink">{shortDept(dept.name)}</p>
+        <p className="mt-0.5 truncate text-xs text-ink-3">{count} intake{count === 1 ? "" : "s"}</p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-teal-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-teal-500 dark:group-hover:text-teal-300" />
     </button>
   );
 }
@@ -537,7 +537,7 @@ export function StudyHubBrowse() {
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
-      <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+      <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
         <Icon name="ArrowLeft" size={16} /> Study Hub
       </button>
       <PageHeader title="Browse departments" subtitle="Pick a department to open its intakes and sections." />
@@ -549,7 +549,7 @@ export function StudyHubBrowse() {
         <div className="space-y-8">
           {branches.map(({ branch, depts }) => (
             <section key={branch}>
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">{branch}</h3>
+              <h3 className="mb-3 text-base font-semibold text-ink">{branch}</h3>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {depts.map((d) => <DepartmentCard key={d.id} dept={d} count={studyIntakesIn(d.id).length} />)}
               </div>
@@ -568,14 +568,14 @@ function IntakeCard({ intake, sectionCount }) {
   return (
     <button
       onClick={() => navigate(`/study-hub/intake/${intake.id}`)}
-      className="group flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-teal-300 hover:bg-teal-50/40"
+      className="group flex items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-teal-300 dark:hover:border-teal-500/40 hover:bg-teal-50/40 dark:hover:bg-teal-500/10"
     >
       <AccentTile icon="Users" tone={ACCENT} size={44} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">Intake {intake.number}</p>
-        <p className="mt-0.5 truncate text-xs text-slate-400">{intake.years ? `${intake.years} · ` : ""}{sectionCount} section{sectionCount === 1 ? "" : "s"}</p>
+        <p className="truncate text-base font-semibold text-ink">Intake {intake.number}</p>
+        <p className="mt-0.5 truncate text-xs text-ink-3">{intake.years ? `${intake.years} · ` : ""}{sectionCount} section{sectionCount === 1 ? "" : "s"}</p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-teal-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-teal-500 dark:group-hover:text-teal-300" />
     </button>
   );
 }
@@ -599,7 +599,7 @@ export function StudyHubDept({ deptId }) {
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
-      <button onClick={() => navigate("/study-hub/browse")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+      <button onClick={() => navigate("/study-hub/browse")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
         <Icon name="ArrowLeft" size={16} /> Browse departments
       </button>
       <PageHeader title={shortDept(dept.name)} subtitle="Pick an intake to open its sections and books." />
@@ -628,20 +628,20 @@ function SectionCard({ section }) {
   const subtitle = crName ? `CR: ${crName}` : section.hasCR ? null : "No CR yet";
   const open = () => navigate(`/study-hub/section/${section.id}`);
   return (
-    <div className={`flex flex-col rounded-lg border bg-white p-5 shadow-sm ${section.isMine ? "border-teal-300" : "border-slate-200"}`}>
+    <div className={`flex flex-col rounded-md border bg-surface p-5 shadow-sm ${section.isMine ? "border-teal-300 dark:border-teal-500/40" : "border-brd"}`}>
       <div className="flex items-start gap-3">
         <AccentTile icon="Users" tone={ACCENT} size={40} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="truncate text-sm font-semibold text-slate-900">Section {section.number}</p>
-            {section.isMine && <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-medium text-teal-700">You</span>}
-            {!section.isPublic && <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500"><Icon name="Lock" size={9} /> Private</span>}
+            <p className="truncate text-base font-semibold text-ink">Section {section.number}</p>
+            {section.isMine && <span className="rounded-full bg-teal-50 dark:bg-teal-500/15 px-2 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-300">You</span>}
+            {!section.isPublic && <span className="inline-flex items-center gap-1 rounded-full bg-surface-3 px-2 py-0.5 text-[10px] font-semibold text-ink-3"><Icon name="Lock" size={9} /> Private</span>}
           </div>
-          {subtitle && <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 truncate text-xs text-ink-3">{subtitle}</p>}
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        <span className="text-xs text-slate-400">{materials} material{materials === 1 ? "" : "s"}</span>
+      <div className="mt-4 flex items-center justify-between border-t border-brd pt-3">
+        <span className="text-xs text-ink-3">{materials} material{materials === 1 ? "" : "s"}</span>
         {section.isMine
           ? <Button size="sm" iconRight="ArrowRight" onClick={open}>Open</Button>
           : <Button size="sm" variant="secondary" iconRight="ArrowRight" onClick={open}>Browse</Button>}
@@ -657,14 +657,14 @@ function BookRow({ book, isManager, onDelete }) {
     <div className="flex items-center gap-3 p-4">
       <AccentTile icon={BOOK_KIND_ICON[book.kind] || "BookOpen"} tone={ACCENT} size={40} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">{book.title}</p>
-        <p className="truncate text-xs text-slate-500">{book.kind}{book.author ? ` · ${book.author}` : ""}{book.edition ? ` · ${book.edition}` : ""}</p>
-        <p className="truncate text-xs text-slate-400">{studyPersonName(book.byId)} · {relativeDate(book.createdAt)}</p>
+        <p className="truncate text-base font-semibold text-ink">{book.title}</p>
+        <p className="truncate text-xs text-ink-3">{book.kind}{book.author ? ` · ${book.author}` : ""}{book.edition ? ` · ${book.edition}` : ""}</p>
+        <p className="truncate text-xs text-ink-3">{studyPersonName(book.byId)} · {relativeDate(book.createdAt)}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {canDelete && <DeleteIcon onClick={() => onDelete(book)} title="Remove book" />}
         {book.url
-          ? <a href={book.url} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"><Icon name="ExternalLink" size={15} /> Open link</a>
+          ? <a href={book.url} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-brd bg-surface px-3 text-base font-semibold text-ink-2 shadow-sm hover:bg-surface-2"><Icon name="ExternalLink" size={15} /> Open link</a>
           : <DownloadButton path={book.path} name={book.title} />}
       </div>
     </div>
@@ -673,7 +673,7 @@ function BookRow({ book, isManager, onDelete }) {
 
 function DeleteIcon({ onClick, title }) {
   return (
-    <button onClick={onClick} title={title} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600">
+    <button onClick={onClick} title={title} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-danger-bg hover:text-danger">
       <Icon name="Trash2" size={16} />
     </button>
   );
@@ -751,7 +751,7 @@ function BooksTab({ books, canAdd, isManager, onAdd, onDelete }) {
       {shown.length === 0 ? (
         <EmptyState icon="Library" title="Nothing here" message="No books in this category yet." />
       ) : (
-        <Card className="divide-y divide-slate-200 overflow-hidden">
+        <Card className="divide-y divide-brd overflow-hidden">
           {shown.map((b) => <BookRow key={b.id} book={b} isManager={isManager} onDelete={onDelete} />)}
         </Card>
       )}
@@ -783,7 +783,7 @@ export function StudyHubIntake({ intakeId }) {
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
-      <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+      <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
         <Icon name="ArrowLeft" size={16} /> Study Hub
       </button>
       <PageHeader title="Study Materials" subtitle={`${shortDept(dept.name)} — notes, questions & books shared across the intake`} />
@@ -796,7 +796,7 @@ export function StudyHubIntake({ intakeId }) {
         </Field>
       </Card>
 
-      <h3 className="mb-3 text-sm font-semibold text-slate-900">Sections · Intake {intake.number}</h3>
+      <h3 className="mb-3 text-base font-semibold text-ink">Sections · Intake {intake.number}</h3>
       {sections.length === 0 ? (
         <EmptyState icon="Users" title="No sections yet" message="This intake has no sections on Study Hub yet." />
       ) : (
@@ -941,14 +941,14 @@ function PinRow({ pin, manager, onUnpin }) {
     <div className="flex items-start gap-3 p-4">
       <AccentTile icon={pin.kind === "file" ? "Paperclip" : "Pin"} tone={ACCENT} size={36} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-900">{pin.message}</p>
+        <p className="text-base font-semibold text-ink">{pin.message}</p>
         {pin.kind === "file" && pin.fileName && (
           <div className="mt-1.5"><DownloadButton path={pin.path} name={pin.fileName} /></div>
         )}
-        <p className="mt-1 text-xs text-slate-400">{studyPersonName(pin.byId)} · {relativeDate(pin.createdAt)}</p>
+        <p className="mt-1 text-xs text-ink-3">{studyPersonName(pin.byId)} · {relativeDate(pin.createdAt)}</p>
       </div>
       {manager && (
-        <button onClick={() => onUnpin(pin)} title="Unpin" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"><Icon name="X" size={16} /></button>
+        <button onClick={() => onUnpin(pin)} title="Unpin" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink-2"><Icon name="X" size={16} /></button>
       )}
     </div>
   );
@@ -962,7 +962,7 @@ function PinnedTab({ pins, manager, onPin, onUnpin }) {
       {pins.length === 0 ? (
         <EmptyState icon="Pin" title="Nothing pinned" message={manager ? "Pin a note or file to surface it for your section." : "Your CR hasn't pinned anything yet."} />
       ) : (
-        <Card className="divide-y divide-slate-200 overflow-hidden">
+        <Card className="divide-y divide-brd overflow-hidden">
           {pins.map((p) => <PinRow key={p.id} pin={p} manager={manager} onUnpin={onUnpin} />)}
         </Card>
       )}
@@ -977,7 +977,7 @@ function CoursesTab({ section, courses, canEdit, manager, onAddCourse, onDeleteC
       {courses.length === 0 ? (
         <EmptyState icon="BookOpen" title="No courses yet" message={canEdit ? "Add a course so classmates can upload its materials." : "No courses have been added yet."} />
       ) : (
-        <Card className="divide-y divide-slate-200 overflow-hidden">
+        <Card className="divide-y divide-brd overflow-hidden">
           {courses.map((c) => <CourseRow key={c.id} course={c} sectionId={section.id} onDelete={manager ? onDeleteCourse : undefined} />)}
         </Card>
       )}
@@ -993,16 +993,16 @@ function QBPaperRow({ paper, isManager, onVerify, onDelete }) {
       <AccentTile icon="FileText" tone={ACCENT} size={40} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-semibold text-slate-900">{paper.title}</p>
+          <p className="truncate text-base font-semibold text-ink">{paper.title}</p>
           {paper.verified && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700"><Icon name="BadgeCheck" size={11} /> Verified</span>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success-bg px-2 py-0.5 text-[10px] font-semibold text-success"><Icon name="BadgeCheck" size={11} /> Verified</span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-xs text-slate-400">{studyPersonName(paper.byId)} · {relativeDate(paper.createdAt)} · {fmtFileSize(paper.sizeMB)}</p>
+        <p className="mt-0.5 truncate text-xs text-ink-3">{studyPersonName(paper.byId)} · {relativeDate(paper.createdAt)} · {fmtFileSize(paper.sizeMB)}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {isManager && (
-          <button onClick={() => onVerify(paper)} title={paper.verified ? "Unverify" : "Mark verified"} className={`inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-slate-100 ${paper.verified ? "text-emerald-600" : "text-slate-400"}`}><Icon name="BadgeCheck" size={16} /></button>
+          <button onClick={() => onVerify(paper)} title={paper.verified ? "Unverify" : "Mark verified"} className={`inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-surface-2 ${paper.verified ? "text-success" : "text-ink-3"}`}><Icon name="BadgeCheck" size={16} /></button>
         )}
         {canDelete && <DeleteIcon onClick={() => onDelete(paper)} title="Remove paper" />}
         <DownloadButton path={paper.path} name={paper.title} />
@@ -1025,7 +1025,7 @@ function QuestionBankTab({ qb, canEdit, isManager, onUpload, onVerify, onDelete 
       {shown.length === 0 ? (
         <EmptyState icon="FileQuestion" title={`No ${exam} papers`} message={canEdit ? "Upload a past paper to start the bank." : "Nothing here yet."} />
       ) : (
-        <Card className="divide-y divide-slate-200 overflow-hidden">
+        <Card className="divide-y divide-brd overflow-hidden">
           {shown.map((q) => <QBPaperRow key={q.id} paper={q} isManager={isManager} onVerify={onVerify} onDelete={onDelete} />)}
         </Card>
       )}
@@ -1084,7 +1084,7 @@ export function StudyHubSection({ sectionId }) {
       : "These materials belong to another department.";
     return (
       <AppShell activeKey="study-hub" title="Study Hub">
-        <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/study-hub")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Study Hub
         </button>
         <EmptyState
@@ -1131,7 +1131,7 @@ export function StudyHubSection({ sectionId }) {
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
-      <button onClick={back} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+      <button onClick={back} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
         <Icon name="ArrowLeft" size={16} /> {section.isMine ? "Study Hub" : `Intake ${intake.number}`}
       </button>
       <SectionHeader section={section} dept={dept} intake={intake} manager={manager} />
@@ -1230,8 +1230,8 @@ function FileRow({ file, isManager, onDelete }) {
     <div className="flex items-center gap-3 p-4">
       <AccentTile icon={fileIcon(file.kind)} tone={ACCENT} size={40} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">{file.title}</p>
-        <p className="mt-0.5 truncate text-xs text-slate-400">{file.type} · {studyPersonName(file.byId)} · {relativeDate(file.createdAt)} · {fmtFileSize(file.sizeMB)}</p>
+        <p className="truncate text-base font-semibold text-ink">{file.title}</p>
+        <p className="mt-0.5 truncate text-xs text-ink-3">{file.type} · {studyPersonName(file.byId)} · {relativeDate(file.createdAt)} · {fmtFileSize(file.sizeMB)}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {canDelete && <DeleteIcon onClick={() => onDelete(file)} title="Remove" />}
@@ -1260,7 +1260,7 @@ function NotesTab({ files, canUpload, manager, onUpload, onDelete }) {
       ) : shown.length === 0 ? (
         <EmptyState icon="FileText" title="Nothing here" message="No notes of this type yet." />
       ) : (
-        <Card className="divide-y divide-slate-200 overflow-hidden">
+        <Card className="divide-y divide-brd overflow-hidden">
           {shown.map((f) => <FileRow key={f.id} file={f} isManager={manager} onDelete={onDelete} />)}
         </Card>
       )}
@@ -1371,7 +1371,7 @@ export function StudyHubCourse({ sectionId, courseId }) {
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
-      <button onClick={() => navigate(`/study-hub/section/${section.id}`)} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+      <button onClick={() => navigate(`/study-hub/section/${section.id}`)} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
         <Icon name="ArrowLeft" size={16} /> Section {section.number}
       </button>
       <PageHeader
@@ -1419,8 +1419,8 @@ function MemberRow({ member, label, actions }) {
     <div className="flex items-center gap-3 p-4">
       <Avatar name={studyPersonName(member.userId)} size={36} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-900">{studyPersonName(member.userId)}</p>
-        <p className="text-xs text-slate-400">{label}</p>
+        <p className="truncate text-base font-semibold text-ink">{studyPersonName(member.userId)}</p>
+        <p className="text-xs text-ink-3">{label}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">{actions}</div>
     </div>
@@ -1437,11 +1437,11 @@ function MembersTab({ section, members, onAct }) {
   return (
     <div className="space-y-8">
       <section>
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Join requests {pending.length > 0 && <span className="text-slate-400">· {pending.length}</span>}</h3>
+        <h3 className="mb-3 text-base font-semibold text-ink">Join requests {pending.length > 0 && <span className="text-ink-3">· {pending.length}</span>}</h3>
         {pending.length === 0 ? (
           <EmptyState icon="Inbox" title="No pending requests" message="Students who ask to join your section show up here." />
         ) : (
-          <Card className="divide-y divide-slate-200 overflow-hidden">
+          <Card className="divide-y divide-brd overflow-hidden">
             {pending.map((m) => (
               <MemberRow key={m.id} member={m} label="Wants to join"
                 actions={<><Button size="sm" variant="secondary" onClick={() => onAct("deny", m)} disabled={actBusy}>Deny</Button><Button size="sm" icon="Check" onClick={() => onAct("approve", m)} disabled={actBusy}>Approve</Button></>} />
@@ -1451,11 +1451,11 @@ function MembersTab({ section, members, onAct }) {
       </section>
 
       <section>
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Roster <span className="text-slate-400">· {approved.length}</span></h3>
-        <Card className="divide-y divide-slate-200 overflow-hidden">
+        <h3 className="mb-3 text-base font-semibold text-ink">Roster <span className="text-ink-3">· {approved.length}</span></h3>
+        <Card className="divide-y divide-brd overflow-hidden">
           {crs.map((m) => (
             <MemberRow key={m.id} member={m} label="Class representative"
-              actions={<span className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-medium text-teal-700">CR</span>} />
+              actions={<span className="rounded-full bg-teal-50 dark:bg-teal-500/15 px-2 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-300">CR</span>} />
           ))}
           {editors.map((m) => (
             <MemberRow key={m.id} member={m} label="Editor"
@@ -1465,7 +1465,7 @@ function MembersTab({ section, members, onAct }) {
             <MemberRow key={m.id} member={m} label="Member"
               actions={<><Button size="sm" variant="secondary" icon="UserPlus" onClick={() => onAct("promote", m)} disabled={actBusy}>Make editor</Button><Button size="sm" variant="secondary" icon="UserMinus" onClick={() => onAct("remove", m)} disabled={actBusy}>Remove</Button></>} />
           ))}
-          {approved.length === 0 && <div className="p-4 text-sm text-slate-500">No approved members yet.</div>}
+          {approved.length === 0 && <div className="p-4 text-base text-ink-3">No approved members yet.</div>}
         </Card>
       </section>
     </div>
@@ -1519,28 +1519,28 @@ function SettingsTab({ section, intake, onTogglePublic, toggleBusy }) {
     <div className="space-y-8">
       {/* Join code */}
       <section>
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Join code</h3>
+        <h3 className="mb-3 text-base font-semibold text-ink">Join code</h3>
         <Card className="p-4">
           {section.joinCode ? (
             <div className="flex items-center gap-3">
-              <span className="flex-1 rounded-lg bg-slate-100 px-4 py-2.5 font-mono text-xl font-bold tracking-[0.25em] text-slate-900 text-center">{section.joinCode}</span>
+              <span className="flex-1 rounded-md bg-surface-3 px-4 py-2.5 font-mono text-3xl font-bold tracking-[0.25em] text-ink text-center">{section.joinCode}</span>
               <Button variant="secondary" icon={copied ? "Check" : "Copy"} onClick={copyCode}>{copied ? "Copied!" : "Copy"}</Button>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No join code assigned yet — contact admin.</p>
+            <p className="text-base text-ink-3">No join code assigned yet — contact admin.</p>
           )}
-          <p className="mt-2 text-xs text-slate-400">Share this with students so they can join your section instantly.</p>
+          <p className="mt-2 text-xs text-ink-3">Share this with students so they can join your section instantly.</p>
         </Card>
       </section>
 
       {/* Section visibility */}
       <section>
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Section visibility</h3>
+        <h3 className="mb-3 text-base font-semibold text-ink">Section visibility</h3>
         <Card className="p-4">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-900">{section.isPublic ? "Public" : "Private"}</p>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="text-base font-semibold text-ink">{section.isPublic ? "Public" : "Private"}</p>
+              <p className="mt-0.5 text-xs text-ink-3">
                 {section.isPublic
                   ? "Same-intake students (or whole dept if intake is public) can browse your section's materials."
                   : "Only approved members can see this section's content."}
@@ -1555,15 +1555,15 @@ function SettingsTab({ section, intake, onTogglePublic, toggleBusy }) {
 
       {/* Intake visibility vote */}
       <section>
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Intake visibility</h3>
+        <h3 className="mb-3 text-base font-semibold text-ink">Intake visibility</h3>
         <Card className="p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${intake.isPublic ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${intake.isPublic ? "bg-success-bg text-success" : "bg-surface-3 text-ink-2"}`}>
               <Icon name={intake.isPublic ? "Globe" : "Lock"} size={10} />
               {intake.isPublic ? "Public intake" : "Private intake"}
             </span>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-3">
             {intake.isPublic
               ? "Students from other intakes in your department can see your sections (when they're public)."
               : "Only same-intake students can see public sections here."}
@@ -1571,16 +1571,16 @@ function SettingsTab({ section, intake, onTogglePublic, toggleBusy }) {
 
           {vote ? (
             <>
-              <p className="text-sm font-medium text-slate-900">Active vote: make intake {vote.targetPublic ? "public" : "private"}</p>
-              <div className="flex gap-4 text-sm">
-                <span className="text-emerald-700 font-medium">{inFavorCount} in favour</span>
-                <span className="text-red-600 font-medium">{againstCount} against</span>
+              <p className="text-base font-semibold text-ink">Active vote: make intake {vote.targetPublic ? "public" : "private"}</p>
+              <div className="flex gap-4 text-base">
+                <span className="text-success font-semibold">{inFavorCount} in favour</span>
+                <span className="text-danger font-semibold">{againstCount} against</span>
               </div>
-              <p className="text-xs text-slate-400">Closes {closesAt}</p>
+              <p className="text-xs text-ink-3">Closes {closesAt}</p>
               {vote.status !== "open" ? (
-                <p className="text-xs text-slate-500">Vote closed · result: <strong>{vote.result ?? "—"}</strong></p>
+                <p className="text-xs text-ink-3">Vote closed · result: <strong>{vote.result ?? "—"}</strong></p>
               ) : myBallot ? (
-                <p className="text-xs text-slate-500">Your vote: <strong>{myBallot.inFavor ? "In favour" : "Against"}</strong></p>
+                <p className="text-xs text-ink-3">Your vote: <strong>{myBallot.inFavor ? "In favour" : "Against"}</strong></p>
               ) : (
                 <div className="flex gap-2">
                   <Button size="sm" variant="secondary" icon="ThumbsDown" onClick={() => castVote(false)} disabled={voteLoading}>Against</Button>
@@ -1678,7 +1678,7 @@ export function StudyHubManage({ sectionId }) {
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
-      <button onClick={() => navigate(`/study-hub/section/${section.id}`)} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+      <button onClick={() => navigate(`/study-hub/section/${section.id}`)} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
         <Icon name="ArrowLeft" size={16} /> Section {section.number}
       </button>
       <PageHeader title={`Manage Section ${section.number}`} subtitle={`${deptCode(dept.name)} · Intake ${intake.number}`} />

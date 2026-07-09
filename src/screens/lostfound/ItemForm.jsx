@@ -46,7 +46,7 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
       <Card className="space-y-5 p-6">
         {/* Type toggle */}
         <div>
-          <label className="text-sm font-medium text-slate-700">Type</label>
+          <label className="text-base font-semibold text-ink-2">Type</label>
           <div className="mt-1.5 grid grid-cols-2 gap-2">
             {TYPE_OPTIONS.map((opt) => {
               const active = form.type === opt.v;
@@ -57,18 +57,18 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
                   type="button"
                   key={opt.v}
                   onClick={() => set("type", opt.v)}
-                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                  className={`flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${
                     active
-                      ? tone === "red" ? "border-red-300 bg-red-50" : "border-emerald-300 bg-emerald-50"
-                      : "border-slate-200 bg-white hover:bg-slate-50"
+                      ? tone === "red" ? "border-danger bg-danger-bg" : "border-success bg-success-bg"
+                      : "border-brd bg-surface hover:bg-surface-2"
                   }`}
                 >
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${active ? (tone === "red" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700") : "bg-slate-100 text-slate-500"}`}>
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-md ${active ? (tone === "red" ? "bg-danger-bg text-danger" : "bg-success-bg text-success") : "bg-surface-3 text-ink-3"}`}>
                     <OptIcon size={18} />
                   </span>
                   <div>
-                    <p className={`text-sm font-semibold ${active ? "text-slate-900" : "text-slate-700"}`}>{opt.v}</p>
-                    <p className="text-xs text-slate-500">{opt.desc}</p>
+                    <p className={`text-base font-semibold ${active ? "text-ink" : "text-ink-2"}`}>{opt.v}</p>
+                    <p className="text-xs text-ink-3">{opt.desc}</p>
                   </div>
                 </button>
               );
@@ -108,8 +108,8 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
           />
         </Field>
 
-        <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
-          <Lock size={14} className="shrink-0 text-slate-400" />
+        <div className="flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2.5 text-xs text-ink-3">
+          <Lock size={14} className="shrink-0 text-ink-3" />
           Your contact details stay private — they're shared only after you approve a claim on this item.
         </div>
       </Card>

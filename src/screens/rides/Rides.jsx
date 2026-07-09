@@ -39,40 +39,40 @@ export function RideCard({ ride, driver, mine, onOpen }) {
         <div className="flex items-center gap-2.5">
           <Avatar name={driver?.name || "?"} size={38} />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-900">{mine ? "You" : driver?.name || "Unknown"}</p>
-            <p className="text-xs text-slate-400">{ride.direction}</p>
+            <p className="text-base font-semibold text-ink">{mine ? "You" : driver?.name || "Unknown"}</p>
+            <p className="text-xs text-ink-3">{ride.direction}</p>
           </div>
         </div>
         <Badge tone="indigo" icon={VEHICLE_ICON[ride.vehicle]}>{ride.vehicle}</Badge>
       </div>
 
-      <div className="mt-4 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-sm">
-        <span className="font-medium text-slate-900">{ride.origin}</span>
-        <Icon name="ArrowRight" size={15} className="text-indigo-500" />
-        <span className="font-medium text-slate-900">{ride.destination}</span>
+      <div className="mt-4 flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2.5 text-base">
+        <span className="font-semibold text-ink">{ride.origin}</span>
+        <Icon name="ArrowRight" size={15} className="text-indigo-500 dark:text-indigo-400" />
+        <span className="font-semibold text-ink">{ride.destination}</span>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-lg border border-slate-100 py-2">
-          <p className="text-[11px] text-slate-400">Departs</p>
-          <p className="text-sm font-semibold text-slate-900">{fmtTime(ride.time)}</p>
+        <div className="rounded-md border border-brd py-2">
+          <p className="text-[11px] text-ink-3">Departs</p>
+          <p className="text-base font-semibold text-ink">{fmtTime(ride.time)}</p>
         </div>
-        <div className="rounded-lg border border-slate-100 py-2">
-          <p className="text-[11px] text-slate-400">Seats</p>
-          <p className={`text-sm font-semibold ${full ? "text-red-600" : "text-slate-900"}`}>{left}/{ride.seatsTotal}</p>
+        <div className="rounded-md border border-brd py-2">
+          <p className="text-[11px] text-ink-3">Seats</p>
+          <p className={`text-base font-semibold ${full ? "text-danger" : "text-ink"}`}>{left}/{ride.seatsTotal}</p>
         </div>
-        <div className="rounded-lg border border-slate-100 py-2">
-          <p className="text-[11px] text-slate-400">Fare/seat</p>
-          <p className="text-sm font-semibold text-slate-900">{taka(ride.fare)}</p>
+        <div className="rounded-md border border-brd py-2">
+          <p className="text-[11px] text-ink-3">Fare/seat</p>
+          <p className="text-base font-semibold text-ink">{taka(ride.fare)}</p>
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+      <div className="mt-3 flex items-center justify-between text-xs text-ink-3">
         <span className="inline-flex items-center gap-1"><Icon name="Calendar" size={13} />{fmtDate(ride.date)}</span>
         {full ? <Badge tone="red">Full</Badge> : <Badge tone="emerald">Seats available</Badge>}
       </div>
 
-      <div className="mt-4 border-t border-slate-100 pt-3">
+      <div className="mt-4 border-t border-brd pt-3">
         <Button size="sm" full variant={full ? "secondary" : "primary"} iconRight="ArrowRight" onClick={onOpen} disabled={full && !mine}>
           {mine ? "Manage ride" : full ? "Full" : "Request seat"}
         </Button>
@@ -116,9 +116,9 @@ export function RideShare() {
         {(isAdmin || intent === "find") && (
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative w-full sm:w-56">
-              <Icon name="MapPin" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Icon name="MapPin" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
               <input value={area} onChange={(e) => setArea(e.target.value)} aria-label="Filter rides by area" placeholder="Filter by area…"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30" />
+                className="h-10 w-full rounded-md border border-brd bg-surface pl-9 pr-3 text-base placeholder:text-ink-3 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-100" />
             </div>
             <Select value={direction} onChange={(e) => setDirection(e.target.value)} className="sm:w-44">
               <option value="All">Any direction</option>
@@ -172,7 +172,7 @@ function DriverContact({ code, driverId, driverName }) {
   if (phase !== "done") {
     return (
       <button onClick={reveal} disabled={phase === "loading"}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-60">
+        className="flex w-full items-center justify-center gap-2 rounded-md border border-success-bg bg-success-bg px-4 py-2.5 text-base font-semibold text-success transition-colors hover:bg-success-bg disabled:opacity-60">
         <Icon name="MessageCircle" size={16} /> {phase === "loading" ? "Getting contact…" : "Show driver's WhatsApp"}
       </button>
     );
@@ -180,21 +180,21 @@ function DriverContact({ code, driverId, driverName }) {
 
   const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
   return (
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-      <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+    <div className="rounded-md border border-success-bg bg-success-bg p-4">
+      <div className="flex items-center gap-1.5 text-base font-semibold text-success">
         <Icon name="CircleCheck" size={16} /> {contact?.name || driverName || "Driver"}
       </div>
       {wa ? (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
-          <p className="truncate text-sm text-slate-600">{contact.whatsapp}</p>
-          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700">
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface p-3">
+          <p className="truncate text-base text-ink-2">{contact.whatsapp}</p>
+          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95">
             <Icon name="MessageCircle" size={16} /> WhatsApp
           </a>
         </div>
       ) : (
-        <p className="mt-1 text-xs text-slate-500">This driver hasn't shared a WhatsApp number yet.</p>
+        <p className="mt-1 text-xs text-ink-3">This driver hasn't shared a WhatsApp number yet.</p>
       )}
-      <p className="mt-2 text-xs text-slate-400">Coordinate pickup and fare with the driver on WhatsApp.</p>
+      <p className="mt-2 text-xs text-ink-3">Coordinate pickup and fare with the driver on WhatsApp.</p>
     </div>
   );
 }
@@ -215,16 +215,16 @@ function RequesterContact({ code, requesterId }) {
   if (phase === "done") {
     const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
     return wa ? (
-      <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-medium text-white hover:bg-emerald-700">
+      <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-success px-2.5 text-xs font-semibold text-white hover:brightness-95">
         <Icon name="MessageCircle" size={14} /> Chat
       </a>
     ) : (
-      <span className="shrink-0 text-xs text-slate-400">No number shared</span>
+      <span className="shrink-0 text-xs text-ink-3">No number shared</span>
     );
   }
   return (
     <button onClick={reveal} disabled={phase === "loading"}
-      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-60">
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-success-bg bg-success-bg px-2.5 text-xs font-semibold text-success hover:bg-success-bg disabled:opacity-60">
       <Icon name="MessageCircle" size={14} /> {phase === "loading" ? "…" : "Contact"}
     </button>
   );
@@ -255,7 +255,7 @@ export function RideDetail({ id }) {
   return (
     <AppShell activeKey="rideshare" title="Ride Details">
       <div className="mx-auto max-w-3xl">
-        <button onClick={() => navigate("/rides")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/rides")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to Ride Share
         </button>
 
@@ -263,11 +263,11 @@ export function RideDetail({ id }) {
           <div className="flex items-center gap-3">
             <AccentTile icon={VEHICLE_ICON[ride.vehicle]} tone="indigo" size={48} />
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{ride.origin} → {ride.destination}</h2>
-              <p className="text-sm text-slate-400">{ride.direction} · {ride.vehicle}</p>
+              <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{ride.origin} → {ride.destination}</h2>
+              <p className="text-base text-ink-3">{ride.direction} · {ride.vehicle}</p>
             </div>
           </div>
-          {canDelete && <Button variant="secondary" icon="Trash2" className="text-red-600" onClick={() => setConfirmDelete(true)}>Delete</Button>}
+          {canDelete && <Button variant="secondary" icon="Trash2" className="text-danger" onClick={() => setConfirmDelete(true)}>Delete</Button>}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -280,26 +280,26 @@ export function RideDetail({ id }) {
                 { l: "Fare/seat", v: taka(ride.fare), icon: "Wallet" },
               ].map((s) => (
                 <div key={s.l}>
-                  <p className="flex items-center gap-1.5 text-xs text-slate-400"><Icon name={s.icon} size={13} />{s.l}</p>
-                  <p className="mt-0.5 text-sm font-semibold text-slate-900">{s.v}</p>
+                  <p className="flex items-center gap-1.5 text-xs text-ink-3"><Icon name={s.icon} size={13} />{s.l}</p>
+                  <p className="mt-0.5 text-base font-semibold text-ink">{s.v}</p>
                 </div>
               ))}
             </Card>
 
             {ride.notes && (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Notes from {mine ? "you" : driver?.name}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-700">{ride.notes}</p>
+                <h3 className="text-base font-semibold text-ink">Notes from {mine ? "you" : driver?.name}</h3>
+                <p className="mt-2 text-base leading-relaxed text-ink-2">{ride.notes}</p>
               </Card>
             )}
 
             {ride.recurring && ride.recurring.length > 0 && (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Recurring days</h3>
+                <h3 className="text-base font-semibold text-ink">Recurring days</h3>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {DOW.map((d) => {
                     const on = ride.recurring.includes(d);
-                    return <span key={d} className={`rounded-lg px-2.5 py-1 text-xs font-medium ${on ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-400"}`}>{d}</span>;
+                    return <span key={d} className={`rounded-md px-2.5 py-1 text-xs font-semibold ${on ? "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300" : "bg-surface-3 text-ink-3"}`}>{d}</span>;
                   })}
                 </div>
               </Card>
@@ -309,16 +309,16 @@ export function RideDetail({ id }) {
           <div className="space-y-4">
             {mine ? (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Seat requests</h3>
+                <h3 className="text-base font-semibold text-ink">Seat requests</h3>
                 {ride.requesterIds.length === 0 ? (
-                  <p className="mt-2 text-sm text-slate-400">No requests yet.</p>
+                  <p className="mt-2 text-base text-ink-3">No requests yet.</p>
                 ) : (
                   <div className="mt-3 space-y-2">
                     {ride.requesterIds.map((uid) => {
                       const u = userById(uid);
                       return (
-                        <div key={uid} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
-                          <div className="flex items-center gap-2 min-w-0"><Avatar name={u?.name || "?"} size={26} /><span className="truncate text-sm text-slate-700">{u?.name}</span></div>
+                        <div key={uid} className="flex items-center justify-between gap-2 rounded-md border border-brd bg-surface-2 p-2.5">
+                          <div className="flex items-center gap-2 min-w-0"><Avatar name={u?.name || "?"} size={26} /><span className="truncate text-base text-ink-2">{u?.name}</span></div>
                           <RequesterContact code={ride.id} requesterId={uid} />
                         </div>
                       );
@@ -328,21 +328,21 @@ export function RideDetail({ id }) {
               </Card>
             ) : isAdmin ? (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Seat requests</h3>
-                <p className="mt-2 text-sm text-slate-400">{ride.requesterIds.length} request{ride.requesterIds.length === 1 ? "" : "s"}.</p>
+                <h3 className="text-base font-semibold text-ink">Seat requests</h3>
+                <p className="mt-2 text-base text-ink-3">{ride.requesterIds.length} request{ride.requesterIds.length === 1 ? "" : "s"}.</p>
               </Card>
             ) : (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900">{requested ? "Seat requested" : "Request a seat"}</h3>
+                <h3 className="text-base font-semibold text-ink">{requested ? "Seat requested" : "Request a seat"}</h3>
                 {requested ? (
                   <div className="mt-3">
                     <DriverContact code={ride.id} driverId={ride.driverId} driverName={driver?.name} />
                   </div>
                 ) : left <= 0 ? (
-                  <p className="mt-2 text-sm text-red-600">This ride is full.</p>
+                  <p className="mt-2 text-base text-danger">This ride is full.</p>
                 ) : (
                   <>
-                    <p className="mt-1 text-sm text-slate-500">Request a seat to get the driver's WhatsApp and confirm.</p>
+                    <p className="mt-1 text-base text-ink-3">Request a seat to get the driver's WhatsApp and confirm.</p>
                     <Button className="mt-3" full icon="Check" disabled={actionBusy} onClick={async () => { if (actionBusy) return; setActionBusy(true); try { const r = await requestSeat(ride.id); if (!r.ok) { toast({ type: "error", title: "Couldn't request seat", message: r.error }); return; } toast({ type: "success", title: "Seat requested", message: "Driver's contact is now available." }); } finally { setActionBusy(false); } }}>Request a seat</Button>
                   </>
                 )}
@@ -399,7 +399,7 @@ export function OfferRide() {
   return (
     <AppShell activeKey="rideshare" title="Offer a Ride">
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate("/rides")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/rides")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to Ride Share
         </button>
         <PageHeader title="Offer a Ride" subtitle="Share your commute and split the fare." />
@@ -420,11 +420,11 @@ export function OfferRide() {
               <Field label="Vehicle" htmlFor="rveh"><Select id="rveh" value={form.vehicle} onChange={(e) => set("vehicle", e.target.value)}>{VEHICLES.map((v) => <option key={v}>{v}</option>)}</Select></Field>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">Recurring days <span className="text-slate-400">(optional)</span></label>
+              <label className="text-base font-semibold text-ink-2">Recurring days <span className="text-ink-3">(optional)</span></label>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {DOW.map((d) => {
                   const on = form.recurring.includes(d);
-                  return <button type="button" key={d} onClick={() => toggleDay(d)} className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${on ? "bg-indigo-100 text-indigo-700" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}>{d}</button>;
+                  return <button type="button" key={d} onClick={() => toggleDay(d)} className={`rounded-md px-3 py-1.5 text-base font-semibold transition-colors ${on ? "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300" : "bg-surface text-ink-2 border border-brd hover:bg-surface-2"}`}>{d}</button>;
                 })}
               </div>
             </div>
@@ -445,13 +445,13 @@ export function RideWidget() {
   const { currentUser, rides } = useApp();
   const avail = rides.filter((r) => r.driverId !== currentUser?.id && seatsLeft(r) > 0).length;
   return (
-    <button onClick={() => navigate("/rides")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50/40">
+    <button onClick={() => navigate("/rides")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10">
       <AccentTile icon="Car" tone="indigo" size={44} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900">Ride Share</p>
-        <p className="truncate text-xs text-slate-500">{avail} ride{avail === 1 ? "" : "s"} with seats available</p>
+        <p className="text-base font-semibold text-ink">Ride Share</p>
+        <p className="truncate text-xs text-ink-3">{avail} ride{avail === 1 ? "" : "s"} with seats available</p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-indigo-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-indigo-500 dark:group-hover:text-indigo-300" />
     </button>
   );
 }

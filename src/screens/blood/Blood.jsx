@@ -39,9 +39,9 @@ export function eligibleDate(iso) {
 
 // Big blood-group badge
 export function GroupBadge({ group, size = "md" }) {
-  const dims = size === "lg" ? "h-14 w-14 text-xl" : "h-11 w-11 text-base";
+  const dims = size === "lg" ? "h-14 w-14 text-3xl" : "h-11 w-11 text-xl";
   return (
-    <span className={`flex shrink-0 items-center justify-center rounded-lg bg-red-100 font-bold text-red-700 ${dims}`}>
+    <span className={`flex shrink-0 items-center justify-center rounded-md bg-danger-bg font-bold text-danger ${dims}`}>
       {group}
     </span>
   );
@@ -56,17 +56,17 @@ export function RequestCard({ req, requester, mine, pledged, onDonate }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={URGENCY_TONE[req.urgency]}>{req.urgency === "Urgent" && <Icon name="TriangleAlert" size={12} />}{req.urgency}</Badge>
-            <span className="text-xs text-slate-400">{relativeDate(req.createdAt)}</span>
+            <span className="text-xs text-ink-3">{relativeDate(req.createdAt)}</span>
           </div>
-          <p className="mt-1.5 text-sm font-semibold text-slate-900">{req.units} unit{req.units > 1 ? "s" : ""} · {req.patient}</p>
-          <div className="mt-1.5 space-y-1 text-xs text-slate-500">
-            <p className="flex items-center gap-1.5"><Icon name="Building2" size={13} className="text-slate-400" />{req.hospital}</p>
-            <p className="flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-slate-400" />{req.area}</p>
+          <p className="mt-1.5 text-base font-semibold text-ink">{req.units} unit{req.units > 1 ? "s" : ""} · {req.patient}</p>
+          <div className="mt-1.5 space-y-1 text-xs text-ink-3">
+            <p className="flex items-center gap-1.5"><Icon name="Building2" size={13} className="text-ink-3" />{req.hospital}</p>
+            <p className="flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-ink-3" />{req.area}</p>
           </div>
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        <span className="text-xs text-slate-400">{req.pledges.length} donor{req.pledges.length === 1 ? "" : "s"} responded</span>
+      <div className="mt-4 flex items-center justify-between border-t border-brd pt-3">
+        <span className="text-xs text-ink-3">{req.pledges.length} donor{req.pledges.length === 1 ? "" : "s"} responded</span>
         {mine ? (
           <Badge tone="slate">Your request</Badge>
         ) : (
@@ -95,14 +95,14 @@ function DonorContact({ userId }) {
   if (phase === "done") {
     const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
     return wa ? (
-      <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-medium text-white hover:bg-emerald-700"><Icon name="MessageCircle" size={14} /> Chat</a>
+      <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-success px-2.5 text-xs font-semibold text-white hover:brightness-95"><Icon name="MessageCircle" size={14} /> Chat</a>
     ) : (
-      <span className="shrink-0 text-xs text-slate-400">No number shared</span>
+      <span className="shrink-0 text-xs text-ink-3">No number shared</span>
     );
   }
   return (
     <button onClick={reveal} disabled={phase === "loading"}
-      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60">
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-success px-2.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-60">
       <Icon name="MessageCircle" size={14} /> {phase === "loading" ? "…" : "Contact"}
     </button>
   );
@@ -116,15 +116,15 @@ export function DonorCard({ donor, isAdmin }) {
       <div className="flex items-start gap-4">
         <GroupBadge group={donor.group} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900">{donor.name}</p>
-          <div className="mt-1.5 space-y-1 text-xs text-slate-500">
-            <p className="flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-slate-400" />{donor.area}</p>
-            <p className="flex items-center gap-1.5"><Icon name="Clock" size={13} className="text-slate-400" />{donor.lastDonated ? `Last donated ${fmtDate(donor.lastDonated)}` : "No donation on record"}</p>
+          <p className="text-base font-semibold text-ink">{donor.name}</p>
+          <div className="mt-1.5 space-y-1 text-xs text-ink-3">
+            <p className="flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-ink-3" />{donor.area}</p>
+            <p className="flex items-center gap-1.5"><Icon name="Clock" size={13} className="text-ink-3" />{donor.lastDonated ? `Last donated ${fmtDate(donor.lastDonated)}` : "No donation on record"}</p>
           </div>
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        {eligible ? <Badge tone="emerald"><span className="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>Available to donate</Badge>
+      <div className="mt-4 flex items-center justify-between border-t border-brd pt-3">
+        {eligible ? <Badge tone="emerald"><span className="h-1.5 w-1.5 rounded-full bg-success"></span>Available to donate</Badge>
           : <Badge tone="amber">Eligible {fmtDate(eligibleDate(donor.lastDonated))}</Badge>}
         {(eligible || isAdmin) && <DonorContact userId={donor.userId} />}
       </div>
@@ -147,14 +147,14 @@ function BloodRequesterContact({ code, fallbackName }) {
 
   const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
   return (
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-      <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700"><Icon name="CircleCheck" size={16} /> Requester contact</div>
+    <div className="rounded-md border border-success-bg bg-success-bg p-4">
+      <div className="flex items-center gap-1.5 text-base font-semibold text-success"><Icon name="CircleCheck" size={16} /> Requester contact</div>
       {phase === "loading" ? (
-        <p className="mt-2 text-xs text-slate-500">Getting contact…</p>
+        <p className="mt-2 text-xs text-ink-3">Getting contact…</p>
       ) : (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
-          <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-900">{contact?.name || fallbackName || "Requester"}</p><p className="truncate text-xs text-slate-500">{contact?.whatsapp || "No number shared"}</p></div>
-          {wa && <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700"><Icon name="MessageCircle" size={16} /> WhatsApp</a>}
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface p-3">
+          <div className="min-w-0"><p className="truncate text-base font-semibold text-ink">{contact?.name || fallbackName || "Requester"}</p><p className="truncate text-xs text-ink-3">{contact?.whatsapp || "No number shared"}</p></div>
+          {wa && <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95"><Icon name="MessageCircle" size={16} /> WhatsApp</a>}
         </div>
       )}
     </div>
@@ -229,12 +229,12 @@ export function BloodDonation() {
       ) : (
         <>
           <Card className="mb-4 p-4">
-            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">Donors by group</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-3">Donors by group</p>
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
               {byGroup.map(({ g, n }) => (
-                <div key={g} className="rounded-lg border border-slate-100 bg-slate-50 py-2 text-center">
-                  <p className="text-sm font-bold text-red-700">{g}</p>
-                  <p className="text-xs text-slate-500">{n}</p>
+                <div key={g} className="rounded-md border border-brd bg-surface-2 py-2 text-center">
+                  <p className="text-base font-bold text-danger">{g}</p>
+                  <p className="text-xs text-ink-3">{n}</p>
                 </div>
               ))}
             </div>
@@ -293,7 +293,7 @@ export function RegisterDonor() {
   return (
     <AppShell activeKey="blood" title="Register as Donor">
       <div className="mx-auto max-w-xl">
-        <button onClick={() => navigate("/blood")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/blood")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back
         </button>
         <PageHeader title={existing ? "Update donor info" : "Register as donor"} subtitle="Join the campus donor registry so others can reach you." />
@@ -312,7 +312,7 @@ export function RegisterDonor() {
               <Field label="Last donated" htmlFor="dl" hint="Leave blank if never."><Input id="dl" type="date" max={todayISO()} value={form.lastDonated} onChange={(e) => set("lastDonated", e.target.value)} /></Field>
               <Field label="WhatsApp number" htmlFor="dp" hint="Shown to those who need your group."><Input id="dp" placeholder="+8801XXXXXXXXX" value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
             </div>
-            <div className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-xs text-red-700">
+            <div className="flex items-start gap-2 rounded-md bg-danger-bg px-3 py-2.5 text-xs text-danger">
               <Icon name="Info" size={14} className="mt-0.5 shrink-0" /> Donors are eligible again 3 months after their last donation — we'll compute your availability automatically.
             </div>
           </Card>
@@ -359,7 +359,7 @@ export function RequestBlood() {
   return (
     <AppShell activeKey="blood" title="Request Blood">
       <div className="mx-auto max-w-xl">
-        <button onClick={() => navigate("/blood")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/blood")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back
         </button>
         <PageHeader title="Request blood" subtitle="Post a request so eligible donors can respond quickly." />
@@ -380,16 +380,16 @@ export function RequestBlood() {
               <Field label="Area" htmlFor="bar" required error={errors.area}><Input id="bar" placeholder="e.g. Shahbagh" value={form.area} error={!!errors.area} onChange={(e) => set("area", e.target.value)} /></Field>
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-700">Urgency</label>
+              <label className="text-base font-semibold text-ink-2">Urgency</label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {["Urgent", "Today", "This week"].map((u) => {
                   const active = form.urgency === u;
-                  return <button type="button" key={u} onClick={() => set("urgency", u)} className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${active ? "border-red-300 bg-red-50 text-red-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}>{u}</button>;
+                  return <button type="button" key={u} onClick={() => set("urgency", u)} className={`rounded-md border px-3 py-2 text-base font-semibold transition-colors ${active ? "border-danger bg-danger-bg text-danger" : "border-brd bg-surface text-ink-2 hover:bg-surface-2"}`}>{u}</button>;
                 })}
               </div>
             </div>
-            <div className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
-              <Icon name="Lock" size={14} className="mt-0.5 shrink-0 text-slate-400" /> Donors who respond get your WhatsApp to coordinate — your contact stays private until then.
+            <div className="flex items-start gap-2 rounded-md bg-surface-2 px-3 py-2.5 text-xs text-ink-3">
+              <Icon name="Lock" size={14} className="mt-0.5 shrink-0 text-ink-3" /> Donors who respond get your WhatsApp to coordinate — your contact stays private until then.
             </div>
           </Card>
           <div className="flex justify-end gap-3">
@@ -407,13 +407,13 @@ export function BloodWidget() {
   const { bloodRequests } = useApp();
   const urgent = bloodRequests.filter((r) => r.urgency === "Urgent").length;
   return (
-    <button onClick={() => navigate("/blood")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-red-300 hover:bg-red-50/40">
+    <button onClick={() => navigate("/blood")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-danger hover:bg-danger-bg/40">
       <AccentTile icon="Droplet" tone="red" size={44} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900">Blood Donation</p>
-        <p className="truncate text-xs text-slate-500">{urgent > 0 ? `${urgent} urgent request${urgent === 1 ? "" : "s"} need donors` : "Browse requests and donors"}</p>
+        <p className="text-base font-semibold text-ink">Blood Donation</p>
+        <p className="truncate text-xs text-ink-3">{urgent > 0 ? `${urgent} urgent request${urgent === 1 ? "" : "s"} need donors` : "Browse requests and donors"}</p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-red-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-danger" />
     </button>
   );
 }

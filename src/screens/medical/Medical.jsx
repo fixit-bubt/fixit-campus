@@ -62,17 +62,17 @@ export function DoctorCard({ doc, onBook }) {
       <div className="flex items-start gap-3">
         <Avatar name={doc.name.replace("Dr. ", "")} size={44} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900">{doc.name}</p>
-          <p className="text-xs text-slate-500">{doc.specialty}</p>
+          <p className="text-base font-semibold text-ink">{doc.name}</p>
+          <p className="text-xs text-ink-3">{doc.specialty}</p>
         </div>
-        {onDuty ? <Badge tone="emerald"><span className="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>On duty</Badge> : <Badge tone="slate">Off duty</Badge>}
+        {onDuty ? <Badge tone="emerald"><span className="h-1.5 w-1.5 rounded-full bg-success"></span>On duty</Badge> : <Badge tone="slate">Off duty</Badge>}
       </div>
-      <div className="mt-4 space-y-1.5 text-xs text-slate-500">
-        <p className="flex items-center gap-1.5"><Icon name="Clock" size={13} className="text-slate-400" />{fmtTime(doc.start)} – {fmtTime(doc.end)}</p>
-        <p className="flex items-center gap-1.5"><Icon name="CalendarDays" size={13} className="text-slate-400" />{doc.days.join(", ")}</p>
-        <p className="flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-slate-400" />{doc.room}</p>
+      <div className="mt-4 space-y-1.5 text-xs text-ink-3">
+        <p className="flex items-center gap-1.5"><Icon name="Clock" size={13} className="text-ink-3" />{fmtTime(doc.start)} – {fmtTime(doc.end)}</p>
+        <p className="flex items-center gap-1.5"><Icon name="CalendarDays" size={13} className="text-ink-3" />{doc.days.join(", ")}</p>
+        <p className="flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-ink-3" />{doc.room}</p>
       </div>
-      <div className="mt-4 border-t border-slate-100 pt-3">
+      <div className="mt-4 border-t border-brd pt-3">
         <Button size="sm" full icon="CalendarDays" onClick={onBook}>Book appointment</Button>
       </div>
     </Card>
@@ -103,11 +103,11 @@ export function MedicalCenter() {
         }
       />
 
-      <div className="mb-5 flex items-center gap-3 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3">
+      <div className="mb-5 flex items-center gap-3 rounded-md border border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 px-4 py-3">
         <AccentTile icon="Stethoscope" tone="teal" size={40} />
         <div>
-          <p className="text-sm font-semibold text-slate-900">BUBT Medical Center</p>
-          <p className="text-xs text-slate-600">Ground floor, Student Welfare Building · Open Sat–Wed, 9:00 AM – 5:00 PM</p>
+          <p className="text-base font-semibold text-ink">BUBT Medical Center</p>
+          <p className="text-xs text-ink-2">Ground floor, Student Welfare Building · Open Sat–Wed, 9:00 AM – 5:00 PM</p>
         </div>
       </div>
 
@@ -186,21 +186,21 @@ export function DoctorBooking({ id }) {
   return (
     <AppShell activeKey="medical" title="Book Appointment">
       <div className="mx-auto max-w-3xl">
-        <button onClick={() => navigate("/medical")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/medical")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to doctors
         </button>
 
         <div className="mb-6 flex items-start gap-3">
           <Avatar name={doc.name.replace("Dr. ", "")} size={48} />
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{doc.name}</h2>
-            <p className="text-sm text-slate-500">{doc.specialty} · {doc.room}</p>
+            <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{doc.name}</h2>
+            <p className="text-base text-ink-3">{doc.specialty} · {doc.room}</p>
           </div>
         </div>
 
         <Card className="p-6">
           {/* date picker */}
-          <p className="text-sm font-medium text-slate-700">Pick a date</p>
+          <p className="text-base font-semibold text-ink-2">Pick a date</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {dates.map((d) => {
               const off = Math.round((new Date(d) - new Date(dhakaISO(0))) / 86400000);
@@ -208,38 +208,38 @@ export function DoctorBooking({ id }) {
               const active = date === d;
               return (
                 <button key={d} onClick={() => { setDate(d); setSlot(null); }}
-                  className={`flex flex-col items-center rounded-lg border px-3 py-2 text-center transition-colors ${active ? "border-teal-300 bg-teal-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
-                  <span className={`text-xs ${active ? "text-teal-700" : "text-slate-400"}`}>{label}</span>
-                  <span className={`text-sm font-semibold ${active ? "text-slate-900" : "text-slate-700"}`}>{new Date(d).getDate()} {new Intl.DateTimeFormat("en-US",{month:"short",timeZone:"Asia/Dhaka"}).format(new Date(d))}</span>
+                  className={`flex flex-col items-center rounded-md border px-3 py-2 text-center transition-colors ${active ? "border-teal-300 dark:border-teal-500/40 bg-teal-50 dark:bg-teal-500/10" : "border-brd bg-surface hover:bg-surface-2"}`}>
+                  <span className={`text-xs ${active ? "text-teal-700 dark:text-teal-300" : "text-ink-3"}`}>{label}</span>
+                  <span className={`text-base font-semibold ${active ? "text-ink" : "text-ink-2"}`}>{new Date(d).getDate()} {new Intl.DateTimeFormat("en-US",{month:"short",timeZone:"Asia/Dhaka"}).format(new Date(d))}</span>
                 </button>
               );
             })}
           </div>
 
           {/* slot grid */}
-          <p className="mt-6 text-sm font-medium text-slate-700">Available time slots</p>
+          <p className="mt-6 text-base font-semibold text-ink-2">Available time slots</p>
           <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
             {slots.map((s) => {
               const booked = taken.has(s);
               const active = slot === s;
               return (
                 <button key={s} disabled={booked} onClick={() => setSlot(s)}
-                  className={`rounded-lg border py-2 text-sm font-medium transition-colors ${
-                    booked ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300 line-through"
-                    : active ? "border-teal-500 bg-teal-50 text-teal-700 ring-1 ring-teal-500"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:bg-teal-50/40"}`}>
+                  className={`rounded-md border py-2 text-base font-semibold transition-colors ${
+                    booked ? "cursor-not-allowed border-brd bg-surface-2 text-ink-3 line-through"
+                    : active ? "border-teal-500 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 ring-1 ring-teal-500"
+                    : "border-brd bg-surface text-ink-2 hover:border-teal-300 dark:hover:border-teal-500/40 hover:bg-teal-50/40 dark:hover:bg-teal-500/10"}`}>
                   {fmtTime(s)}
                 </button>
               );
             })}
           </div>
-          <div className="mt-3 flex items-center gap-4 text-xs text-slate-400">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded border border-slate-200 bg-white"></span>Available</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-slate-100"></span>Booked</span>
+          <div className="mt-3 flex items-center gap-4 text-xs text-ink-3">
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded border border-brd bg-surface"></span>Available</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-surface-3"></span>Booked</span>
           </div>
 
-          <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-            <p className="text-sm text-slate-500">{slot ? <>Selected <span className="font-medium text-slate-900">{fmtTime(slot)}</span></> : "Select a slot to continue"}</p>
+          <div className="mt-6 flex items-center justify-between border-t border-brd pt-4">
+            <p className="text-base text-ink-3">{slot ? <>Selected <span className="font-semibold text-ink">{fmtTime(slot)}</span></> : "Select a slot to continue"}</p>
             <Button disabled={!slot} icon="Check" onClick={() => setConfirm(true)}>Book appointment</Button>
           </div>
         </Card>
@@ -262,10 +262,10 @@ export function DoctorBooking({ id }) {
         footer={<Button onClick={() => { setDone(null); navigate("/medical/appointments"); }}>View my appointments</Button>}
       >
         {done && (
-          <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-center">
-            <p className="text-xs font-medium uppercase tracking-wide text-teal-700">Your token</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{done.token}</p>
-            <p className="mt-1 text-sm text-slate-600">{doc.name} · {fmtDate(done.date)} at {fmtTime(done.slot)}</p>
+          <div className="rounded-md border border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 p-4 text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">Your token</p>
+            <p className="mt-1 text-5xl font-bold text-ink">{done.token}</p>
+            <p className="mt-1 text-base text-ink-2">{doc.name} · {fmtDate(done.date)} at {fmtTime(done.slot)}</p>
           </div>
         )}
       </Modal>
@@ -314,7 +314,7 @@ export function MyAppointments() {
           message={tab === "Upcoming" ? "Book a doctor to see your appointments here." : "Your past visits will appear here."}
           action={tab === "Upcoming" ? <Button icon="Stethoscope" onClick={() => navigate("/medical")}>Find a doctor</Button> : null} />
       ) : (
-        <Card className="divide-y divide-slate-200 overflow-hidden">
+        <Card className="divide-y divide-brd overflow-hidden">
           {rows.map((a) => {
             const doc = doctorById(a.doctorId);
             const canCancel = (a.status === "Booked" || a.status === "Confirmed") && a.date >= today;
@@ -322,13 +322,13 @@ export function MyAppointments() {
               <div key={a.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                 <Avatar name={(doc?.name || "Dr").replace("Dr. ", "")} size={40} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-900">{doc?.name || "Doctor"}</p>
-                  <p className="text-xs text-slate-500">{doc?.specialty} · {fmtDate(a.date)} at {fmtTime(a.slot)}</p>
+                  <p className="text-base font-semibold text-ink">{doc?.name || "Doctor"}</p>
+                  <p className="text-xs text-ink-3">{doc?.specialty} · {fmtDate(a.date)} at {fmtTime(a.slot)}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{a.token}</span>
+                  <span className="rounded-md bg-surface-3 px-2.5 py-1 text-xs font-semibold text-ink-2">{a.token}</span>
                   <ApptBadge status={a.status} />
-                  {canCancel && <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setToCancel(a)}>Cancel</Button>}
+                  {canCancel && <Button size="sm" variant="ghost" className="text-danger" onClick={() => setToCancel(a)}>Cancel</Button>}
                 </div>
               </div>
             );
@@ -379,16 +379,16 @@ export function DoctorQueue() {
       ) : queue.length === 0 ? (
         <EmptyState icon="ClipboardCheck" title="No appointments today" message="Booked appointments for today will appear here." />
       ) : (
-        <Card className="divide-y divide-slate-200 overflow-hidden">
+        <Card className="divide-y divide-brd overflow-hidden">
           {queue.map((a) => {
             const doc = doctorById(a.doctorId);
             const patient = userById(a.studentId);
             return (
               <div key={a.id} className="flex items-center gap-4 p-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-sm font-bold text-teal-700">{a.token}</span>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-teal-100 dark:bg-teal-500/15 text-base font-bold text-teal-700 dark:text-teal-300">{a.token}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-900">{patient?.name || "Patient"}</p>
-                  <p className="text-xs text-slate-500">{fmtTime(a.slot)} · {doc?.name} ({doc?.specialty})</p>
+                  <p className="text-base font-semibold text-ink">{patient?.name || "Patient"}</p>
+                  <p className="text-xs text-ink-3">{fmtTime(a.slot)} · {doc?.name} ({doc?.specialty})</p>
                 </div>
                 <ApptBadge status={a.status} />
                 {a.status !== "Completed" && (
@@ -413,15 +413,15 @@ export function MedicalWidget() {
     .filter((a) => a.studentId === currentUser?.id && (a.status === "Booked" || a.status === "Confirmed") && a.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))[0];
   return (
-    <button onClick={() => navigate(next ? "/medical/appointments" : "/medical")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-teal-300 hover:bg-teal-50/40">
+    <button onClick={() => navigate(next ? "/medical/appointments" : "/medical")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-teal-300 dark:hover:border-teal-500/40 hover:bg-teal-50/40 dark:hover:bg-teal-500/10">
       <AccentTile icon="Stethoscope" tone="teal" size={44} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900">{next ? "Next appointment" : "Medical Center"}</p>
-        <p className="truncate text-xs text-slate-500">
+        <p className="text-base font-semibold text-ink">{next ? "Next appointment" : "Medical Center"}</p>
+        <p className="truncate text-xs text-ink-3">
           {next ? `${doctorById(next.doctorId)?.name} · ${fmtDate(next.date)} · ${next.token}` : "Book an appointment with a campus doctor"}
         </p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-teal-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-teal-500 dark:group-hover:text-teal-300" />
     </button>
   );
 }

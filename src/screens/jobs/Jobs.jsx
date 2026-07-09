@@ -106,8 +106,8 @@ function SaveButton({ saved, onClick, className = "" }) {
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={saved ? "Saved — tap to remove" : "Save this listing"}
       aria-label={saved ? "Remove from saved" : "Save listing"}
-      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
-        saved ? "text-amber-500 hover:bg-amber-50" : "text-slate-300 hover:bg-slate-100 hover:text-slate-400"
+      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+        saved ? "text-warn hover:bg-warn-bg" : "text-ink-3 hover:bg-surface-2 hover:text-ink-3"
       } ${className}`}
     >
       <Icon name="Bookmark" size={16} className={saved ? "fill-amber-400" : ""} />
@@ -143,13 +143,13 @@ function JobCard({ job, onOpen }) {
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}
-      className={`group flex cursor-pointer flex-col rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:border-indigo-300 hover:shadow-md ${dim ? "opacity-70" : ""}`}
+      className={`group flex cursor-pointer flex-col rounded-lg border border-brd bg-surface p-5 text-left shadow-sm transition-all hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:shadow-md ${dim ? "opacity-70" : ""}`}
     >
       <div className="flex items-start gap-3">
         <AccentTile icon="Briefcase" tone={ACCENT} size={44} />
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 text-sm font-semibold text-slate-900 group-hover:text-indigo-700">{job.title}</h3>
-          <p className="mt-0.5 truncate text-sm text-slate-500">{job.company}</p>
+          <h3 className="line-clamp-2 text-base font-semibold text-ink group-hover:text-indigo-700 dark:group-hover:text-indigo-300">{job.title}</h3>
+          <p className="mt-0.5 truncate text-base text-ink-3">{job.company}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <StatusPill status={status} />
@@ -159,20 +159,20 @@ function JobCard({ job, onOpen }) {
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <TypeBadge type={job.jobType} />
-        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-          <Icon name="MapPin" size={13} className="text-slate-400" /> {job.location}
-          <span className="text-slate-300">·</span> {WORK_MODE_LABEL[job.workMode] || job.workMode}
+        <span className="inline-flex items-center gap-1 text-xs text-ink-3">
+          <Icon name="MapPin" size={13} className="text-ink-3" /> {job.location}
+          <span className="text-ink-3">·</span> {WORK_MODE_LABEL[job.workMode] || job.workMode}
         </span>
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+      <div className="mt-4 flex items-center justify-between border-t border-brd pt-3">
+        <span className="inline-flex items-center gap-1.5 text-xs text-ink-3">
           {source.isClub
-            ? <Icon name="UsersRound" size={13} className="text-indigo-500" />
-            : <Icon name="ShieldCheck" size={13} className="text-slate-400" />}
+            ? <Icon name="UsersRound" size={13} className="text-indigo-500 dark:text-indigo-400" />
+            : <Icon name="ShieldCheck" size={13} className="text-ink-3" />}
           <span className="truncate">{source.name}</span>
         </span>
-        <span className={`text-xs font-medium ${status === "Closing soon" ? "text-amber-600" : status === "Expired" ? "text-slate-400" : "text-slate-500"}`}>
+        <span className={`text-xs font-semibold ${status === "Closing soon" ? "text-warn" : status === "Expired" ? "text-ink-3" : "text-ink-3"}`}>
           {daysLeftLabel(job.deadline)}
         </span>
       </div>
@@ -240,13 +240,13 @@ export function Jobs() {
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-xs">
-          <Icon name="Search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Icon name="Search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search jobs"
             placeholder="Search title, company, or location…"
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30"
+            className="h-10 w-full rounded-md border border-brd bg-surface pl-9 pr-3 text-base placeholder:text-ink-3 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -294,7 +294,7 @@ function ApplyBlock({ job }) {
     return (
       <a
         href={`mailto:${job.applyValue}?subject=${encodeURIComponent("Application — " + job.title)}`}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+        className="flex w-full items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-brand-700"
       >
         <Icon name="Mail" size={16} /> Apply by email
       </a>
@@ -305,7 +305,7 @@ function ApplyBlock({ job }) {
       <button
         onClick={async () => { setDownloading(true); await downloadFile(job.applyFileUrl, job.applyFileName || "circular.pdf"); setDownloading(false); }}
         disabled={!job.applyFileUrl || downloading}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
       >
         {downloading ? <Spinner size={16} className="border-white/40 border-t-white" /> : <Icon name="Download" size={16} />}
         {job.applyFileName || "Download circular"}
@@ -319,7 +319,7 @@ function ApplyBlock({ job }) {
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+      className="flex w-full items-center justify-center gap-2 rounded-md bg-brand px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-brand-700"
     >
       <Icon name="ExternalLink" size={16} /> Apply online
     </a>
@@ -455,12 +455,12 @@ export function JobDetail({ id }) {
   return (
     <AppShell activeKey="jobs" title="Listing">
       <div className="mx-auto max-w-4xl">
-        <button onClick={() => navigate("/jobs")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/jobs")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to Jobs
         </button>
 
         {job.removed && (
-          <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 flex items-start gap-2 rounded-md border border-danger-bg bg-danger-bg px-4 py-3 text-base text-danger">
             <Icon name="ShieldAlert" size={16} className="mt-0.5 shrink-0" />
             {/* Admin removals carry a reason; a poster-withdrawn listing doesn't. */}
             <span>{job.removedReason ? `Removed by an admin — ${job.removedReason}` : "This listing was withdrawn by the poster."}</span>
@@ -477,26 +477,26 @@ export function JobDetail({ id }) {
                   <TypeBadge type={job.jobType} />
                   <StatusPill status={status} />
                 </div>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{job.title}</h2>
-                <p className="mt-0.5 text-base text-slate-600">{job.company}</p>
+                <h2 className="mt-2 text-4xl font-bold tracking-tight text-ink">{job.title}</h2>
+                <p className="mt-0.5 text-xl text-ink-2">{job.company}</p>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-600">
-              <span className="inline-flex items-center gap-1.5"><Icon name="MapPin" size={15} className="text-slate-400" /> {job.location} · {WORK_MODE_LABEL[job.workMode]}</span>
-              {job.stipend && <span className="inline-flex items-center gap-1.5"><Icon name="Wallet" size={15} className="text-slate-400" /> {job.stipend}</span>}
-              <span className="inline-flex items-center gap-1.5"><Icon name="CalendarClock" size={15} className="text-slate-400" /> {daysLeftLabel(job.deadline)}</span>
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-base text-ink-2">
+              <span className="inline-flex items-center gap-1.5"><Icon name="MapPin" size={15} className="text-ink-3" /> {job.location} · {WORK_MODE_LABEL[job.workMode]}</span>
+              {job.stipend && <span className="inline-flex items-center gap-1.5"><Icon name="Wallet" size={15} className="text-ink-3" /> {job.stipend}</span>}
+              <span className="inline-flex items-center gap-1.5"><Icon name="CalendarClock" size={15} className="text-ink-3" /> {daysLeftLabel(job.deadline)}</span>
             </div>
 
             <section className="mt-6">
-              <h3 className="text-sm font-semibold text-slate-900">About this role</h3>
-              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">{job.description}</p>
+              <h3 className="text-base font-semibold text-ink">About this role</h3>
+              <p className="mt-2 whitespace-pre-line text-base leading-relaxed text-ink-2">{job.description}</p>
             </section>
 
             {job.requirements && (
               <section className="mt-6">
-                <h3 className="text-sm font-semibold text-slate-900">Requirements</h3>
-                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">{job.requirements}</p>
+                <h3 className="text-base font-semibold text-ink">Requirements</h3>
+                <p className="mt-2 whitespace-pre-line text-base leading-relaxed text-ink-2">{job.requirements}</p>
               </section>
             )}
           </div>
@@ -505,37 +505,37 @@ export function JobDetail({ id }) {
           <div className="lg:col-span-2">
             <Card className="space-y-4 p-5">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Shared by</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-3">Shared by</p>
                 <div className="mt-2 flex items-center gap-2.5">
                   {source.isClub
-                    ? <span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-indigo-600"><Icon name="UsersRound" size={18} /></span>
+                    ? <span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300"><Icon name="UsersRound" size={18} /></span>
                     : <Avatar name={poster?.name || source.name} size={36} src={poster?.avatar} />}
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-900">{source.name}</p>
-                    <p className="text-xs text-slate-400">Posted {relativeDate(job.createdAt)}</p>
+                    <p className="truncate text-base font-semibold text-ink">{source.name}</p>
+                    <p className="text-xs text-ink-3">Posted {relativeDate(job.createdAt)}</p>
                   </div>
                 </div>
               </div>
 
               {!closed ? (
-                <div className="border-t border-slate-100 pt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">How to apply</p>
+                <div className="border-t border-brd pt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">How to apply</p>
                   <ApplyBlock job={job} />
-                  <p className="mt-2 text-center text-xs text-slate-400">Deadline {fmtDate(job.deadline)}</p>
+                  <p className="mt-2 text-center text-xs text-ink-3">Deadline {fmtDate(job.deadline)}</p>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                  <Icon name="CalendarX" size={16} className="text-slate-400" />
+                <div className="flex items-center gap-2 rounded-md border border-brd bg-surface-2 px-4 py-3 text-base text-ink-3">
+                  <Icon name="CalendarX" size={16} className="text-ink-3" />
                   {status === "Removed" ? "This listing is no longer available." : "Applications are closed."}
                 </div>
               )}
 
               {/* Save / unsave */}
-              <div className="border-t border-slate-100 pt-4">
+              <div className="border-t border-brd pt-4">
                 <button
                   onClick={toggleSave}
-                  className={`flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-                    saved ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  className={`flex w-full items-center justify-center gap-2 rounded-md border px-4 py-2.5 text-base font-semibold transition-colors ${
+                    saved ? "border-warn-bg bg-warn-bg text-warn hover:bg-warn-bg" : "border-brd bg-surface text-ink-2 hover:bg-surface-2"
                   }`}
                 >
                   <Icon name="Bookmark" size={16} className={saved ? "fill-amber-400" : ""} /> {saved ? "Saved" : "Save listing"}
@@ -543,11 +543,11 @@ export function JobDetail({ id }) {
               </div>
 
               {/* Owner / admin / report actions */}
-              <div className="border-t border-slate-100 pt-4">
+              <div className="border-t border-brd pt-4">
                 {isOwner ? (
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" icon="Pencil" onClick={() => navigate(`/jobs/${id}/edit`)}>Edit</Button>
-                    {!job.removed && <Button variant="secondary" icon="Archive" className="text-red-600" onClick={() => setConfirmWithdraw(true)}>Withdraw</Button>}
+                    {!job.removed && <Button variant="secondary" icon="Archive" className="text-danger" onClick={() => setConfirmWithdraw(true)}>Withdraw</Button>}
                   </div>
                 ) : isAdmin ? (
                   <div className="flex flex-wrap gap-2">
@@ -556,7 +556,7 @@ export function JobDetail({ id }) {
                       : <Button variant="destructive" icon="ShieldAlert" onClick={() => setRemoveOpen(true)}>Remove</Button>}
                   </div>
                 ) : (
-                  <button onClick={() => setReporting(true)} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-red-600">
+                  <button onClick={() => setReporting(true)} className="inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-danger">
                     <Icon name="Flag" size={15} /> Report this listing
                   </button>
                 )}
@@ -719,7 +719,7 @@ function JobEditor({ id, existing }) {
   return (
     <AppShell activeKey="jobs" title={editing ? "Edit Listing" : "Post a Job"}>
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate(editing ? `/jobs/${id}` : "/jobs")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate(editing ? `/jobs/${id}` : "/jobs")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back
         </button>
         <PageHeader title={editing ? "Edit Listing" : "Post a Job"} subtitle="Share an opportunity with the whole campus." />
@@ -776,8 +776,8 @@ function JobEditor({ id, existing }) {
 
           <Card className="space-y-5 p-6">
             <div>
-              <p className="text-sm font-medium text-slate-700">How should students apply?</p>
-              <p className="mt-0.5 text-xs text-slate-400">Pick one — an external link, an email address, or an uploaded circular.</p>
+              <p className="text-base font-semibold text-ink-2">How should students apply?</p>
+              <p className="mt-0.5 text-xs text-ink-3">Pick one — an external link, an email address, or an uploaded circular.</p>
             </div>
             <SegmentToggle options={APPLY_METHODS} value={form.applyMethod} onChange={(v) => set("applyMethod", v)} />
 
@@ -795,10 +795,10 @@ function JobEditor({ id, existing }) {
               <Field label="Circular (PDF)" required error={errors.applyFile}>
                 <div className="flex flex-col gap-2">
                   {form.applyFileName && (
-                    <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                      <Icon name="FileText" size={14} className="text-slate-400" />
-                      <span className="flex-1 truncate text-sm text-slate-600">{form.applyFileName}</span>
-                      <button type="button" onClick={() => setForm((f) => ({ ...f, applyFile: null, applyFileName: "" }))} className="text-slate-300 hover:text-slate-500"><Icon name="X" size={14} /></button>
+                    <div className="flex items-center gap-2 rounded-sm border border-brd bg-surface-2 px-3 py-2">
+                      <Icon name="FileText" size={14} className="text-ink-3" />
+                      <span className="flex-1 truncate text-base text-ink-2">{form.applyFileName}</span>
+                      <button type="button" onClick={() => setForm((f) => ({ ...f, applyFile: null, applyFileName: "" }))} className="text-ink-3 hover:text-ink-3"><Icon name="X" size={14} /></button>
                     </div>
                   )}
                   <input
@@ -811,7 +811,7 @@ function JobEditor({ id, existing }) {
                       if (file.size > 5 * 1024 * 1024) { toast({ type: "error", title: "Too large", message: "Keep the PDF under 5 MB." }); return; }
                       setForm((f) => ({ ...f, applyFile: file, applyFileName: file.name }));
                     }}
-                    className="text-sm text-slate-500 file:mr-2 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+                    className="text-base text-ink-3 file:mr-2 file:rounded-sm file:border-0 file:bg-indigo-50 dark:file:bg-indigo-500/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-500/25"
                   />
                 </div>
               </Field>
@@ -887,8 +887,8 @@ export function ModerateJobs() {
         <div className="space-y-8">
           {/* Reported queue */}
           <section>
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <Icon name="Flag" size={15} className="text-amber-500" /> Reported ({reported.length})
+            <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-ink">
+              <Icon name="Flag" size={15} className="text-warn" /> Reported ({reported.length})
             </h3>
             {reported.length === 0 ? (
               <EmptyState icon="ShieldCheck" title="Nothing reported" message="No listings are awaiting review." />
@@ -901,8 +901,8 @@ export function ModerateJobs() {
                     <Card key={job.id} className="p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <button onClick={() => navigate(`/jobs/${job.id}`)} className="text-left text-sm font-semibold text-slate-900 hover:text-indigo-700">{job.title}</button>
-                          <p className="mt-0.5 text-xs text-slate-500">{job.company} · {source || "Campus Careers"} · posted {relativeDate(job.createdAt)}</p>
+                          <button onClick={() => navigate(`/jobs/${job.id}`)} className="text-left text-base font-semibold text-ink hover:text-indigo-700 dark:hover:text-indigo-300">{job.title}</button>
+                          <p className="mt-0.5 text-xs text-ink-3">{job.company} · {source || "Campus Careers"} · posted {relativeDate(job.createdAt)}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge tone="amber" icon="Flag">{job.reportCount} report{job.reportCount === 1 ? "" : "s"}</Badge>
@@ -910,11 +910,11 @@ export function ModerateJobs() {
                         </div>
                       </div>
                       {reps.length > 0 && (
-                        <ul className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
+                        <ul className="mt-3 space-y-1.5 border-t border-brd pt-3">
                           {reps.map((r) => (
-                            <li key={r.id} className="flex items-start gap-2 text-xs text-slate-500">
-                              <Icon name="CornerDownRight" size={13} className="mt-0.5 shrink-0 text-slate-300" />
-                              <span><span className="font-medium text-slate-700">{reasonLabel(r.reason)}</span>{r.note ? ` — ${r.note}` : ""} <span className="text-slate-400">· {userById(r.reporterId)?.name || "A student"}</span></span>
+                            <li key={r.id} className="flex items-start gap-2 text-xs text-ink-3">
+                              <Icon name="CornerDownRight" size={13} className="mt-0.5 shrink-0 text-ink-3" />
+                              <span><span className="font-semibold text-ink-2">{reasonLabel(r.reason)}</span>{r.note ? ` — ${r.note}` : ""} <span className="text-ink-3">· {userById(r.reporterId)?.name || "A student"}</span></span>
                             </li>
                           ))}
                         </ul>
@@ -929,15 +929,15 @@ export function ModerateJobs() {
           {/* Removed */}
           {removed.length > 0 && (
             <section>
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
-                <Icon name="Archive" size={15} className="text-slate-400" /> Removed ({removed.length})
+              <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-ink">
+                <Icon name="Archive" size={15} className="text-ink-3" /> Removed ({removed.length})
               </h3>
               <div className="space-y-3">
                 {removed.map((job) => (
                   <Card key={job.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-700">{job.title}</p>
-                      <p className="mt-0.5 text-xs text-slate-400">{job.company}{job.removedReason ? ` · removed: ${job.removedReason}` : ""}</p>
+                      <p className="truncate text-base font-semibold text-ink-2">{job.title}</p>
+                      <p className="mt-0.5 text-xs text-ink-3">{job.company}{job.removedReason ? ` · removed: ${job.removedReason}` : ""}</p>
                     </div>
                     <Button size="sm" variant="secondary" icon="RotateCcw" onClick={() => doRestore(job)}>Restore</Button>
                   </Card>
@@ -990,14 +990,14 @@ export function SavedJobs() {
   return (
     <AppShell activeKey="jobs" title="Saved Jobs">
       <div className="mx-auto max-w-5xl">
-        <button onClick={() => navigate("/jobs")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/jobs")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to Jobs
         </button>
         <PageHeader title="Saved Jobs" subtitle="Listings you've bookmarked — your shortlist, soonest deadline first." />
 
         {closingSoon.length > 0 && (
-          <div className="mb-5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <Icon name="BellRing" size={16} className="mt-0.5 shrink-0 text-amber-500" />
+          <div className="mb-5 flex items-start gap-2 rounded-md border border-warn-bg bg-warn-bg px-4 py-3 text-base text-warn">
+            <Icon name="BellRing" size={16} className="mt-0.5 shrink-0 text-warn" />
             <span><strong>{closingSoon.length}</strong> of your saved {closingSoon.length === 1 ? "listing closes" : "listings close"} within 3 days — apply before the deadline passes.</span>
           </div>
         )}
@@ -1034,18 +1034,18 @@ export function JobsWidget() {
   return (
     <button
       onClick={() => navigate(savedClosing > 0 ? "/jobs/saved" : "/jobs")}
-      className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50/40"
+      className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10"
     >
       <AccentTile icon="Briefcase" tone={ACCENT} size={44} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900">Jobs &amp; Internships</p>
+        <p className="text-base font-semibold text-ink">Jobs &amp; Internships</p>
         {savedClosing > 0 ? (
-          <p className="truncate text-xs font-medium text-amber-600">{savedClosing} saved {savedClosing === 1 ? "listing closes" : "listings close"} soon — apply now</p>
+          <p className="truncate text-xs font-semibold text-warn">{savedClosing} saved {savedClosing === 1 ? "listing closes" : "listings close"} soon — apply now</p>
         ) : (
-          <p className="truncate text-xs text-slate-500">{openCount} open opportunit{openCount === 1 ? "y" : "ies"} right now</p>
+          <p className="truncate text-xs text-ink-3">{openCount} open opportunit{openCount === 1 ? "y" : "ies"} right now</p>
         )}
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-indigo-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-indigo-500 dark:group-hover:text-indigo-300" />
     </button>
   );
 }

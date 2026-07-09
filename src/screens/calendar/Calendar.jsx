@@ -7,10 +7,10 @@ import { Card, Button, Field, Input, Textarea, Modal, EmptyState, useToast } fro
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TYPES = [
-  { id: "holiday", label: "Holiday", dot: "bg-red-500", chip: "border-red-500 bg-red-50 text-red-700", stripe: "bg-red-500" },
-  { id: "exam", label: "Exam", dot: "bg-amber-500", chip: "border-amber-500 bg-amber-50 text-amber-700", stripe: "bg-amber-500" },
-  { id: "semester", label: "Semester", dot: "bg-blue-500", chip: "border-blue-500 bg-blue-50 text-blue-700", stripe: "bg-blue-500" },
-  { id: "general", label: "General", dot: "bg-slate-400", chip: "border-slate-400 bg-slate-50 text-slate-600", stripe: "bg-slate-400" },
+  { id: "holiday", label: "Holiday", dot: "bg-danger", chip: "border-danger bg-danger-bg text-danger", stripe: "bg-danger" },
+  { id: "exam", label: "Exam", dot: "bg-warn", chip: "border-warn bg-warn-bg text-warn", stripe: "bg-warn" },
+  { id: "semester", label: "Semester", dot: "bg-brand", chip: "border-brand bg-brand-50 text-brand-700", stripe: "bg-brand" },
+  { id: "general", label: "General", dot: "bg-ink-3", chip: "border-brd-2 bg-surface-2 text-ink-2", stripe: "bg-ink-3" },
 ];
 const TYPE = Object.fromEntries(TYPES.map((t) => [t.id, t]));
 const dim = (y, m) => new Date(y, m + 1, 0).getDate();
@@ -100,15 +100,15 @@ export function AcademicCalendar() {
 
       {/* Month nav */}
       <div className="mb-4 flex items-center justify-between">
-        <button onClick={prev} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"><ChevronLeft size={20} /></button>
-        <h3 className="text-lg font-bold text-slate-900">{MONTHS[month]} {year}</h3>
-        <button onClick={next} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"><ChevronRight size={20} /></button>
+        <button onClick={prev} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2"><ChevronLeft size={20} /></button>
+        <h3 className="text-2xl font-bold text-ink">{MONTHS[month]} {year}</h3>
+        <button onClick={next} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2"><ChevronRight size={20} /></button>
       </div>
 
       {/* Grid */}
       <Card className="p-3 sm:p-4">
         <div className="grid grid-cols-7">
-          {DAYS.map((d) => <div key={d} className="pb-2 text-center text-xs font-medium text-slate-400">{d}</div>)}
+          {DAYS.map((d) => <div key={d} className="pb-2 text-center text-xs font-semibold text-ink-3">{d}</div>)}
         </div>
         {weeks.map((wk, wi) => (
           <div key={wi} className="grid grid-cols-7">
@@ -118,11 +118,11 @@ export function AcademicCalendar() {
               return (
                 <div key={di} className="flex min-h-[52px] flex-col items-center py-1.5">
                   {day && (
-                    <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm ${isToday ? "bg-teal-600 font-semibold text-white" : "text-slate-700"}`}>{day}</span>
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-full text-base ${isToday ? "bg-teal-600 font-semibold text-white" : "text-ink-2"}`}>{day}</span>
                   )}
                   {evs && (
                     <div className="mt-1 flex gap-0.5">
-                      {evs.slice(0, 3).map((e, i) => <span key={i} className={`h-1.5 w-1.5 rounded-full ${TYPE[e.type]?.dot || "bg-slate-400"}`} />)}
+                      {evs.slice(0, 3).map((e, i) => <span key={i} className={`h-1.5 w-1.5 rounded-full ${TYPE[e.type]?.dot || "bg-ink-3"}`} />)}
                     </div>
                   )}
                 </div>
@@ -135,7 +135,7 @@ export function AcademicCalendar() {
       {/* Legend */}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
         {TYPES.map((t) => (
-          <span key={t.id} className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+          <span key={t.id} className="inline-flex items-center gap-1.5 text-xs text-ink-2">
             <span className={`h-2 w-2 rounded-full ${t.dot}`} /> {t.label}
           </span>
         ))}
@@ -148,18 +148,18 @@ export function AcademicCalendar() {
         ) : (
           monthEvents.map((e) => (
             <Card key={e.id} className="flex overflow-hidden">
-              <span className={`w-1 shrink-0 ${TYPE[e.type]?.stripe || "bg-slate-400"}`} />
+              <span className={`w-1 shrink-0 ${TYPE[e.type]?.stripe || "bg-ink-3"}`} />
               <div className="flex-1 p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-900">{e.title}</p>
-                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${TYPE[e.type]?.chip}`}>{TYPE[e.type]?.label}</span>
+                  <p className="text-base font-semibold text-ink">{e.title}</p>
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${TYPE[e.type]?.chip}`}>{TYPE[e.type]?.label}</span>
                 </div>
-                <p className="mt-0.5 text-xs text-slate-500">{fmtShort(e.date)}{e.endDate ? ` — ${fmtShort(e.endDate)}` : ""}</p>
-                {e.description && <p className="mt-1 text-sm text-slate-500">{e.description}</p>}
+                <p className="mt-0.5 text-xs text-ink-3">{fmtShort(e.date)}{e.endDate ? ` — ${fmtShort(e.endDate)}` : ""}</p>
+                {e.description && <p className="mt-1 text-base text-ink-3">{e.description}</p>}
                 {canManageCalendar && (
                   <div className="mt-2 flex gap-2">
-                    <button onClick={() => openEdit(e)} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"><Pencil size={13} /> Edit</button>
-                    <button onClick={() => setConfirmDel(e)} className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700"><Trash2 size={13} /> Delete</button>
+                    <button onClick={() => openEdit(e)} className="inline-flex items-center gap-1 text-xs font-semibold text-ink-3 hover:text-ink-2"><Pencil size={13} /> Edit</button>
+                    <button onClick={() => setConfirmDel(e)} className="inline-flex items-center gap-1 text-xs font-semibold text-danger hover:text-danger"><Trash2 size={13} /> Delete</button>
                   </div>
                 )}
               </div>
@@ -184,7 +184,7 @@ export function AcademicCalendar() {
             <div className="flex flex-wrap gap-2">
               {TYPES.map((t) => (
                 <button key={t.id} type="button" onClick={() => setForm((f) => ({ ...f, type: t.id }))}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${form.type === t.id ? t.chip : "border-slate-200 bg-white text-slate-500"}`}>
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${form.type === t.id ? t.chip : "border-brd bg-surface text-ink-3"}`}>
                   {t.label}
                 </button>
               ))}

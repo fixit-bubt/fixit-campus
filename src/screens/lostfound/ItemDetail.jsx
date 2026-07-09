@@ -121,16 +121,16 @@ function ContactCard({ user, label }) {
   const wa = user.whatsapp ? user.whatsapp.replace(/[^0-9]/g, "") : "";
   return (
     <Card className="p-5">
-      <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+      <div className="flex items-center gap-1.5 text-base font-semibold text-success">
         <CircleCheck size={16} /> Contact unlocked
       </div>
-      <p className="mt-1 text-xs text-slate-500">{label}</p>
-      <div className="mt-3 space-y-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p className="mt-1 text-xs text-ink-3">{label}</p>
+      <div className="mt-3 space-y-2.5 rounded-md border border-brd bg-surface-2 p-3">
         <div className="flex items-center gap-3">
           <Avatar name={user.name} src={user.avatar} />
-          <p className="truncate text-sm font-medium text-slate-900">{user.name}</p>
+          <p className="truncate text-base font-semibold text-ink">{user.name}</p>
         </div>
-        <a href={`mailto:${user.email}`} className="flex min-w-0 items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700">
+        <a href={`mailto:${user.email}`} className="flex min-w-0 items-center gap-1.5 text-xs text-brand hover:text-brand-700">
           <Mail size={13} className="shrink-0" /> <span className="truncate">{user.email}</span>
         </a>
         {wa && (
@@ -138,7 +138,7 @@ function ContactCard({ user, label }) {
             href={`https://wa.me/${wa}`}
             target="_blank"
             rel="noreferrer"
-            className="flex min-w-0 items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700"
+            className="flex min-w-0 items-center gap-1.5 text-xs text-success hover:text-success"
           >
             <MessageCircle size={13} className="shrink-0" /> <span className="truncate">{user.whatsapp}</span>
           </a>
@@ -151,23 +151,23 @@ function ContactCard({ user, label }) {
 // One incoming claim, shown to the poster with Approve / Reject.
 function PosterClaimRow({ claim, claimant, onDecide, busy, proofUrl, itemResolved }) {
   return (
-    <div className="border-t border-slate-100 pt-4 first:border-t-0 first:pt-0">
+    <div className="border-t border-brd pt-4 first:border-t-0 first:pt-0">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Avatar name={claimant?.name || "?"} size={26} />
           <div>
-            <p className="text-sm font-medium text-slate-900">{claimant?.name || "Unknown"}</p>
-            <p className="text-xs text-slate-400">{fmtDate(claim.createdAt)}</p>
+            <p className="text-base font-semibold text-ink">{claimant?.name || "Unknown"}</p>
+            <p className="text-xs text-ink-3">{fmtDate(claim.createdAt)}</p>
           </div>
         </div>
         {claim.status !== "Pending" && <StatusBadge status={claim.status} />}
       </div>
-      <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">{claim.message}</p>
-      {claim.proof && proofUrl && <img src={proofUrl} alt="proof" className="mt-3 max-h-40 rounded-lg border border-slate-200 object-cover" />}
+      <p className="mt-3 rounded-md bg-surface-2 p-3 text-base leading-relaxed text-ink-2">{claim.message}</p>
+      {claim.proof && proofUrl && <img src={proofUrl} alt="proof" className="mt-3 max-h-40 rounded-md border border-brd object-cover" />}
       {claim.status === "Pending" && (
         <div className="mt-3 flex items-center justify-end gap-2">
-          {itemResolved && <span className="mr-auto text-xs text-slate-400">Item already resolved</span>}
-          <Button size="sm" variant="secondary" icon={X} className="text-red-600" disabled={busy} onClick={() => onDecide(claim, "Rejected")}>Reject</Button>
+          {itemResolved && <span className="mr-auto text-xs text-ink-3">Item already resolved</span>}
+          <Button size="sm" variant="secondary" icon={X} className="text-danger" disabled={busy} onClick={() => onDecide(claim, "Rejected")}>Reject</Button>
           {!itemResolved && <Button size="sm" icon={Check} disabled={busy} onClick={() => onDecide(claim, "Approved")}>Approve</Button>}
         </div>
       )}
@@ -279,7 +279,7 @@ export default function ItemDetail({ id }) {
   return (
     <AppShell activeKey="lost-found" title="Item Detail">
       <div className="mx-auto max-w-4xl">
-        <button onClick={() => navigate("/lost-found")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/lost-found")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <ArrowLeft size={16} /> Back to Lost &amp; Found
         </button>
 
@@ -297,15 +297,15 @@ export default function ItemDetail({ id }) {
               <ItemTypeBadge type={item.type} />
               <Badge tone="neutral" icon={CategoryIcon}>{item.category}</Badge>
             </div>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">{item.title}</h2>
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-slate-500">
-              <span className="inline-flex items-center gap-1.5"><MapPin size={15} className="text-slate-400" />{item.location}</span>
-              <span className="inline-flex items-center gap-1.5"><Calendar size={15} className="text-slate-400" />{fmtDate(item.date)}</span>
+            <h2 className="mt-3 text-4xl font-bold tracking-tight text-ink">{item.title}</h2>
+            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-base text-ink-3">
+              <span className="inline-flex items-center gap-1.5"><MapPin size={15} className="text-ink-3" />{item.location}</span>
+              <span className="inline-flex items-center gap-1.5"><Calendar size={15} className="text-ink-3" />{fmtDate(item.date)}</span>
             </div>
 
-            <p className="mt-4 text-sm leading-relaxed text-slate-700">{item.description}</p>
+            <p className="mt-4 text-base leading-relaxed text-ink-2">{item.description}</p>
 
-            <div className="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-sm text-slate-500">
+            <div className="mt-5 flex items-center gap-2 border-t border-brd pt-4 text-base text-ink-3">
               <Avatar name={poster?.name || "?"} size={26} />
               Posted by {isPoster ? "you" : poster?.name || "Unknown"}
             </div>
@@ -315,23 +315,23 @@ export default function ItemDetail({ id }) {
               {isPoster ? (
                 <div className="flex gap-2">
                   <Button variant="secondary" icon={Pencil} onClick={() => navigate(`/lost-found/${id}/edit`)}>Edit</Button>
-                  <Button variant="secondary" icon={Trash2} className="text-red-600" onClick={() => setConfirmDelete(true)}>Delete</Button>
+                  <Button variant="secondary" icon={Trash2} className="text-danger" onClick={() => setConfirmDelete(true)}>Delete</Button>
                 </div>
               ) : myClaim ? (
-                <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="flex items-center gap-3 rounded-md border border-brd bg-surface-2 px-4 py-3">
                   <ClaimStatusIcon
                     size={18}
-                    className={myClaim.status === "Approved" ? "text-emerald-600" : myClaim.status === "Rejected" ? "text-red-600" : "text-amber-600"}
+                    className={myClaim.status === "Approved" ? "text-success" : myClaim.status === "Rejected" ? "text-danger" : "text-warn"}
                   />
-                  <div className="text-sm">
-                    <p className="font-medium text-slate-900">
+                  <div className="text-base">
+                    <p className="font-semibold text-ink">
                       {myClaim.status === "Pending"
                         ? "Submitted — waiting for the poster"
                         : myClaim.status === "Approved"
                         ? "Approved — contact shared below"
                         : "Not approved"}
                     </p>
-                    <p className="text-xs text-slate-500">Your {myClaim.kind === "claim" ? "claim" : "notification"} · {fmtDate(myClaim.createdAt)}</p>
+                    <p className="text-xs text-ink-3">Your {myClaim.kind === "claim" ? "claim" : "notification"} · {fmtDate(myClaim.createdAt)}</p>
                   </div>
                 </div>
               ) : (
@@ -346,8 +346,8 @@ export default function ItemDetail({ id }) {
               {contact ? (
                 <ContactCard user={contact} label={revealLabel} />
               ) : (
-                <div className="flex items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                  <Lock size={16} className="text-slate-400" />
+                <div className="flex items-center gap-3 rounded-md border border-dashed border-brd-2 bg-surface-2 px-4 py-3 text-base text-ink-3">
+                  <Lock size={16} className="text-ink-3" />
                   Contact details are hidden until the poster approves a claim.
                 </div>
               )}
@@ -358,8 +358,8 @@ export default function ItemDetail({ id }) {
         {/* Poster: incoming claims to approve / reject */}
         {isPoster && (
           <Card className="mt-6 p-6">
-            <h3 className="text-sm font-semibold text-slate-900">Claims on this item</h3>
-            <p className="mt-1 text-sm text-slate-500">Approve a claim to share contact details with that person.</p>
+            <h3 className="text-base font-semibold text-ink">Claims on this item</h3>
+            <p className="mt-1 text-base text-ink-3">Approve a claim to share contact details with that person.</p>
             <div className="mt-4 space-y-4">
               {itemClaims.length === 0 ? (
                 <EmptyState icon={Inbox} title="No claims yet" message="When someone claims this item, it'll appear here for you to review." />
