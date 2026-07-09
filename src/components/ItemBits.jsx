@@ -10,7 +10,7 @@ export function ItemPhoto({ item, className = "" }) {
   }
   const PlaceholderIcon = ITEM_CATEGORY_ICON[item.category] || Package;
   return (
-    <div className={`flex items-center justify-center bg-slate-100 text-slate-300 ${className}`}>
+    <div className={`flex items-center justify-center bg-surface-2 text-ink-3 ${className}`}>
       <PlaceholderIcon size={40} strokeWidth={1.5} />
     </div>
   );
@@ -30,18 +30,18 @@ export function ItemCard({ item, onOpen }) {
   return (
     <button
       onClick={onOpen}
-      className="group flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-left shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
+      className="group flex flex-col overflow-hidden rounded-lg border border-brd bg-surface text-left shadow-sm transition-all hover:border-brd-2 hover:shadow-md"
     >
       <div className="relative h-40 w-full overflow-hidden">
         <ItemPhoto item={item} className="h-full w-full transition-transform group-hover:scale-105" />
         <div className="absolute left-3 top-3"><ItemTypeBadge type={item.type} /></div>
       </div>
       <div className="flex flex-1 flex-col p-4">
-        <p className="text-xs font-medium text-slate-400">{item.category}</p>
-        <h3 className="mt-0.5 line-clamp-1 text-sm font-semibold text-slate-900">{item.title}</h3>
-        <div className="mt-2 flex flex-col gap-1 text-xs text-slate-500">
-          <span className="inline-flex items-center gap-1.5"><MapPin size={13} className="text-slate-400" />{item.location}</span>
-          <span className="inline-flex items-center gap-1.5"><Calendar size={13} className="text-slate-400" />{fmtDate(item.date)}</span>
+        <p className="text-xs font-semibold text-ink-3">{item.category}</p>
+        <h3 className="mt-0.5 line-clamp-1 text-base font-bold text-ink">{item.title}</h3>
+        <div className="mt-2 flex flex-col gap-1 text-xs text-ink-3">
+          <span className="inline-flex items-center gap-1.5"><MapPin size={13} className="text-ink-3" />{item.location}</span>
+          <span className="inline-flex items-center gap-1.5"><Calendar size={13} className="text-ink-3" />{fmtDate(item.date)}</span>
         </div>
       </div>
     </button>

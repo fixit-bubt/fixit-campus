@@ -3,35 +3,56 @@ import { Icon } from "./Icon.jsx";
 
 // ============================================================================
 // Feature kit — shared building blocks for the campus features.
-// Each feature has ONE signature accent tone, used only for icon tiles +
-// category badges. Chrome (blue-600 primary) stays identical everywhere.
+// Each feature has ONE signature accent (see `sector.*` tokens), used only for
+// icon tiles + category badges. Chrome (brand primary) stays identical
+// everywhere. Legacy hue tones keep Tailwind's palette with dark: variants.
 // ============================================================================
 
 // Full class strings so Tailwind's scanner picks them up.
+// Sector keys (reports, blood, study…) are the app's per-feature accents.
 export const ACCENT_TILE = {
-  sky: "bg-sky-100 text-sky-700",
-  emerald: "bg-emerald-100 text-emerald-700",
-  teal: "bg-teal-100 text-teal-700",
-  violet: "bg-violet-100 text-violet-700",
-  indigo: "bg-indigo-100 text-indigo-700",
-  red: "bg-red-100 text-red-700",
-  fuchsia: "bg-fuchsia-100 text-fuchsia-700",
-  amber: "bg-amber-100 text-amber-700",
-  blue: "bg-blue-100 text-blue-700",
-  purple: "bg-purple-100 text-purple-700",
-  slate: "bg-slate-100 text-slate-600",
+  sky: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
+  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  teal: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+  violet: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+  indigo: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
+  red: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
+  fuchsia: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300",
+  amber: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  blue: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
+  purple: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+  slate: "bg-surface-3 text-ink-2",
+  // Sector accents (A5) — one per feature, same hex in both themes.
+  reports: "bg-sector-reports/15 text-sector-reports dark:bg-sector-reports/20 dark:brightness-125",
+  lostfound: "bg-sector-lostfound/15 text-sector-lostfound dark:bg-sector-lostfound/20 dark:brightness-125",
+  clubs: "bg-sector-clubs/15 text-sector-clubs dark:bg-sector-clubs/20 dark:brightness-125",
+  events: "bg-sector-events/15 text-sector-events dark:bg-sector-events/20 dark:brightness-125",
+  jobs: "bg-sector-jobs/15 text-sector-jobs dark:bg-sector-jobs/20 dark:brightness-125",
+  announce: "bg-sector-announce/15 text-sector-announce dark:bg-sector-announce/20 dark:brightness-125",
+  study: "bg-sector-study/15 text-sector-study dark:bg-sector-study/20 dark:brightness-125",
+  bus: "bg-sector-bus/15 text-sector-bus dark:bg-sector-bus/20 dark:brightness-125",
+  medical: "bg-sector-medical/15 text-sector-medical dark:bg-sector-medical/20 dark:brightness-125",
+  market: "bg-sector-market/15 text-sector-market dark:bg-sector-market/20 dark:brightness-125",
+  ride: "bg-sector-ride/15 text-sector-ride dark:bg-sector-ride/20 dark:brightness-125",
+  blood: "bg-sector-blood/15 text-sector-blood dark:bg-sector-blood/20 dark:brightness-125",
+  directory: "bg-sector-directory/15 text-sector-directory dark:bg-sector-directory/20 dark:brightness-125",
+  prayer: "bg-sector-prayer/15 text-sector-prayer dark:bg-sector-prayer/20 dark:brightness-125",
+  faculty: "bg-sector-faculty/15 text-sector-faculty dark:bg-sector-faculty/20 dark:brightness-125",
+  calendar: "bg-sector-calendar/15 text-sector-calendar dark:bg-sector-calendar/20 dark:brightness-125",
+  routines: "bg-sector-routines/15 text-sector-routines dark:bg-sector-routines/20 dark:brightness-125",
+  coverpage: "bg-sector-coverpage/15 text-sector-coverpage dark:bg-sector-coverpage/20 dark:brightness-125",
 };
 
 export const ACCENT_SOFT = {
-  sky: "bg-sky-50 border-sky-200",
-  emerald: "bg-emerald-50 border-emerald-200",
-  teal: "bg-teal-50 border-teal-200",
-  violet: "bg-violet-50 border-violet-200",
-  indigo: "bg-indigo-50 border-indigo-200",
-  red: "bg-red-50 border-red-200",
-  fuchsia: "bg-fuchsia-50 border-fuchsia-200",
-  amber: "bg-amber-50 border-amber-200",
-  purple: "bg-purple-50 border-purple-200",
+  sky: "bg-sky-50 border-sky-200 dark:bg-sky-500/10 dark:border-sky-500/25",
+  emerald: "bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/25",
+  teal: "bg-teal-50 border-teal-200 dark:bg-teal-500/10 dark:border-teal-500/25",
+  violet: "bg-violet-50 border-violet-200 dark:bg-violet-500/10 dark:border-violet-500/25",
+  indigo: "bg-indigo-50 border-indigo-200 dark:bg-indigo-500/10 dark:border-indigo-500/25",
+  red: "bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/25",
+  fuchsia: "bg-fuchsia-50 border-fuchsia-200 dark:bg-fuchsia-500/10 dark:border-fuchsia-500/25",
+  amber: "bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/25",
+  purple: "bg-purple-50 border-purple-200 dark:bg-purple-500/10 dark:border-purple-500/25",
 };
 
 // Accent icon tile (matches the StatCard tile look). `icon` is a lucide name.
@@ -125,15 +146,15 @@ export function CountdownBanner({ tone = "sky", icon, eyebrow, title, time, wait
         <div className="flex items-start gap-4">
           <AccentTile icon={icon} tone={tone} size={48} />
           <div>
-            {eyebrow && <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{eyebrow}</p>}
-            <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{title}</p>
-            {meta && <p className="mt-1 text-sm text-slate-600">{meta}</p>}
+            {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.06em] text-ink-3">{eyebrow}</p>}
+            <p className="mt-0.5 text-2xl font-bold tracking-tight text-ink sm:text-3xl">{title}</p>
+            {meta && <p className="mt-1 text-base text-ink-2">{meta}</p>}
           </div>
         </div>
         <div className="sm:text-right">
-          {time && <p className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{time}</p>}
+          {time && <p className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{time}</p>}
           {waitMins != null && (
-            <p className="mt-0.5 text-sm font-medium text-slate-500">
+            <p className="mt-0.5 text-base font-semibold text-ink-3">
               {tomorrow ? "tomorrow · " : "in "}{fmtCountdown(waitMins)}
             </p>
           )}
@@ -147,7 +168,7 @@ export function CountdownBanner({ tone = "sky", icon, eyebrow, title, time, wait
 // SegmentToggle — segmented control (To Campus / From Campus, Find / Offer…).
 export function SegmentToggle({ options, value, onChange, className = "" }) {
   return (
-    <div className={`inline-flex rounded-lg border border-slate-200 bg-white p-1 ${className}`}>
+    <div className={`inline-flex rounded-md border border-brd bg-surface p-1 ${className}`}>
       {options.map((opt) => {
         const val = typeof opt === "string" ? opt : opt.value;
         const label = typeof opt === "string" ? opt : opt.label;
@@ -156,8 +177,8 @@ export function SegmentToggle({ options, value, onChange, className = "" }) {
           <button
             key={val}
             onClick={() => onChange(val)}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              active ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+            className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-base font-semibold transition-colors ${
+              active ? "bg-brand text-white shadow-sm" : "text-ink-2 hover:bg-surface-2"
             }`}
           >
             {typeof opt !== "string" && opt.icon && <Icon name={opt.icon} size={15} />}

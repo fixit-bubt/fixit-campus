@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/hind-siliguri": "^5.2.7",
+    "@fontsource/plus-jakarta-sans": "^5.2.8",
     "@supabase/supabase-js": "^2.107.0",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",

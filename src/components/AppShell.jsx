@@ -5,6 +5,7 @@ import { navigate, Link } from "../lib/router.jsx";
 import { Avatar, Badge } from "./ui.jsx";
 import { Icon } from "./Icon.jsx";
 import { Logo } from "./Brand.jsx";
+import { ThemeToggle } from "./ThemeToggle.jsx";
 
 // ============================================================================
 // AppShell — sidebar + top bar + content area for all logged-in screens.
@@ -104,7 +105,7 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
         {nav.map((group, gi) => (
           <div key={group.section || `g${gi}`} className="space-y-1">
             {group.section && (
-              <p className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.section}</p>
+              <p className="px-3 pb-1 pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-3">{group.section}</p>
             )}
             {group.items.map((item) => {
               const active = item.key === activeKey;
@@ -112,11 +113,11 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
                 <button
                   key={item.key}
                   onClick={() => onNavigate(item.path)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-base font-semibold transition-colors ${
+                    active ? "bg-brand-50 text-brand-700" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
                   }`}
                 >
-                  <Icon name={item.icon} size={18} className={active ? "text-blue-600" : "text-slate-400"} />
+                  <Icon name={item.icon} size={18} className={active ? "text-brand" : "text-ink-3"} />
                   {item.label}
                 </button>
               );
@@ -124,12 +125,12 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
           </div>
         ))}
       </nav>
-      <div className="shrink-0 border-t border-slate-200 p-3">
+      <div className="shrink-0 border-t border-brd p-3">
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-base font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
         >
-          <LogOut size={18} className="text-slate-400" />
+          <LogOut size={18} className="text-ink-3" />
           Log out
         </button>
       </div>
@@ -156,21 +157,21 @@ export function AppShell({ activeKey, title, actions, children }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-bg">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-slate-200 bg-white lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-brd bg-surface lg:block">
         <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} />
       </aside>
 
       {/* Mobile drawer */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setDrawerOpen(false)} />
-          <div role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 w-64 bg-white shadow-xl">
+          <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60" onClick={() => setDrawerOpen(false)} />
+          <div role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 w-64 bg-surface shadow-xl">
             <button
               onClick={() => setDrawerOpen(false)}
               aria-label="Close menu"
-              className="absolute right-3 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100"
+              className="absolute right-3 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2"
             >
               <X size={18} />
             </button>
@@ -182,30 +183,31 @@ export function AppShell({ activeKey, title, actions, children }) {
       {/* Main column */}
       <div className="lg:pl-60">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
+        <header className="topbar-blur sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-brd px-4 backdrop-blur sm:px-6">
           <button
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 lg:hidden"
           >
             <Menu size={20} />
           </button>
 
           <div className="min-w-0 flex-1">
-            {title && <h1 className="truncate text-base font-semibold text-slate-900 sm:text-lg">{title}</h1>}
+            {title && <h1 className="truncate text-xl font-bold text-ink sm:text-2xl">{title}</h1>}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
             {actions}
+            <ThemeToggle />
             <button
               onClick={() => navigate("/notifications")}
               title="Notifications"
               aria-label={unreadNotifCount > 0 ? `Notifications, ${unreadNotifCount} unread` : "Notifications"}
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink-2"
             >
               <Bell size={19} />
               {unreadNotifCount > 0 && (
-                <span className="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-none text-white">
+                <span className="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white">
                   {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
                 </span>
               )}
@@ -213,11 +215,11 @@ export function AppShell({ activeKey, title, actions, children }) {
             <button
               onClick={() => navigate("/profile")}
               title="My profile"
-              className="hidden items-center gap-2.5 rounded-lg p-1 pr-1.5 hover:bg-slate-100 sm:flex"
+              className="hidden items-center gap-2.5 rounded-md p-1 pr-1.5 hover:bg-surface-2 sm:flex"
             >
               <div className="text-right">
-                <p className="text-sm font-medium leading-tight text-slate-900">{currentUser.name}</p>
-                <p className="text-xs leading-tight text-slate-400">{currentUser.email}</p>
+                <p className="text-base font-semibold leading-tight text-ink">{currentUser.name}</p>
+                <p className="text-xs leading-tight text-ink-3">{currentUser.email}</p>
               </div>
               <Avatar name={currentUser.name} src={currentUser.avatar} />
             </button>
@@ -228,7 +230,7 @@ export function AppShell({ activeKey, title, actions, children }) {
             <button
               onClick={logout}
               title="Log out"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink-2"
             >
               <LogOut size={18} />
             </button>
@@ -237,9 +239,9 @@ export function AppShell({ activeKey, title, actions, children }) {
 
         {/* A background load failed — offer a retry instead of silently showing empty lists. */}
         {dataError && (
-          <div className="flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 sm:px-6">
+          <div className="flex items-center justify-between gap-3 border-b border-brd bg-warn-bg px-4 py-2.5 text-base text-warn sm:px-6">
             <span>Some data couldn't be loaded. Check your connection and try again.</span>
-            <button onClick={retryData} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-amber-600 px-3 text-xs font-medium text-white hover:bg-amber-700">
+            <button onClick={retryData} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-warn px-3 text-xs font-bold text-white hover:brightness-95">
               Retry
             </button>
           </div>
@@ -257,8 +259,8 @@ export function PageHeader({ title, subtitle, action }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{title}</h2>
-        {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+        <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{title}</h2>
+        {subtitle && <p className="mt-1 text-base text-ink-2">{subtitle}</p>}
       </div>
       {action && <div className="flex shrink-0 gap-2">{action}</div>}
     </div>

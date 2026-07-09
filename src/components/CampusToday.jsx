@@ -18,7 +18,7 @@ import { JobsWidget } from "../screens/jobs/Jobs.jsx";
 export function CampusToday({ className = "" }) {
   return (
     <div className={className}>
-      <h3 className="mb-3 text-sm font-semibold text-slate-900">Campus today</h3>
+      <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.06em] text-ink-3">Campus today</h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <BusWidget />
         <PrayerWidget />

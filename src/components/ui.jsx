@@ -16,7 +16,9 @@ import { resolveIcon } from "./Icon.jsx";
 // ============================================================================
 // FixIt — shared UI component library (presentational only, no data).
 // Icon props accept a lucide-react COMPONENT, e.g. <Button icon={Plus}>.
-// Colors use stock Tailwind utilities (the design system maps 1:1 to them).
+// Colors use the design tokens (tailwind.config.js → CSS variables), so every
+// component re-themes automatically when `.dark` is set on <html>.
+// Legacy accent tones (teal/violet/…) keep Tailwind hues with dark: variants.
 // ============================================================================
 
 // ---------------------------------------------------------------------------
@@ -39,13 +41,13 @@ export function Button({
   const LeadIcon = resolveIcon(icon);
   const TrailIcon = resolveIcon(iconRight);
   const base =
-    "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap";
-  const sizes = { sm: "h-9 px-3 text-sm", md: "h-10 px-4 text-sm" };
+    "inline-flex items-center justify-center gap-2 font-bold rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap";
+  const sizes = { sm: "h-9 px-3 text-sm", md: "h-11 px-4 text-base" };
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
-    secondary: "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 shadow-sm",
-    destructive: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
-    ghost: "bg-transparent text-slate-600 hover:bg-slate-100",
+    primary: "bg-brand text-white hover:bg-brand-700 shadow-sm",
+    secondary: "bg-surface text-ink-2 border border-brd hover:bg-surface-2 shadow-sm",
+    destructive: "bg-danger text-white hover:brightness-95 shadow-sm",
+    ghost: "bg-transparent text-ink-3 hover:bg-surface-2 hover:text-ink-2",
   };
   const iconSize = size === "sm" ? 16 : 18;
   // `loading` disables the button (prevents double-submit) and swaps the lead
@@ -78,15 +80,15 @@ export function Field({ label, htmlFor, required, error, hint, children, classNa
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
       {label && (
-        <label htmlFor={htmlFor} className="text-sm font-medium text-slate-700">
+        <label htmlFor={htmlFor} className="text-md font-semibold text-ink-2">
           {label}
-          {required && <span className="text-red-600"> *</span>}
+          {required && <span className="text-danger"> *</span>}
         </label>
       )}
       {children}
-      {hint && !error && <p className="text-xs text-slate-400">{hint}</p>}
+      {hint && !error && <p className="text-xs text-ink-3">{hint}</p>}
       {error && (
-        <p className="flex items-center gap-1 text-xs text-red-600">
+        <p className="flex items-center gap-1 text-xs text-danger">
           <AlertCircle size={13} />
           {error}
         </p>
@@ -96,20 +98,20 @@ export function Field({ label, htmlFor, required, error, hint, children, classNa
 }
 
 const controlBase =
-  "w-full rounded-lg border bg-white text-slate-900 placeholder:text-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:border-blue-600 disabled:bg-slate-50 disabled:text-slate-400";
-const controlError = "border-red-400 focus:ring-red-600/20 focus:border-red-500";
+  "w-full rounded-md border bg-surface text-ink placeholder:text-ink-3 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand disabled:bg-surface-2 disabled:text-ink-3";
+const controlError = "border-danger focus:ring-danger-bg focus:border-danger";
 
 export function Input({ error, className = "", type, ...rest }) {
   const [show, setShow] = useState(false);
   const isPassword = type === "password";
-  const borders = error ? controlError : "border-slate-200";
+  const borders = error ? controlError : "border-brd";
 
   if (isPassword) {
     return (
       <div className="relative">
         <input
           type={show ? "text" : "password"}
-          className={`${controlBase} h-10 pl-3 pr-10 text-sm ${borders} ${className}`}
+          className={`${controlBase} h-12 pl-3.5 pr-10 text-md ${borders} ${className}`}
           {...rest}
         />
         <button
@@ -117,7 +119,7 @@ export function Input({ error, className = "", type, ...rest }) {
           onClick={() => setShow((s) => !s)}
           tabIndex={-1}
           aria-label={show ? "Hide password" : "Show password"}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
         >
           {show ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
@@ -128,7 +130,7 @@ export function Input({ error, className = "", type, ...rest }) {
   return (
     <input
       type={type}
-      className={`${controlBase} h-10 px-3 text-sm ${borders} ${className}`}
+      className={`${controlBase} h-12 px-3.5 text-md ${borders} ${className}`}
       {...rest}
     />
   );
@@ -138,7 +140,7 @@ export function Textarea({ error, rows = 4, className = "", ...rest }) {
   return (
     <textarea
       rows={rows}
-      className={`${controlBase} px-3 py-2.5 text-sm leading-relaxed resize-y ${error ? controlError : "border-slate-200"} ${className}`}
+      className={`${controlBase} px-3.5 py-3 text-md leading-relaxed resize-y ${error ? controlError : "border-brd"} ${className}`}
       {...rest}
     />
   );
@@ -148,14 +150,14 @@ export function Select({ error, className = "", children, ...rest }) {
   return (
     <div className="relative">
       <select
-        className={`${controlBase} h-10 pl-3 pr-9 text-sm appearance-none cursor-pointer ${error ? controlError : "border-slate-200"} ${className}`}
+        className={`${controlBase} h-12 pl-3.5 pr-9 text-md appearance-none cursor-pointer ${error ? controlError : "border-brd"} ${className}`}
         {...rest}
       >
         {children}
       </select>
       <ChevronDown
         size={16}
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-3"
       />
     </div>
   );
@@ -204,7 +206,7 @@ export function FileUpload({ value, onChange, error, label = "Upload photo", id 
 
   if (preview) {
     return (
-      <div className="relative overflow-hidden rounded-lg border border-slate-200">
+      <div className="relative overflow-hidden rounded-md border border-brd">
         <img
           src={preview}
           alt="preview"
@@ -219,7 +221,7 @@ export function FileUpload({ value, onChange, error, label = "Upload photo", id 
         <button
           type="button"
           onClick={clear}
-          className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 text-slate-700 shadow-sm hover:bg-white"
+          className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/90 text-slate-700 shadow-sm hover:bg-white dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
         >
           <X size={16} />
         </button>
@@ -237,19 +239,19 @@ export function FileUpload({ value, onChange, error, label = "Upload photo", id 
           e.preventDefault();
           handleFiles(e.dataTransfer.files);
         }}
-        className={`flex h-44 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-slate-50 text-center transition-colors hover:bg-slate-100 ${
-          error || localErr ? "border-red-400" : "border-slate-300"
+        className={`flex h-44 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed bg-surface-2 text-center transition-colors hover:bg-surface-3 ${
+          error || localErr ? "border-danger" : "border-brd-2"
         }`}
       >
-        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink-3 shadow-sm">
           <ImagePlus size={20} />
         </span>
-        <span className="text-sm font-medium text-slate-700">{label}</span>
-        <span className="text-xs text-slate-400">PNG or JPG up to {MAX_UPLOAD_MB} MB, drag &amp; drop or click</span>
+        <span className="text-md font-semibold text-ink-2">{label}</span>
+        <span className="text-xs text-ink-3">PNG or JPG up to {MAX_UPLOAD_MB} MB, drag &amp; drop or click</span>
         <input ref={inputRef} id={id} type="file" accept="image/*" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
       </button>
       {localErr && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-red-600">
+        <p className="mt-1.5 flex items-center gap-1 text-xs text-danger">
           <AlertCircle size={13} />
           {localErr}
         </p>
@@ -259,27 +261,28 @@ export function FileUpload({ value, onChange, error, label = "Upload photo", id 
 }
 
 // ---------------------------------------------------------------------------
-// Badge — tone: neutral | blue | amber | emerald | red ; icon: lucide component
+// Badge — tone: neutral | blue | amber | emerald | red (semantic tokens),
+// plus legacy accent hues. icon: lucide component
 // ---------------------------------------------------------------------------
 export function Badge({ tone = "neutral", icon, className = "", children }) {
   const BadgeIcon = resolveIcon(icon);
   const tones = {
-    neutral: "bg-slate-100 text-slate-600",
-    slate: "bg-slate-100 text-slate-600",
-    blue: "bg-blue-100 text-blue-700",
-    amber: "bg-amber-100 text-amber-700",
-    emerald: "bg-emerald-100 text-emerald-700",
-    red: "bg-red-100 text-red-700",
-    teal: "bg-teal-100 text-teal-700",
-    violet: "bg-violet-100 text-violet-700",
-    purple: "bg-purple-100 text-purple-700",
-    indigo: "bg-indigo-100 text-indigo-700",
-    sky: "bg-sky-100 text-sky-700",
-    rose: "bg-rose-100 text-rose-700",
-    fuchsia: "bg-fuchsia-100 text-fuchsia-700",
+    neutral: "bg-surface-3 text-ink-2",
+    slate: "bg-surface-3 text-ink-2",
+    blue: "bg-info-bg text-info",
+    amber: "bg-warn-bg text-warn",
+    emerald: "bg-success-bg text-success",
+    red: "bg-danger-bg text-danger",
+    teal: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+    violet: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+    purple: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
+    indigo: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
+    sky: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
+    rose: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+    fuchsia: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300",
   };
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${tones[tone] || tones.neutral} ${className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${tones[tone] || tones.neutral} ${className}`}>
       {BadgeIcon && <BadgeIcon size={12} />}
       {children}
     </span>
@@ -299,11 +302,11 @@ const STATUS_TONE = {
   Found: "emerald",
 };
 const DOT_COLOR = {
-  amber: "bg-amber-500",
-  blue: "bg-blue-600",
-  emerald: "bg-emerald-600",
-  red: "bg-red-600",
-  neutral: "bg-slate-400",
+  amber: "bg-warn",
+  blue: "bg-info",
+  emerald: "bg-success",
+  red: "bg-danger",
+  neutral: "bg-ink-3",
 };
 export function StatusBadge({ status }) {
   const tone = STATUS_TONE[status] || "neutral";
@@ -320,7 +323,7 @@ export function StatusBadge({ status }) {
 // ---------------------------------------------------------------------------
 export function Card({ className = "", children, ...rest }) {
   return (
-    <div className={`rounded-lg border border-slate-200 bg-white shadow-sm ${className}`} {...rest}>
+    <div className={`rounded-lg border border-brd bg-surface shadow-sm ${className}`} {...rest}>
       {children}
     </div>
   );
@@ -351,7 +354,7 @@ export function Avatar({ name = "", src, size = 36, className = "" }) {
     .toUpperCase();
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-700 ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-brand-100 font-bold text-brand-700 ${className}`}
       style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
       {initials || "?"}
@@ -384,14 +387,14 @@ export function Modal({ open, onClose, title, description, icon, tone = "blue", 
   if (!open) return null;
   const widths = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-lg" };
   const toneBg = {
-    blue: "bg-blue-100 text-blue-700",
-    red: "bg-red-100 text-red-700",
-    emerald: "bg-emerald-100 text-emerald-700",
-    amber: "bg-amber-100 text-amber-700",
+    blue: "bg-info-bg text-info",
+    red: "bg-danger-bg text-danger",
+    emerald: "bg-success-bg text-success",
+    amber: "bg-warn-bg text-warn",
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60" onClick={onClose} />
       <div
         ref={dialogRef}
         tabIndex={-1}
@@ -399,7 +402,7 @@ export function Modal({ open, onClose, title, description, icon, tone = "blue", 
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? descId : undefined}
-        className={`relative flex max-h-[90vh] w-full flex-col ${widths[size]} rounded-xl border border-slate-200 bg-white shadow-xl focus:outline-none`}
+        className={`relative flex max-h-[90vh] w-full flex-col ${widths[size]} rounded-xl border border-brd bg-surface shadow-xl focus:outline-none`}
       >
         <div className="overflow-y-auto p-6">
           <div className="flex items-start gap-4">
@@ -409,22 +412,22 @@ export function Modal({ open, onClose, title, description, icon, tone = "blue", 
               </span>
             )}
             <div className="flex-1 min-w-0">
-              {title && <h3 id={titleId} className="text-base font-semibold text-slate-900">{title}</h3>}
-              {description && <p id={descId} className="mt-1 text-sm text-slate-600 leading-relaxed">{description}</p>}
+              {title && <h3 id={titleId} className="text-xl font-bold text-ink">{title}</h3>}
+              {description && <p id={descId} className="mt-1 text-md text-ink-2 leading-relaxed">{description}</p>}
               {children && <div className="mt-4">{children}</div>}
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="-mr-1 -mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="-mr-1 -mt-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink-2"
             >
               <X size={18} />
             </button>
           </div>
         </div>
         {footer && (
-          <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 rounded-b-xl">{footer}</div>
+          <div className="flex shrink-0 justify-end gap-2 border-t border-brd bg-surface-2 px-6 py-4 rounded-b-xl">{footer}</div>
         )}
       </div>
     </div>
@@ -458,24 +461,24 @@ export function ToastProvider({ children }) {
 }
 
 const TOAST_CFG = {
-  success: { Icon: CheckCircle2, color: "text-emerald-600", ring: "bg-emerald-100" },
-  error: { Icon: XCircle, color: "text-red-600", ring: "bg-red-100" },
-  info: { Icon: Info, color: "text-blue-600", ring: "bg-blue-100" },
+  success: { Icon: CheckCircle2, color: "text-success", ring: "bg-success-bg" },
+  error: { Icon: XCircle, color: "text-danger", ring: "bg-danger-bg" },
+  info: { Icon: Info, color: "text-info", ring: "bg-info-bg" },
 };
 
 function ToastItem({ toast, onClose }) {
   const cfg = TOAST_CFG[toast.type || "success"];
   const Ico = cfg.Icon;
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3.5 shadow-lg">
+    <div className="flex items-start gap-3 rounded-md border border-brd bg-surface p-3.5 shadow-lg">
       <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${cfg.ring} ${cfg.color}`}>
         <Ico size={16} />
       </span>
       <div className="flex-1 min-w-0 pt-0.5">
-        {toast.title && <p className="text-sm font-medium text-slate-900">{toast.title}</p>}
-        {toast.message && <p className="text-sm text-slate-600">{toast.message}</p>}
+        {toast.title && <p className="text-md font-semibold text-ink">{toast.title}</p>}
+        {toast.message && <p className="text-md text-ink-2">{toast.message}</p>}
       </div>
-      <button onClick={onClose} className="-mr-1 -mt-1 inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100">
+      <button onClick={onClose} className="-mr-1 -mt-1 inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2">
         <X size={15} />
       </button>
     </div>
@@ -492,12 +495,12 @@ export function useToast() {
 export function EmptyState({ icon, title, message, action, className = "" }) {
   const EmptyIcon = resolveIcon(icon) || Inbox;
   return (
-    <div className={`flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50/50 px-6 py-14 text-center ${className}`}>
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
+    <div className={`flex flex-col items-center justify-center rounded-lg border border-dashed border-brd-2 bg-surface-2 px-6 py-14 text-center ${className}`}>
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface text-ink-3 shadow-sm">
         <EmptyIcon size={22} />
       </span>
-      {title && <h3 className="mt-4 text-sm font-semibold text-slate-900">{title}</h3>}
-      {message && <p className="mt-1 max-w-sm text-sm text-slate-500">{message}</p>}
+      {title && <h3 className="mt-4 text-md font-bold text-ink">{title}</h3>}
+      {message && <p className="mt-1 max-w-sm text-md text-ink-3">{message}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   );
@@ -509,7 +512,7 @@ export function EmptyState({ icon, title, message, action, className = "" }) {
 export function Spinner({ size = 20, className = "" }) {
   return (
     <span
-      className={`inline-block animate-spin rounded-full border-2 border-slate-200 border-t-blue-600 ${className}`}
+      className={`inline-block animate-spin rounded-full border-2 border-surface-3 border-t-brand ${className}`}
       style={{ width: size, height: size }}
     />
   );
@@ -530,22 +533,22 @@ export function Loading({ className = "" }) {
 export function StatCard({ label, value, icon, tone = "blue" }) {
   const StatIcon = resolveIcon(icon);
   const toneBg = {
-    blue: "bg-blue-100 text-blue-700",
-    amber: "bg-amber-100 text-amber-700",
-    emerald: "bg-emerald-100 text-emerald-700",
-    red: "bg-red-100 text-red-700",
-    teal: "bg-teal-100 text-teal-700",
-    slate: "bg-slate-100 text-slate-600",
+    blue: "bg-info-bg text-info",
+    amber: "bg-warn-bg text-warn",
+    emerald: "bg-success-bg text-success",
+    red: "bg-danger-bg text-danger",
+    teal: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+    slate: "bg-surface-3 text-ink-2",
   };
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between">
-        <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${toneBg[tone]}`}>
+        <span className={`flex h-10 w-10 items-center justify-center rounded-md ${toneBg[tone]}`}>
           {StatIcon && <StatIcon size={20} />}
         </span>
       </div>
-      <p className="mt-4 text-2xl font-bold text-slate-900">{value}</p>
-      <p className="mt-0.5 text-sm text-slate-500">{label}</p>
+      <p className="mt-4 text-3xl font-bold text-ink">{value}</p>
+      <p className="mt-0.5 text-md text-ink-3">{label}</p>
     </Card>
   );
 }

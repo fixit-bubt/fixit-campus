@@ -10,9 +10,9 @@ export function ReportsTable({ rows = [], onAssign, onOpen }) {
   return (
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-base">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
+            <tr className="border-b border-brd bg-surface-2 text-xs font-bold uppercase tracking-[0.06em] text-ink-3">
               <th className="px-4 py-3 font-medium">Report</th>
               <th className="px-4 py-3 font-medium">Location</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -21,25 +21,25 @@ export function ReportsTable({ rows = [], onAssign, onOpen }) {
               <th className="px-4 py-3 font-medium text-right">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-brd">
             {rows.map((r) => {
               const staff = r.assignedStaffId ? userById(r.assignedStaffId) : null;
               const terminal = r.status === "Rejected" || r.status === "Closed";
               const CatIcon = CATEGORY_ICON[r.category] || CircleHelp;
               return (
-                <tr key={r.id} className="hover:bg-slate-50">
+                <tr key={r.id} className="hover:bg-surface-2">
                   <td className="px-4 py-3">
                     <button onClick={() => onOpen(r)} className="flex items-center gap-3 text-left">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-3 text-ink-3">
                         <CatIcon size={16} />
                       </span>
                       <span className="min-w-0">
-                        <span className="block font-medium text-slate-900">{r.category}</span>
-                        <span className="block font-mono text-xs text-slate-400">{r.id}</span>
+                        <span className="block font-semibold text-ink">{r.category}</span>
+                        <span className="block font-mono text-xs text-ink-3">{r.id}</span>
                       </span>
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                  <td className="px-4 py-3 text-ink-2 whitespace-nowrap">
                     {r.building}
                     {r.room ? `, ${r.room}` : ""}
                   </td>
@@ -48,13 +48,13 @@ export function ReportsTable({ rows = [], onAssign, onOpen }) {
                     {staff ? (
                       <span className="inline-flex items-center gap-2">
                         <Avatar name={staff.name} size={22} />
-                        <span className="text-slate-700">{staff.name}</span>
+                        <span className="text-ink-2">{staff.name}</span>
                       </span>
                     ) : (
-                      <span className="text-slate-400">Unassigned</span>
+                      <span className="text-ink-3">Unassigned</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(r.createdAt)}</td>
+                  <td className="px-4 py-3 text-ink-3 whitespace-nowrap">{fmtDate(r.createdAt)}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {terminal ? (
                       <Button size="sm" variant="ghost" onClick={() => onOpen(r)}>View</Button>
