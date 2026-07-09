@@ -1,11 +1,56 @@
+/* Brand fonts — Plus Jakarta Sans (Latin UI) + Hind Siliguri (Bengali). */
+@import "@fontsource/plus-jakarta-sans/400.css";
+@import "@fontsource/plus-jakarta-sans/500.css";
+@import "@fontsource/plus-jakarta-sans/600.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
+@import "@fontsource/plus-jakarta-sans/800.css";
+@import "@fontsource/hind-siliguri/400.css";
+@import "@fontsource/hind-siliguri/500.css";
+@import "@fontsource/hind-siliguri/600.css";
+@import "@fontsource/hind-siliguri/700.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens — shared with the CampusOne mobile app. Light is the default;
+   `.dark` on <html> flips every token, so token-based classes need no dark: twin. */
+:root {
+  --brand: #2b5be3; --brand-700: #1f47c4; --brand-50: #eef3ff; --brand-100: #dde7ff;
+  --bg: #f5f7fb; --surface: #ffffff; --surface-2: #eef2f8; --surface-3: #e6ebf3;
+  --border: #e4e9f1; --border-2: #d4dce8;
+  --text: #0f1a2e; --text-2: #46536e; --text-3: #8693aa;
+  --success: #12915e; --success-bg: #e3f5ec;
+  --warn: #b9760a;    --warn-bg: #fbefdb;
+  --danger: #d63d35;  --danger-bg: #fbe7e5;
+  --info: #2b5be3;    --info-bg: #eef3ff;
+}
+.dark {
+  --brand: #6a8cf2; --brand-700: #8aa4f7; --brand-50: #1a2340; --brand-100: #222d4e;
+  --bg: #0a0f1c; --surface: #111829; --surface-2: #182034; --surface-3: #202a42;
+  --border: #232f48; --border-2: #2e3b58;
+  --text: #e9eefb; --text-2: #a4b1cc; --text-3: #6c7a99;
+  --success: #36c98a; --success-bg: #0d2e20;
+  --warn: #e0a23c;    --warn-bg: #2e1e05;
+  --danger: #f0685e;  --danger-bg: #2e0d0b;
+  --info: #6a8cf2;    --info-bg: #1a2340;
+}
+
 html {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Plus Jakarta Sans", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
 }
+
+h1 { letter-spacing: -0.02em; }
+h2 { letter-spacing: -0.01em; }
+
+/* Translucent top bar — Tailwind can't alpha-modify var() colors, so do it here. */
+.topbar-blur { background: color-mix(in srgb, var(--surface) 88%, transparent); }
+
+/* Bengali glyphs need vertical room for matras. */
+:lang(bn) { font-family: "Hind Siliguri", sans-serif; line-height: 1.6; }

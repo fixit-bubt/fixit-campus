@@ -59,8 +59,8 @@ export function AssignModal({ report, onClose }) {
         </Select>
       </Field>
       {report.status === "Open" && (
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
-          <Info size={13} className="text-slate-400" /> Assigning moves this report to In Progress.
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-3">
+          <Info size={13} /> Assigning moves this report to In Progress.
         </p>
       )}
     </Modal>
