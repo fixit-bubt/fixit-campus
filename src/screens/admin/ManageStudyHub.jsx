@@ -125,7 +125,7 @@ function AssignCRModal({ section, students, onClose, onAssign }) {
           </Select>
         </Field>
       ) : (
-        <p className="text-sm text-slate-500">No students found to assign.</p>
+        <p className="text-base text-ink-3">No students found to assign.</p>
       )}
     </Modal>
   );
@@ -174,11 +174,11 @@ function PendingRequestsTab({ requests, onApprove, onReject, personName }) {
             <div className="flex items-center gap-3">
               <Avatar name={personName(req.requestedBy)} size={36} />
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">{personName(req.requestedBy)}</p>
-                <p className="truncate text-xs text-slate-500">
+                <p className="truncate text-base font-semibold text-ink">{personName(req.requestedBy)}</p>
+                <p className="truncate text-xs text-ink-3">
                   {req.intakeLabel} · Section {req.sectionNumber}
                 </p>
-                <p className="text-xs text-slate-400">{relativeDate(req.createdAt)}</p>
+                <p className="text-xs text-ink-3">{relativeDate(req.createdAt)}</p>
               </div>
             </div>
             <div className="flex shrink-0 gap-2">
@@ -196,22 +196,22 @@ function SectionAdminCard({ section, crMembers, onAssign, onRemoveCR }) {
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-slate-900">Section {section.number}</p>
+        <p className="text-base font-semibold text-ink">Section {section.number}</p>
         <Button size="sm" variant="secondary" icon="UserPlus" onClick={onAssign}>
           {crMembers.length ? "Add CR" : "Assign CR"}
         </Button>
       </div>
       {crMembers.length === 0 ? (
-        <p className="mt-1 text-xs text-slate-500">No CR assigned</p>
+        <p className="mt-1 text-xs text-ink-3">No CR assigned</p>
       ) : (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {crMembers.map((cr) => (
-            <span key={cr.id} className="inline-flex items-center gap-1 rounded-full bg-teal-50 py-0.5 pl-2 pr-1 text-xs font-medium text-teal-700">
+            <span key={cr.id} className="inline-flex items-center gap-1 rounded-full bg-teal-100 py-0.5 pl-2 pr-1 text-xs font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-300">
               {cr.name}
               <button
                 onClick={() => onRemoveCR(cr)}
                 title="Remove CR role"
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-teal-500 hover:bg-red-100 hover:text-red-600"
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-teal-600 dark:text-teal-300 hover:bg-danger-bg hover:text-danger"
               >
                 <Icon name="X" size={11} />
               </button>
@@ -337,7 +337,7 @@ export default function ManageStudyHub() {
 
           <div className="mt-8">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900">
+              <h3 className="text-base font-semibold text-ink">
                 Sections{activeIntake ? ` · Intake ${activeIntake.number}` : ""}
               </h3>
               <Button icon="Plus" onClick={() => setShowAddSection(true)} disabled={!activeIntakeId}>Add section</Button>

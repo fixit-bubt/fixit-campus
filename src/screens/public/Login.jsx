@@ -50,13 +50,13 @@ export default function Login() {
       footer={
         <>
           Don&apos;t have an account?{" "}
-          <Link to="/register" className="font-medium text-blue-600 hover:text-blue-700">Create one</Link>
+          <Link to="/register" className="font-semibold text-brand hover:text-brand-700">Create one</Link>
         </>
       }
     >
       <form onSubmit={submit} className="space-y-4" noValidate>
         {error && (
-          <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div role="alert" className="flex items-start gap-2 rounded-md bg-danger-bg p-3 text-base text-danger">
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
             <span>{error}</span>
           </div>

@@ -66,32 +66,32 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
       <div className="mb-5 flex items-center gap-3">
         <Avatar name={f.name} src={photoPreview} size={44} />
         <div>
-          <p className="text-sm font-semibold text-slate-900">{f.name}</p>
-          <p className="text-xs text-slate-500">{f.designation}{deptName ? ` · ${deptName}` : ""}</p>
+          <p className="text-base font-semibold text-ink">{f.name}</p>
+          <p className="text-xs text-ink-3">{f.designation}{deptName ? ` · ${deptName}` : ""}</p>
         </div>
       </div>
 
       <div className="space-y-5">
         {/* Photo upload */}
         <div>
-          <p className="mb-2 text-sm font-medium text-slate-700">Profile Photo</p>
+          <p className="mb-2 text-base font-semibold text-ink-2">Profile Photo</p>
           <div className="flex items-center gap-4">
             <div className="relative h-20 w-20 shrink-0">
               {photoPreview ? (
                 <img
                   src={photoPreview}
                   alt="Preview"
-                  className="h-20 w-20 rounded-full object-cover border-2 border-slate-200"
+                  className="h-20 w-20 rounded-full object-cover border-2 border-brd"
                 />
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 border-2 border-dashed border-slate-300">
-                  <Icon name="UserRound" size={28} className="text-slate-400" />
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-surface-3 border-2 border-dashed border-brd-2">
+                  <Icon name="UserRound" size={28} className="text-ink-3" />
                 </div>
               )}
               {photoPreview && (
                 <button
                   onClick={() => { setPhotoFile(null); setPhotoPreview(null); setRemovePhoto(!!f.photo); }}
-                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-white hover:bg-red-600"
+                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-white hover:bg-danger"
                   title="Remove photo"
                 >
                   <Icon name="X" size={11} />
@@ -115,7 +115,7 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
               >
                 {photoPreview ? "Change photo" : "Upload photo"}
               </Button>
-              <p className="text-xs text-slate-400">JPG, PNG, WebP · max 5 MB</p>
+              <p className="text-xs text-ink-3">JPG, PNG, WebP · max 5 MB</p>
             </div>
           </div>
         </div>
@@ -176,18 +176,18 @@ export default function ManageFaculty() {
 
       {/* Search */}
       <div className="relative mt-4">
-        <Icon name="Search" size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Icon name="Search" size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search faculty"
           placeholder="Search by name, designation, or department…"
-          className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+          className="h-11 w-full rounded-md border border-brd bg-surface pl-10 pr-4 text-base text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-100"
         />
       </div>
 
       {/* Count */}
-      <p className="mt-3 text-xs text-slate-500">{list.length} teacher{list.length === 1 ? "" : "s"}</p>
+      <p className="mt-3 text-xs text-ink-3">{list.length} teacher{list.length === 1 ? "" : "s"}</p>
 
       {list.length === 0 ? (
         <EmptyState icon="SearchX" title="No teachers found" message="Try a different search or filter." />
@@ -200,14 +200,14 @@ export default function ManageFaculty() {
                 <Avatar name={f.name} src={f.photo} size={40} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{f.name}</p>
+                    <p className="text-base font-semibold text-ink truncate">{f.name}</p>
                     {!f.photo && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-600">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">
                         <Icon name="ImageOff" size={11} /> No photo
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 text-xs text-slate-500 truncate">
+                  <p className="mt-0.5 text-xs text-ink-3 truncate">
                     {f.designation}{dept ? ` · ${shortDept(dept.name)}` : ""}
                   </p>
                 </div>

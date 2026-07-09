@@ -31,37 +31,37 @@ export default function StudentDashboard() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <button
           onClick={() => navigate("/reports/new")}
-          className="group flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+          className="group flex items-center gap-4 rounded-lg border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-brand hover:bg-brand-50"
         >
-          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+          <span className="flex h-11 w-11 items-center justify-center rounded-md bg-brand-100 text-brand-700">
             <CirclePlus size={22} />
           </span>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-900">Report an Issue</p>
-            <p className="text-xs text-slate-500">Flag a maintenance problem on campus.</p>
+            <p className="text-base font-bold text-ink">Report an Issue</p>
+            <p className="text-xs text-ink-3">Flag a maintenance problem on campus.</p>
           </div>
-          <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-500" />
+          <ArrowRight size={18} className="text-ink-3 group-hover:text-brand" />
         </button>
         <button
           onClick={() => navigate("/lost-found")}
-          className="group flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+          className="group flex items-center gap-4 rounded-lg border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-brand hover:bg-brand-50"
         >
-          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+          <span className="flex h-11 w-11 items-center justify-center rounded-md bg-surface-3 text-ink-2">
             <PackageSearch size={22} />
           </span>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-900">Browse Lost &amp; Found</p>
-            <p className="text-xs text-slate-500">Find a lost item or post one you found.</p>
+            <p className="text-base font-bold text-ink">Browse Lost &amp; Found</p>
+            <p className="text-xs text-ink-3">Find a lost item or post one you found.</p>
           </div>
-          <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-500" />
+          <ArrowRight size={18} className="text-ink-3 group-hover:text-brand" />
         </button>
       </div>
 
       <div className="mt-8">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">Recent reports</h3>
+          <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-3">Recent reports</h3>
           {mine.length > 0 && (
-            <Link to="/reports" className="text-sm font-medium text-blue-600 hover:text-blue-700">View all</Link>
+            <Link to="/reports" className="text-base font-semibold text-brand hover:text-brand-700">View all</Link>
           )}
         </div>
         {dataLoading ? (
@@ -74,7 +74,7 @@ export default function StudentDashboard() {
             action={<Button icon={CirclePlus} onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
           />
         ) : (
-          <Card className="divide-y divide-slate-200 overflow-hidden">
+          <Card className="divide-y divide-brd overflow-hidden">
             {recent.map((r) => (
               <ReportListRow key={r.id} report={r} onOpen={() => navigate(`/reports/${r.id}`)} />
             ))}

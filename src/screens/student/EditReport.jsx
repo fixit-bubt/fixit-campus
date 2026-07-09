@@ -37,7 +37,7 @@ export default function EditReport({ id }) {
   return (
     <AppShell activeKey="reports" title="Edit Report">
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate(`/reports/${id}`)} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate(`/reports/${id}`)} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <ArrowLeft size={16} /> Back to report
         </button>
         <PageHeader title="Edit Report" subtitle={`Editing ${id} · you can edit while it's still Open.`} />

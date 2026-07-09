@@ -13,27 +13,27 @@ function MyReportCard({ report, onView, onEdit, onDelete }) {
   return (
     <Card className="p-5">
       <div className="flex items-start gap-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-3 text-ink-3">
           <CatIcon size={18} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold text-slate-900">{report.category}</p>
+            <p className="text-base font-bold text-ink">{report.category}</p>
             <StatusBadge status={report.status} />
           </div>
-          <p className="mt-1 line-clamp-2 text-sm text-slate-600">{report.description}</p>
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+          <p className="mt-1 line-clamp-2 text-base text-ink-2">{report.description}</p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-3">
             <span className="inline-flex items-center gap-1"><MapPin size={13} />{report.building}{report.room ? `, ${report.room}` : ""}</span>
             <span className="inline-flex items-center gap-1"><Calendar size={13} />{fmtDate(report.createdAt)}</span>
             <span className="font-mono">{report.id}</span>
           </div>
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+      <div className="mt-4 flex items-center justify-end gap-2 border-t border-brd pt-3">
         {editable && (
           <>
             <Button size="sm" variant="ghost" icon={Pencil} onClick={onEdit}>Edit</Button>
-            <Button size="sm" variant="ghost" icon={Trash2} className="text-red-600 hover:bg-red-50" onClick={onDelete}>Delete</Button>
+            <Button size="sm" variant="ghost" icon={Trash2} className="text-danger hover:bg-danger-bg" onClick={onDelete}>Delete</Button>
           </>
         )}
         <Button size="sm" variant="secondary" iconRight={ArrowRight} onClick={onView}>View</Button>
@@ -95,13 +95,13 @@ export default function MyReports() {
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search reports"
             placeholder="Search reports…"
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30"
+            className="h-11 w-full rounded-md border border-brd bg-surface pl-9 pr-3 text-base text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         </div>
         <FilterTabs options={statuses} value={filter} onChange={setFilter} counts={counts} />

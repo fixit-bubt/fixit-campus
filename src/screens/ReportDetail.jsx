@@ -25,7 +25,7 @@ function StatusTimeline({ report }) {
   }
 
   const doneTone = (s) =>
-    s === "Resolved" ? "bg-emerald-600" : s === "Rejected" || s === "Closed" ? "bg-red-600" : "bg-blue-600";
+    s === "Resolved" ? "bg-success" : s === "Rejected" || s === "Closed" ? "bg-danger" : "bg-brand";
 
   return (
     <ol className="relative space-y-0">
@@ -35,18 +35,18 @@ function StatusTimeline({ report }) {
         return (
           <li key={step.status + i} className="relative flex gap-4 pb-6 last:pb-0">
             {!last && (
-              <span className={`absolute left-[11px] top-6 h-full w-0.5 ${step.done ? "bg-slate-200" : "bg-slate-100"}`} />
+              <span className={`absolute left-[11px] top-6 h-full w-0.5 ${step.done ? "bg-brand-100" : "bg-surface-3"}`} />
             )}
             <span
               className={`relative z-10 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                step.done ? doneTone(step.status) + " text-white" : "border-2 border-slate-200 bg-white text-slate-300"
+                step.done ? doneTone(step.status) + " text-white" : "border-2 border-brd bg-surface text-ink-3"
               }`}
             >
-              {step.done ? <StepIcon size={13} strokeWidth={3} /> : <span className="h-2 w-2 rounded-full bg-slate-300" />}
+              {step.done ? <StepIcon size={13} strokeWidth={3} /> : <span className="h-2 w-2 rounded-full bg-brd-2" />}
             </span>
             <div className="pt-0.5">
-              <p className={`text-sm font-medium ${step.done ? "text-slate-900" : "text-slate-400"}`}>{step.status}</p>
-              <p className="text-xs text-slate-400">{step.date ? fmtDate(step.date) : "Pending"}</p>
+              <p className={`text-base font-semibold ${step.done ? "text-ink" : "text-ink-3"}`}>{step.status}</p>
+              <p className="text-xs text-ink-3">{step.date ? fmtDate(step.date) : "Pending"}</p>
             </div>
           </li>
         );
@@ -58,8 +58,8 @@ function StatusTimeline({ report }) {
 function DetailField({ label, children }) {
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
-      <div className="mt-1 text-sm text-slate-700">{children}</div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-3">{label}</p>
+      <div className="mt-1 text-base text-ink-2">{children}</div>
     </div>
   );
 }
@@ -145,21 +145,21 @@ export default function ReportDetail({ id }) {
   return (
     <AppShell activeKey={activeKey} title="Report Detail">
       <div className="mx-auto max-w-4xl">
-        <button onClick={() => navigate(backPath)} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate(backPath)} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <ArrowLeft size={16} /> Back
         </button>
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand-100 text-brand-700">
               <CatIcon size={22} />
             </span>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{report.category}</h2>
+                <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{report.category}</h2>
                 <StatusBadge status={report.status} />
               </div>
-              <p className="mt-0.5 text-sm text-slate-400">
+              <p className="mt-0.5 text-base text-ink-3">
                 <span className="font-mono">{report.id}</span> · reported {fmtDate(report.createdAt)}
               </p>
             </div>
@@ -167,7 +167,7 @@ export default function ReportDetail({ id }) {
           {canEdit && (
             <div className="flex gap-2">
               <Button size="sm" variant="secondary" icon={Pencil} onClick={() => navigate(`/reports/${id}/edit`)}>Edit</Button>
-              <Button size="sm" variant="secondary" icon={Trash2} className="text-red-600" onClick={() => setConfirm("delete")}>Delete</Button>
+              <Button size="sm" variant="secondary" icon={Trash2} className="text-danger" onClick={() => setConfirm("delete")}>Delete</Button>
             </div>
           )}
         </div>
@@ -181,7 +181,7 @@ export default function ReportDetail({ id }) {
               </DetailField>
               <div className="grid gap-5 sm:grid-cols-2">
                 <DetailField label="Location">
-                  <span className="inline-flex items-center gap-1.5"><MapPin size={15} className="text-slate-400" />{report.building}{report.room ? `, ${report.room}` : ""}</span>
+                  <span className="inline-flex items-center gap-1.5"><MapPin size={15} className="text-ink-3" />{report.building}{report.room ? `, ${report.room}` : ""}</span>
                 </DetailField>
                 <DetailField label="Reported by">
                   <span className="inline-flex items-center gap-2"><Avatar name={reporter?.name || "?"} size={22} />{reporter?.name || "Unknown"}</span>
@@ -189,9 +189,9 @@ export default function ReportDetail({ id }) {
               </div>
               <DetailField label="Photo">
                 {report.photo ? (
-                  <img src={report.photo} alt="report" className="mt-1 max-h-64 rounded-lg border border-slate-200 object-cover" />
+                  <img src={report.photo} alt="report" className="mt-1 max-h-64 rounded-md border border-brd object-cover" />
                 ) : (
-                  <div className="mt-1 flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-400">
+                  <div className="mt-1 flex h-32 items-center justify-center rounded-md border border-dashed border-brd bg-surface-2 text-xs text-ink-3">
                     <span className="inline-flex items-center gap-1.5"><ImageOff size={15} /> No photo attached</span>
                   </div>
                 )}
@@ -201,8 +201,8 @@ export default function ReportDetail({ id }) {
             {/* Staff: advance status */}
             {role === "Staff" && isAssigned && report.status !== "Resolved" && report.status !== "Rejected" && report.status !== "Closed" && (
               <Card className="p-6">
-                <h3 className="text-sm font-semibold text-slate-900">Update status</h3>
-                <p className="mt-1 text-sm text-slate-500">Move this report forward as you work on it.</p>
+                <h3 className="text-base font-semibold text-ink">Update status</h3>
+                <p className="mt-1 text-base text-ink-3">Move this report forward as you work on it.</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {report.status === "Open" && <Button icon={Play} disabled={statusBusy} onClick={() => advanceStatus("In Progress")}>Start work (In Progress)</Button>}
                   {report.status === "In Progress" && <Button icon={Check} disabled={statusBusy} onClick={() => advanceStatus("Resolved")}>Mark Resolved</Button>}
@@ -213,10 +213,10 @@ export default function ReportDetail({ id }) {
             {/* Admin: assign + reject/close */}
             {role === "Admin" && (
               <Card className="p-6">
-                <h3 className="text-sm font-semibold text-slate-900">Admin actions</h3>
+                <h3 className="text-base font-semibold text-ink">Admin actions</h3>
                 <div className="mt-4 space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-slate-700">{report.assignedStaffId ? "Reassign to staff" : "Assign to staff"}</label>
+                    <label className="text-base font-semibold text-ink-2">{report.assignedStaffId ? "Reassign to staff" : "Assign to staff"}</label>
                     <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
                       <Select value={assignTo} onChange={(e) => setAssignTo(e.target.value)} className="sm:flex-1">
                         <option value="">Select a staff member</option>
@@ -227,9 +227,9 @@ export default function ReportDetail({ id }) {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                  <div className="flex flex-wrap gap-2 border-t border-brd pt-4">
                     {report.status !== "Rejected" && (
-                      <Button variant="secondary" icon={Ban} className="text-red-600" onClick={() => setConfirm("reject")}>Reject</Button>
+                      <Button variant="secondary" icon={Ban} className="text-danger" onClick={() => setConfirm("reject")}>Reject</Button>
                     )}
                     {report.status !== "Closed" && (
                       <Button variant="secondary" icon={Lock} onClick={() => setConfirm("close")}>Close</Button>
@@ -241,8 +241,8 @@ export default function ReportDetail({ id }) {
 
             {/* Student owner: tracking note */}
             {role === "Student" && isOwner && (
-              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                <Eye size={16} className="text-slate-400" />
+              <div className="flex items-center gap-2 rounded-md border border-brd bg-surface-2 px-4 py-3 text-base text-ink-3">
+                <Eye size={16} className="text-ink-3" />
                 You're tracking this report. {report.status === "Open" ? "You can edit or delete it while it's still Open." : "It can no longer be edited."}
               </div>
             )}
@@ -251,21 +251,21 @@ export default function ReportDetail({ id }) {
           {/* Right: status timeline + assignment */}
           <div className="space-y-6">
             <Card className="p-6">
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">Status</h3>
+              <h3 className="mb-4 text-base font-semibold text-ink">Status</h3>
               <StatusTimeline report={report} />
             </Card>
             <Card className="p-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Assigned staff</h3>
+              <h3 className="mb-3 text-base font-semibold text-ink">Assigned staff</h3>
               {staff ? (
                 <div className="flex items-center gap-3">
                   <Avatar name={staff.name} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-900">{staff.name}</p>
-                    <p className="truncate text-xs text-slate-500">{staff.dept || "Staff"}</p>
+                    <p className="truncate text-base font-semibold text-ink">{staff.name}</p>
+                    <p className="truncate text-xs text-ink-3">{staff.dept || "Staff"}</p>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-slate-400">Not yet assigned.</p>
+                <p className="text-base text-ink-3">Not yet assigned.</p>
               )}
             </Card>
           </div>

@@ -30,10 +30,10 @@ export default function AdminDashboard() {
       <div className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Needs assignment</h3>
-            <p className="text-xs text-slate-500">Open reports waiting for a staff member.</p>
+            <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-ink-3">Needs assignment</h3>
+            <p className="text-xs text-ink-3">Open reports waiting for a staff member.</p>
           </div>
-          <Link to="/admin/reports" className="text-sm font-medium text-blue-600 hover:text-blue-700">All reports</Link>
+          <Link to="/admin/reports" className="text-base font-semibold text-brand hover:text-brand-700">All reports</Link>
         </div>
         {dataLoading ? (
           <Loading />
