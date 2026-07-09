@@ -237,6 +237,7 @@ function toBloodRequest(r, pledgeIds) {
     requesterId: r.requester_id,
     createdAt: day(r.created_at),
     pledges: pledgeIds || [],
+    fulfilledAt: r.fulfilled_at || null,
   };
 }
 
@@ -675,12 +676,17 @@ export function AppProvider({ children }) {
   }, [currentUser?.id]);
 
   // Blood requests (+ pledges aggregated into each request's `pledges` array)
-  // and the donor registry.
+  // and the donor registry. The feed hides fulfilled requests and ages out
+  // anything older than 21 days (nothing auto-expires them server-side).
   const loadBlood = useCallback(async () => {
     if (!currentUser) { setBloodRequests([]); setDonors([]); return; }
     const uid = currentUser.id;
+    const staleCutoff = new Date(Date.now() - 21 * 86400000).toISOString();
     const [{ data: reqs, error: e1 }, { data: pledges, error: e2 }, { data: ds, error: e3 }] = await Promise.all([
-      supabase.from("blood_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("blood_requests").select("*")
+        .is("fulfilled_at", null)
+        .gte("created_at", staleCutoff)
+        .order("created_at", { ascending: false }),
       supabase.from("blood_pledges").select("request_id, donor_id"),
       supabase.from("donors").select("*"),
     ]);
@@ -1958,6 +1964,51 @@ export function AppProvider({ children }) {
     const row = Array.isArray(data) ? data[0] : data;
     return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
   }
+  // Donor stamps their own last-donation date (RLS allows own-row updates);
+  // resets the 90-day eligibility clock. Local date, matching the app.
+  async function markDonatedToday() {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const d = new Date();
+    const localToday = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const { error } = await supabase.from("donors")
+      .update({ last_donated: localToday })
+      .eq("user_id", currentUser.id);
+    if (error) return { ok: false, error: error.message };
+    await loadBlood();
+    return { ok: true };
+  }
+  // Responder list for a request the current user owns. The RPC is
+  // requester-gated (SECURITY DEFINER) — returns nothing for non-owners.
+  async function getBloodResponders(code) {
+    const req = bloodRequests.find((b) => b.id === code);
+    if (!req) return { ok: false, error: "Request not found." };
+    const { data, error } = await supabase.rpc("donor_pledges_for_request", { p_request_id: req.uuid });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, responders: data || [] };
+  }
+  // Requester confirms a responder actually donated. The RPC stamps that
+  // donor's last_donated, marks the pledge fulfilled and notifies the donor.
+  async function confirmBloodDonation(code, donorId) {
+    const req = bloodRequests.find((b) => b.id === code);
+    if (!req) return { ok: false, error: "Request not found." };
+    const { data, error } = await supabase.rpc("confirm_blood_donation", { p_request_id: req.uuid, p_donor_id: donorId });
+    const res = Array.isArray(data) ? data[0] : data;
+    if (error || !res?.ok) return { ok: false, error: res?.error || error?.message || "Couldn't confirm the donation." };
+    await loadBlood();
+    return { ok: true };
+  }
+  // Requester closes their own request (RLS allows it); the feed hides
+  // fulfilled requests, so it disappears on the next load.
+  async function markBloodRequestFulfilled(code) {
+    const req = bloodRequests.find((b) => b.id === code);
+    if (!req) return { ok: false, error: "Request not found." };
+    const { error } = await supabase.from("blood_requests")
+      .update({ fulfilled_at: new Date().toISOString() })
+      .eq("id", req.uuid);
+    if (error) return { ok: false, error: error.message };
+    await loadBlood();
+    return { ok: true };
+  }
 
   // ---- medical appointments (LIVE Supabase) ----
   // Token is server-set by a trigger; the unique index blocks double-booking
@@ -2750,6 +2801,7 @@ export function AppProvider({ children }) {
     jobs, jobReports, jobBookmarks, canPostJobs, addJob, updateJob, withdrawJob, removeJob, restoreJob, reportJob, toggleJobBookmark,
     rides, ridesPosted, addRide, requestSeat, deleteRide, getRideContact,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor, getDonorContact, getBloodRequesterContact,
+    markDonatedToday, getBloodResponders, confirmBloodDonation, markBloodRequestFulfilled,
     doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
     busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
     prayerTimes, updatePrayerJamaat, musallahLocations, addMusallahLocation, updateMusallahLocation, deleteMusallahLocation,
