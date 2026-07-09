@@ -922,12 +922,49 @@ export function AppProvider({ children }) {
   // ---- auth actions ----
   async function login(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) return { ok: false, error: "Incorrect email or password. Try again." };
+    if (error) {
+      // Unconfirmed account (confirm-email ON): send the caller to the
+      // verification screen instead of a dead-end "wrong password".
+      if (/email not confirmed/i.test(error.message)) return { ok: false, needsConfirm: true, error: "Your email isn't verified yet." };
+      return { ok: false, error: "Incorrect email or password. Try again." };
+    }
     const { data: p } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
     // If the profile read hiccuped, return no user — the session effect reloads it
     // (or shows the recoverable profile-error screen). Don't fabricate a partial,
     // role-less user that would drive an initial wrong-dashboard redirect.
     return { ok: true, user: toUser(p) };
+  }
+
+  // ---- password reset via emailed 6-digit code (OTP) ----
+  async function requestPasswordReset(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+  // Verify the recovery code, then set the new password. A successful verify
+  // opens a session, so the user ends up signed in.
+  async function resetPasswordWithCode(email, token, password) {
+    const { error: vErr } = await supabase.auth.verifyOtp({ email: email.trim(), token: token.trim(), type: "recovery" });
+    if (vErr) {
+      return { ok: false, error: /expired|invalid|not found/i.test(vErr.message) ? "That code is invalid or has expired — request a new one." : vErr.message };
+    }
+    const { error: uErr } = await supabase.auth.updateUser({ password });
+    if (uErr) return { ok: false, error: uErr.message };
+    return { ok: true };
+  }
+
+  // ---- signup email verification (only when confirm-email is ON) ----
+  async function verifySignupCode(email, token) {
+    const { data, error } = await supabase.auth.verifyOtp({ email: email.trim(), token: token.trim(), type: "signup" });
+    if (error) {
+      return { ok: false, error: /expired|invalid|not found/i.test(error.message) ? "That code is invalid or has expired — request a new one." : error.message };
+    }
+    return { ok: true, session: !!data.session };
+  }
+  async function resendSignupCode(email) {
+    const { error } = await supabase.auth.resend({ type: "signup", email: email.trim() });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   }
 
   async function register({ name, email, password }) {
@@ -2853,6 +2890,7 @@ export function AppProvider({ children }) {
     createClub, updateClubDetails, setClubActive, assignClubPresident,
     currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile, dataError, retryData,
     login, register, logout, createUser,
+    requestPasswordReset, resetPasswordWithCode, verifySignupCode, resendSignupCode,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
     setRole, updateProfile, changePassword, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact, getProofUrl,

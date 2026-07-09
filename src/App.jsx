@@ -6,6 +6,8 @@ import { Spinner } from "./components/ui.jsx";
 import Landing from "./screens/public/Landing.jsx";
 import Login from "./screens/public/Login.jsx";
 import Register from "./screens/public/Register.jsx";
+import ForgotPassword from "./screens/public/ForgotPassword.jsx";
+import VerifyEmail from "./screens/public/VerifyEmail.jsx";
 
 import StudentDashboard from "./screens/student/StudentDashboard.jsx";
 import StudentDirectory from "./screens/student/StudentDirectory.jsx";
@@ -126,6 +128,10 @@ export default function App() {
     if (currentUser) return <Redirect to={dashboardPath(currentUser.role)} />;
     return <Register />;
   }
+  // No signed-in redirect on these two: the OTP flows open a session mid-flow
+  // (verifyOtp), and yanking the user away would interrupt them.
+  if (path === "/forgot-password") return <ForgotPassword />;
+  if (path === "/verify-email") return <VerifyEmail />;
 
   // ---- Student routes ----
   if (path === "/dashboard") return <RequireRole role="Student"><StudentDashboard /></RequireRole>;
