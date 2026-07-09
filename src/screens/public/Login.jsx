@@ -4,6 +4,7 @@ import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
 import { Button, Field, Input, Spinner, useToast } from "../../components/ui.jsx";
 import { AuthShell } from "./AuthShell.jsx";
+import { PENDING_VERIFY_KEY } from "./VerifyEmail.jsx";
 
 export default function Login() {
   const { login, dashboardPath } = useApp();
@@ -25,6 +26,13 @@ export default function Login() {
     try {
       const res = await login(email, password);
       if (!res.ok) {
+        // Unconfirmed account — forward to the code screen instead of erroring.
+        if (res.needsConfirm) {
+          try { sessionStorage.setItem(PENDING_VERIFY_KEY, email.trim()); } catch { /* fine */ }
+          toast({ type: "info", title: "Verify your email", message: "Enter the 6-digit code we emailed you." });
+          navigate("/verify-email");
+          return;
+        }
         setError(res.error);
         return;
       }
@@ -67,6 +75,9 @@ export default function Login() {
         <Field label="Password" htmlFor="login-pw">
           <Input id="login-pw" type="password" placeholder="••••••••" value={password} autoComplete="current-password" error={!!error} onChange={(e) => setPassword(e.target.value)} />
         </Field>
+        <div className="-mt-2 text-right">
+          <Link to="/forgot-password" className="text-sm font-semibold text-brand hover:text-brand-700">Forgot password?</Link>
+        </div>
         <Button type="submit" full disabled={loading}>
           {loading ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Log In"}
         </Button>

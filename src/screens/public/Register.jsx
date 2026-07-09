@@ -4,6 +4,7 @@ import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
 import { Button, Field, Input, Spinner, useToast } from "../../components/ui.jsx";
 import { AuthShell } from "./AuthShell.jsx";
+import { PENDING_VERIFY_KEY } from "./VerifyEmail.jsx";
 
 export default function Register() {
   const { register, dashboardPath } = useApp();
@@ -39,8 +40,10 @@ export default function Register() {
         return;
       }
       if (res.needsConfirm) {
-        toast({ type: "info", title: "Confirm your email", message: "We sent a confirmation link — confirm it, then log in." });
-        navigate("/login");
+        // Confirm-email is ON: no session yet — collect the 6-digit code.
+        try { sessionStorage.setItem(PENDING_VERIFY_KEY, form.email.trim()); } catch { /* fine */ }
+        toast({ type: "info", title: "Check your email", message: "We sent a 6-digit code to verify your account." });
+        navigate("/verify-email");
         return;
       }
       toast({ type: "success", title: "Account created", message: "You're signed in as a Student." });
