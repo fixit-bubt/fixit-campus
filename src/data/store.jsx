@@ -2485,6 +2485,24 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
+  // --- bookmarks (study_bookmarks; RLS is own-only, so no user filter on read) ---
+  // Saved state for the current course's items: pass the visible item ids,
+  // get back the subset the user has bookmarked.
+  async function getStudyBookmarks(itemIds) {
+    if (!currentUser || !itemIds.length) return new Set();
+    const { data } = await supabase.from("study_bookmarks").select("item_id").in("item_id", itemIds);
+    return new Set((data || []).map((b) => b.item_id));
+  }
+  // itemType: 'material' | 'question' | 'book' (table CHECK enforces it).
+  async function toggleStudyBookmark(itemType, itemId, isSaved) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const { error } = isSaved
+      ? await supabase.from("study_bookmarks").delete().eq("user_id", currentUser.id).eq("item_id", itemId)
+      : await supabase.from("study_bookmarks").insert({ user_id: currentUser.id, item_type: itemType, item_id: itemId });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
   // --- books (per-course; file OR url; intake_id derived from the course) ---
   async function addStudyBook(courseId, { title, kind, author, courseCode, file, url }) {
     if (!currentUser) return { ok: false, error: "Not signed in." };
@@ -2819,6 +2837,7 @@ export function AppProvider({ children }) {
     requestJoinSection, approveMember, setMemberRole, removeMember,
     addStudyCourse, deleteStudyCourse, uploadStudyMaterial, deleteStudyMaterial,
     uploadStudyQB, setQBVerified, deleteStudyQB, addStudyBook, deleteStudyBook, addStudyPin, deleteStudyPin,
+    getStudyBookmarks, toggleStudyBookmark,
     addStudyIntake, addStudySection, assignSectionCR,
     requestCreateSection, joinByCode, approveSectionRequest, rejectSectionRequest,
     toggleSectionPublic, initiateIntakeVote, castIntakeVote, checkExpiredVotes,

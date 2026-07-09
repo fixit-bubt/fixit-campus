@@ -650,7 +650,7 @@ function SectionCard({ section }) {
   );
 }
 
-function BookRow({ book, isManager, onDelete }) {
+function BookRow({ book, isManager, onDelete, saved, onToggleSave }) {
   const { studyPersonName, currentUser } = useApp();
   const canDelete = isManager || book.byId === currentUser?.id; // RLS: own add or CR
   return (
@@ -662,6 +662,7 @@ function BookRow({ book, isManager, onDelete }) {
         <p className="truncate text-xs text-ink-3">{studyPersonName(book.byId)} · {relativeDate(book.createdAt)}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        {onToggleSave && <BookmarkIcon saved={saved} onClick={() => onToggleSave(book)} />}
         {canDelete && <DeleteIcon onClick={() => onDelete(book)} title="Remove book" />}
         {book.url
           ? <a href={book.url} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-brd bg-surface px-3 text-base font-semibold text-ink-2 shadow-sm hover:bg-surface-2"><Icon name="ExternalLink" size={15} /> Open link</a>
@@ -675,6 +676,16 @@ function DeleteIcon({ onClick, title }) {
   return (
     <button onClick={onClick} title={title} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-danger-bg hover:text-danger">
       <Icon name="Trash2" size={16} />
+    </button>
+  );
+}
+
+// Bookmark toggle shown on every file/paper/book row (study_bookmarks).
+function BookmarkIcon({ saved, onClick }) {
+  return (
+    <button onClick={onClick} title={saved ? "Remove bookmark" : "Bookmark"}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-surface-2 ${saved ? "text-warn" : "text-ink-3 hover:text-ink-2"}`}>
+      <Icon name="Bookmark" size={16} className={saved ? "fill-amber-400" : ""} />
     </button>
   );
 }
@@ -734,7 +745,7 @@ function AddBookModal({ open, onClose, courseId, courseCode }) {
   );
 }
 
-function BooksTab({ books, canAdd, isManager, onAdd, onDelete }) {
+function BooksTab({ books, canAdd, isManager, onAdd, onDelete, saved, onToggleSave }) {
   const [filter, setFilter] = React.useState("All");
   if (books.length === 0) {
     return <EmptyState icon="Library" title="No books yet" message={canAdd ? "Add textbooks, references, or the syllabus for this subject." : "No books have been shared for this subject yet."} action={canAdd ? <Button icon="Plus" onClick={onAdd}>Add book</Button> : null} />;
@@ -752,7 +763,8 @@ function BooksTab({ books, canAdd, isManager, onAdd, onDelete }) {
         <EmptyState icon="Library" title="Nothing here" message="No books in this category yet." />
       ) : (
         <Card className="divide-y divide-brd overflow-hidden">
-          {shown.map((b) => <BookRow key={b.id} book={b} isManager={isManager} onDelete={onDelete} />)}
+          {shown.map((b) => <BookRow key={b.id} book={b} isManager={isManager} onDelete={onDelete}
+            saved={saved?.has(b.id)} onToggleSave={onToggleSave && (() => onToggleSave("book", b))} />)}
         </Card>
       )}
     </div>
@@ -985,12 +997,12 @@ function CoursesTab({ section, courses, canEdit, manager, onAddCourse, onDeleteC
   );
 }
 
-function QBPaperRow({ paper, isManager, onVerify, onDelete }) {
+function QBPaperRow({ paper, isManager, onVerify, onDelete, saved, onToggleSave }) {
   const { studyPersonName, currentUser } = useApp();
   const canDelete = isManager || paper.byId === currentUser?.id; // RLS: own upload or CR
   return (
     <div className="flex items-center gap-3 p-4">
-      <AccentTile icon="FileText" tone={ACCENT} size={40} />
+      <AccentTile icon={fileIcon(paper.kind)} tone={ACCENT} size={40} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className="truncate text-base font-semibold text-ink">{paper.title}</p>
@@ -1001,6 +1013,7 @@ function QBPaperRow({ paper, isManager, onVerify, onDelete }) {
         <p className="mt-0.5 truncate text-xs text-ink-3">{studyPersonName(paper.byId)} · {relativeDate(paper.createdAt)} · {fmtFileSize(paper.sizeMB)}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        {onToggleSave && <BookmarkIcon saved={saved} onClick={() => onToggleSave(paper)} />}
         {isManager && (
           <button onClick={() => onVerify(paper)} title={paper.verified ? "Unverify" : "Mark verified"} className={`inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-surface-2 ${paper.verified ? "text-success" : "text-ink-3"}`}><Icon name="BadgeCheck" size={16} /></button>
         )}
@@ -1011,22 +1024,27 @@ function QBPaperRow({ paper, isManager, onVerify, onDelete }) {
   );
 }
 
-function QuestionBankTab({ qb, canEdit, isManager, onUpload, onVerify, onDelete }) {
-  const [exam, setExam] = React.useState("CT 1");
-  const counts = {};
-  QB_EXAMS.forEach((x) => { counts[x] = qb.filter((q) => q.exam === x).length; });
-  const shown = qb.filter((q) => q.exam === exam);
+function QuestionBankTab({ qb, canEdit, isManager, onUpload, onVerify, onDelete, saved, onToggleSave }) {
+  const [exam, setExam] = React.useState("All");
+  // Chip values come from the data (study_question_bank.exam), with the known
+  // exams first so the order stays stable.
+  const exams = ["All", ...QB_EXAMS.filter((x) => qb.some((q) => q.exam === x)),
+    ...[...new Set(qb.map((q) => q.exam).filter(Boolean))].filter((x) => !QB_EXAMS.includes(x))];
+  const counts = { All: qb.length };
+  exams.slice(1).forEach((x) => { counts[x] = qb.filter((q) => q.exam === x).length; });
+  const shown = exam === "All" ? qb : qb.filter((q) => q.exam === exam);
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <FilterTabs options={QB_EXAMS} value={exam} onChange={setExam} counts={counts} />
+        <FilterTabs options={exams} value={exam} onChange={setExam} counts={counts} />
         {canEdit && <Button icon="Upload" onClick={onUpload}>Upload paper</Button>}
       </div>
       {shown.length === 0 ? (
-        <EmptyState icon="FileQuestion" title={`No ${exam} papers`} message={canEdit ? "Upload a past paper to start the bank." : "Nothing here yet."} />
+        <EmptyState icon="FileQuestion" title={exam === "All" ? "No papers" : `No ${exam} papers`} message={canEdit ? "Upload a past paper to start the bank." : "Nothing here yet."} />
       ) : (
         <Card className="divide-y divide-brd overflow-hidden">
-          {shown.map((q) => <QBPaperRow key={q.id} paper={q} isManager={isManager} onVerify={onVerify} onDelete={onDelete} />)}
+          {shown.map((q) => <QBPaperRow key={q.id} paper={q} isManager={isManager} onVerify={onVerify} onDelete={onDelete}
+            saved={saved?.has(q.id)} onToggleSave={onToggleSave && (() => onToggleSave("question", q))} />)}
         </Card>
       )}
     </div>
@@ -1223,7 +1241,7 @@ function UploadFileModal({ open, onClose, courseId, courseCode }) {
   );
 }
 
-function FileRow({ file, isManager, onDelete }) {
+function FileRow({ file, isManager, onDelete, saved, onToggleSave }) {
   const { studyPersonName, currentUser } = useApp();
   const canDelete = isManager || file.byId === currentUser?.id; // RLS: own upload or CR
   return (
@@ -1234,6 +1252,7 @@ function FileRow({ file, isManager, onDelete }) {
         <p className="mt-0.5 truncate text-xs text-ink-3">{file.type} · {studyPersonName(file.byId)} · {relativeDate(file.createdAt)} · {fmtFileSize(file.sizeMB)}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        {onToggleSave && <BookmarkIcon saved={saved} onClick={() => onToggleSave(file)} />}
         {canDelete && <DeleteIcon onClick={() => onDelete(file)} title="Remove" />}
         <DownloadButton path={file.path} name={file.title} />
       </div>
@@ -1242,7 +1261,7 @@ function FileRow({ file, isManager, onDelete }) {
 }
 
 // Notes (course materials) tab — file list with a type filter.
-function NotesTab({ files, canUpload, manager, onUpload, onDelete }) {
+function NotesTab({ files, canUpload, manager, onUpload, onDelete, saved, onToggleSave }) {
   const [filter, setFilter] = React.useState("All");
   const types = ["All", ...MATERIAL_TYPES.filter((t) => files.some((f) => f.type === t))];
   const counts = { All: files.length };
@@ -1261,7 +1280,8 @@ function NotesTab({ files, canUpload, manager, onUpload, onDelete }) {
         <EmptyState icon="FileText" title="Nothing here" message="No notes of this type yet." />
       ) : (
         <Card className="divide-y divide-brd overflow-hidden">
-          {shown.map((f) => <FileRow key={f.id} file={f} isManager={manager} onDelete={onDelete} />)}
+          {shown.map((f) => <FileRow key={f.id} file={f} isManager={manager} onDelete={onDelete}
+            saved={saved?.has(f.id)} onToggleSave={onToggleSave && (() => onToggleSave("material", f))} />)}
         </Card>
       )}
     </div>
@@ -1275,6 +1295,7 @@ export function StudyHubCourse({ sectionId, courseId }) {
   const {
     studyCourseById, studySectionById, studyIntakes, studyFilesIn, studyQuestionsIn, studyBooksInCourse,
     resolveMySection, deleteStudyMaterial, deleteStudyQB, setQBVerified, deleteStudyBook, dataLoading,
+    getStudyBookmarks, toggleStudyBookmark,
   } = useApp();
   const toast = useToast();
   const [tab, setTab] = React.useState("Notes");
@@ -1284,6 +1305,32 @@ export function StudyHubCourse({ sectionId, courseId }) {
   const [confirm, setConfirm] = React.useState(null); // { kind: 'note'|'qb'|'book', item }
   const [confirmBusy, setConfirmBusy] = React.useState(false);
   const [verifyBusy, setVerifyBusy] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const [sort, setSort] = React.useState("new"); // new | name
+  const [saved, setSaved] = React.useState(() => new Set());
+
+  // Saved state for everything visible in this subject (study_bookmarks is
+  // own-only under RLS, so the ids are all we need to send).
+  const allItems = [...studyFilesIn(courseId), ...studyQuestionsIn(courseId), ...studyBooksInCourse(courseId)];
+  const idsKey = allItems.map((x) => x.id).sort().join(",");
+  React.useEffect(() => {
+    let live = true;
+    if (!idsKey) { setSaved(new Set()); return; }
+    getStudyBookmarks(idsKey.split(",")).then((s) => { if (live) setSaved(s); });
+    return () => { live = false; };
+  }, [idsKey]);
+
+  // Optimistic toggle; reverts if the write fails.
+  async function toggleSave(itemType, item) {
+    const wasSaved = saved.has(item.id);
+    const flip = (set, on) => { const n = new Set(set); on ? n.add(item.id) : n.delete(item.id); return n; };
+    setSaved((prev) => flip(prev, !wasSaved));
+    const r = await toggleStudyBookmark(itemType, item.id, wasSaved);
+    if (!r.ok) {
+      setSaved((prev) => flip(prev, wasSaved));
+      toast({ type: "error", title: "Couldn't update bookmark", message: r.error });
+    }
+  }
 
   const course = studyCourseById(courseId);
   const section = course && studySectionById(course.sectionId);
@@ -1331,9 +1378,15 @@ export function StudyHubCourse({ sectionId, courseId }) {
     );
   }
 
-  const files = studyFilesIn(course.id);
-  const qb = studyQuestionsIn(course.id);
-  const books = studyBooksInCourse(course.id);
+  // Search (title) + sort (newest / name) apply to every tab's list.
+  const q = query.trim().toLowerCase();
+  const bySort = (a, b) => sort === "name"
+    ? a.title.localeCompare(b.title)
+    : (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+  const refine = (list) => list.filter((x) => !q || (x.title ?? "").toLowerCase().includes(q)).sort(bySort);
+  const files = refine(studyFilesIn(course.id));
+  const qb = refine(studyQuestionsIn(course.id));
+  const books = refine(studyBooksInCourse(course.id));
 
   async function verifyQB(paper) {
     if (verifyBusy) return;
@@ -1379,22 +1432,40 @@ export function StudyHubCourse({ sectionId, courseId }) {
         subtitle={section.isMine ? null : `Section ${section.number} · read-only`}
       />
 
-      <div className="mb-5">
+      <div className="mb-5 flex flex-col gap-3">
         <FilterTabs options={["Notes", "Questions", "Books"]} value={tab} onChange={setTab}
           counts={{ Notes: files.length, Questions: qb.length, Books: books.length }} />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-xs">
+            <Icon name="Search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search in this subject"
+              placeholder="Search by title…"
+              className="h-11 w-full rounded-md border border-brd bg-surface pl-9 pr-3 text-base text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-100"
+            />
+          </div>
+          <SegmentToggle
+            options={[{ value: "new", label: "Newest", icon: "Clock" }, { value: "name", label: "Name", icon: "ArrowDownAZ" }]}
+            value={sort} onChange={setSort} />
+        </div>
       </div>
 
       {tab === "Notes" && (
         <NotesTab files={files} canUpload={canUpload} manager={manager}
-          onUpload={() => setUploadOpen(true)} onDelete={(item) => setConfirm({ kind: "note", item })} />
+          onUpload={() => setUploadOpen(true)} onDelete={(item) => setConfirm({ kind: "note", item })}
+          saved={saved} onToggleSave={toggleSave} />
       )}
       {tab === "Questions" && (
         <QuestionBankTab qb={qb} canEdit={canUpload} isManager={manager}
-          onUpload={() => setQbOpen(true)} onVerify={verifyQB} onDelete={(item) => setConfirm({ kind: "qb", item })} />
+          onUpload={() => setQbOpen(true)} onVerify={verifyQB} onDelete={(item) => setConfirm({ kind: "qb", item })}
+          saved={saved} onToggleSave={toggleSave} />
       )}
       {tab === "Books" && (
         <BooksTab books={books} canAdd={canUpload} isManager={manager}
-          onAdd={() => setBookOpen(true)} onDelete={(item) => setConfirm({ kind: "book", item })} />
+          onAdd={() => setBookOpen(true)} onDelete={(item) => setConfirm({ kind: "book", item })}
+          saved={saved} onToggleSave={toggleSave} />
       )}
 
       <UploadFileModal open={uploadOpen} onClose={() => setUploadOpen(false)} courseId={course.id} courseCode={course.code} />
