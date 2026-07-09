@@ -372,7 +372,7 @@ export function PrayerWidget() {
   if (displayList.length === 0) return null;
   const st = prayerState(displayList);
   return (
-    <button onClick={() => navigate("/prayer")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-success hover:bg-success-bg/40">
+    <button onClick={() => navigate("/prayer")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-success hover:bg-success-bg">
       <AccentTile icon={st.next.icon} tone="emerald" size={44} />
       <div className="min-w-0 flex-1">
         <p className="text-base font-semibold text-ink">Next prayer · {st.next.en}</p>

@@ -25,16 +25,18 @@ export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 export const URGENCY_TONE = { Urgent: "red", Today: "amber", "This week": "slate" };
 export const URGENCY_RANK = { Urgent: 0, Today: 1, "This week": 2 };
 
-export function daysSince(iso) {
-  return Math.floor((Date.now() - new Date(iso + "T00:00:00").getTime()) / 86400000);
+// Eligibility — the 90-day wait between donations (mirrors the mobile app).
+export const DONATION_WAIT_DAYS = 90;
+export function donorEligibility(lastDonated) {
+  if (!lastDonated) return { eligible: true, daysLeft: 0 };
+  const then = new Date(lastDonated).getTime();
+  if (isNaN(then)) return { eligible: true, daysLeft: 0 };
+  const days = Math.floor((Date.now() - then) / 86400000);
+  const daysLeft = Math.max(0, DONATION_WAIT_DAYS - days);
+  return { eligible: daysLeft === 0, daysLeft };
 }
 export function isEligible(donor) {
-  return !donor.lastDonated || daysSince(donor.lastDonated) > 90;
-}
-export function eligibleDate(iso) {
-  const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() + 91);
-  return d.toISOString().slice(0, 10);
+  return donorEligibility(donor.lastDonated).eligible;
 }
 
 // Big blood-group badge
@@ -48,7 +50,7 @@ export function GroupBadge({ group, size = "md" }) {
 }
 
 // --- Request card -----------------------------------------------------------
-export function RequestCard({ req, requester, mine, pledged, onDonate }) {
+export function RequestCard({ req, requester, mine, pledged, onDonate, onManage }) {
   return (
     <Card className="p-5">
       <div className="flex items-start gap-4">
@@ -68,7 +70,10 @@ export function RequestCard({ req, requester, mine, pledged, onDonate }) {
       <div className="mt-4 flex items-center justify-between border-t border-brd pt-3">
         <span className="text-xs text-ink-3">{req.pledges.length} donor{req.pledges.length === 1 ? "" : "s"} responded</span>
         {mine ? (
-          <Badge tone="slate">Your request</Badge>
+          <span className="flex items-center gap-2">
+            <Badge tone="slate">Your request</Badge>
+            <Button size="sm" variant="secondary" icon="Users" onClick={onManage}>Manage</Button>
+          </span>
         ) : (
           <Button size="sm" variant={pledged ? "secondary" : "destructive"} icon={pledged ? "MessageCircle" : "HeartPulse"} onClick={onDonate}>
             {pledged ? "Contact" : "I can donate"}
@@ -81,7 +86,8 @@ export function RequestCard({ req, requester, mine, pledged, onDonate }) {
 
 // A registered donor's WhatsApp, revealed on click (registering is consent, so
 // the donor_contact RPC always returns it — unless they never saved a number).
-function DonorContact({ userId }) {
+// `disabled` = donor is inside the 90-day wait; contact stays hidden.
+function DonorContact({ userId, disabled = false }) {
   const { getDonorContact } = useApp();
   const [phase, setPhase] = React.useState("idle"); // idle | loading | done
   const [contact, setContact] = React.useState(null);
@@ -101,32 +107,39 @@ function DonorContact({ userId }) {
     );
   }
   return (
-    <button onClick={reveal} disabled={phase === "loading"}
-      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-success px-2.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-60">
+    <button onClick={reveal} disabled={disabled || phase === "loading"}
+      title={disabled ? "This donor is within the 90-day wait between donations" : undefined}
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-success px-2.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-50 disabled:pointer-events-none">
       <Icon name="MessageCircle" size={14} /> {phase === "loading" ? "…" : "Contact"}
     </button>
   );
 }
 
 // --- Donor card -------------------------------------------------------------
-export function DonorCard({ donor, isAdmin }) {
-  const eligible = isEligible(donor);
+// Ineligible donors show a countdown pill and their Contact button is disabled.
+// A donor viewing their own card gets an "I donated" action instead.
+export function DonorCard({ donor, isSelf = false, onMarkDonated }) {
+  const { eligible, daysLeft } = donorEligibility(donor.lastDonated);
   return (
     <Card className="p-5">
       <div className="flex items-start gap-4">
         <GroupBadge group={donor.group} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="text-base font-semibold text-ink">{donor.name}</p>
+          <p className="text-base font-semibold text-ink">{donor.name}{isSelf && <span className="ml-1.5 text-xs font-semibold text-ink-3">(you)</span>}</p>
           <div className="mt-1.5 space-y-1 text-xs text-ink-3">
             <p className="flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-ink-3" />{donor.area}</p>
             <p className="flex items-center gap-1.5"><Icon name="Clock" size={13} className="text-ink-3" />{donor.lastDonated ? `Last donated ${fmtDate(donor.lastDonated)}` : "No donation on record"}</p>
           </div>
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between border-t border-brd pt-3">
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-brd pt-3">
         {eligible ? <Badge tone="emerald"><span className="h-1.5 w-1.5 rounded-full bg-success"></span>Available to donate</Badge>
-          : <Badge tone="amber">Eligible {fmtDate(eligibleDate(donor.lastDonated))}</Badge>}
-        {(eligible || isAdmin) && <DonorContact userId={donor.userId} />}
+          : <Badge tone="amber"><Icon name="Clock" size={12} />Eligible in {daysLeft} day{daysLeft === 1 ? "" : "s"}</Badge>}
+        {isSelf ? (
+          <Button size="sm" variant="secondary" icon="HeartHandshake" onClick={onMarkDonated}>I donated</Button>
+        ) : (
+          <DonorContact userId={donor.userId} disabled={!eligible} />
+        )}
       </div>
     </Card>
   );
@@ -161,15 +174,121 @@ function BloodRequesterContact({ code, fallbackName }) {
   );
 }
 
+// Requester-only manage panel: responder list (via the requester-gated RPC),
+// per-responder "Confirm donated", and a two-step "Mark fulfilled".
+function ManageRequestModal({ req, onClose }) {
+  const { getBloodResponders, confirmBloodDonation, markBloodRequestFulfilled } = useApp();
+  const toast = useToast();
+  const [phase, setPhase] = React.useState("loading"); // loading | ready | error
+  const [responders, setResponders] = React.useState([]);
+  const [confirming, setConfirming] = React.useState(null); // donor_id in flight
+  const [armFulfill, setArmFulfill] = React.useState(false);
+  const [closing, setClosing] = React.useState(false);
+
+  const load = React.useCallback(async () => {
+    const r = await getBloodResponders(req.id);
+    if (!r.ok) { setPhase("error"); return; }
+    setResponders(r.responders);
+    setPhase("ready");
+  }, [req.id]);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  async function confirmDonor(donorId, name) {
+    if (confirming) return;
+    setConfirming(donorId);
+    try {
+      const r = await confirmBloodDonation(req.id, donorId);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't confirm", message: r.error }); return; }
+      toast({ type: "success", title: "Donation confirmed", message: `${name || "The donor"}'s eligibility clock was reset — they've been notified.` });
+      await load(); // pledge now carries fulfilled_at
+    } finally {
+      setConfirming(null);
+    }
+  }
+
+  async function fulfill() {
+    if (closing) return;
+    setClosing(true);
+    try {
+      const r = await markBloodRequestFulfilled(req.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't mark fulfilled", message: r.error }); return; }
+      toast({ type: "success", title: "Request fulfilled", message: "It's no longer shown to donors. Thank you!" });
+      onClose();
+    } finally {
+      setClosing(false);
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} icon="Users" tone="red" size="lg"
+      title="Manage your request"
+      description={`${req.group} · ${req.units} unit${req.units > 1 ? "s" : ""} for ${req.patient}. Confirm donors who donated, then mark the request fulfilled.`}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={closing}>Close</Button>
+          {armFulfill ? (
+            <Button variant="destructive" icon="CheckCheck" onClick={fulfill} loading={closing}>Yes, mark fulfilled</Button>
+          ) : (
+            <Button icon="CheckCheck" onClick={() => setArmFulfill(true)}>Mark fulfilled</Button>
+          )}
+        </>
+      }>
+      {armFulfill && (
+        <p className="mb-3 rounded-md bg-warn-bg px-3 py-2 text-xs text-warn">
+          Fulfilled requests disappear from the donor feed. This can't be undone from the web.
+        </p>
+      )}
+      {phase === "loading" ? (
+        <Loading className="py-8" />
+      ) : phase === "error" ? (
+        <p className="text-base text-ink-3">Couldn't load responders. Close and try again.</p>
+      ) : responders.length === 0 ? (
+        <p className="rounded-md bg-surface-2 px-3 py-4 text-center text-base text-ink-3">No donors have responded yet.</p>
+      ) : (
+        <ul className="divide-y divide-brd rounded-md border border-brd">
+          {responders.map((p) => (
+            <li key={p.donor_id} className="flex items-center gap-3 p-3">
+              <Avatar name={p.full_name || "Donor"} size={34} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-semibold text-ink">
+                  {p.full_name || "Donor"}
+                  {p.blood_group && <span className="ml-1.5 text-xs font-bold text-danger">{p.blood_group}</span>}
+                </p>
+                <p className="text-xs text-ink-3">
+                  Responded {relativeDate(p.pledged_at)}
+                  {p.last_donated ? ` · last donated ${fmtDate(p.last_donated)}` : ""}
+                </p>
+              </div>
+              {p.fulfilled_at ? (
+                <Badge tone="emerald"><Icon name="Check" size={12} />Donated</Badge>
+              ) : (
+                <Button size="sm" variant="secondary" icon="HeartHandshake"
+                  loading={confirming === p.donor_id} disabled={!!confirming}
+                  onClick={() => confirmDonor(p.donor_id, p.full_name)}>
+                  Confirm donated
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Modal>
+  );
+}
+
 // --- Main (tabs) ------------------------------------------------------------
 export function BloodDonation() {
-  const { currentUser, bloodRequests, donors, userById, pledgeBlood, dataLoading } = useApp();
+  const { currentUser, bloodRequests, donors, userById, pledgeBlood, markDonatedToday, dataLoading } = useApp();
   const isAdmin = currentUser?.role === "Admin";
   const toast = useToast();
   const [tab, setTab] = React.useState("Requests");
   const [groupFilter, setGroupFilter] = React.useState("All");
   const [active, setActive] = React.useState(null); // request being donated to
   const [donating, setDonating] = React.useState(false);
+  const [manage, setManage] = React.useState(null); // own request being managed
+  const [askDonated, setAskDonated] = React.useState(false); // "I donated" confirm
+  const [stamping, setStamping] = React.useState(false);
   const myDonor = donors.find((d) => d.userId === currentUser?.id);
 
   const requests = [...bloodRequests]
@@ -222,7 +341,7 @@ export function BloodDonation() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {requests.map((r) => (
-              <RequestCard key={r.id} req={r} requester={userById(r.requesterId)} mine={r.requesterId === currentUser?.id} pledged={r.pledges.includes(currentUser?.id)} onDonate={() => donate(r)} />
+              <RequestCard key={r.id} req={r} requester={userById(r.requesterId)} mine={r.requesterId === currentUser?.id} pledged={r.pledges.includes(currentUser?.id)} onDonate={() => donate(r)} onManage={() => setManage(r)} />
             ))}
           </div>
         )
@@ -243,7 +362,10 @@ export function BloodDonation() {
             <EmptyState icon="Users" title="No donors yet" message="Be the first to join the donor registry." action={<Button icon="UserPlus" onClick={() => navigate("/blood/register")}>Register as donor</Button>} />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {donorList.map((d) => <DonorCard key={d.id} donor={{ ...d, name: userById(d.userId)?.name || "Student" }} isAdmin={isAdmin} />)}
+              {donorList.map((d) => (
+                <DonorCard key={d.id} donor={{ ...d, name: userById(d.userId)?.name || "Student" }}
+                  isSelf={d.userId === currentUser?.id} onMarkDonated={() => setAskDonated(true)} />
+              ))}
             </div>
           )}
         </>
@@ -255,6 +377,31 @@ export function BloodDonation() {
         footer={<Button onClick={() => setActive(null)}>Done</Button>}>
         {active && <BloodRequesterContact code={active.id} fallbackName={userById(active.requesterId)?.name} />}
       </Modal>
+
+      {/* requester manages responders + closes the request */}
+      {manage && <ManageRequestModal req={manage} onClose={() => setManage(null)} />}
+
+      {/* donor stamps their own donation date */}
+      <Modal open={askDonated} onClose={() => setAskDonated(false)} icon="HeartHandshake" tone="red"
+        title="Record today's donation?"
+        description="This sets your last-donated date to today and starts your 90-day wait. Only do this after you've actually donated."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setAskDonated(false)} disabled={stamping}>Cancel</Button>
+            <Button icon="Check" loading={stamping} onClick={async () => {
+              if (stamping) return;
+              setStamping(true);
+              try {
+                const r = await markDonatedToday();
+                if (!r.ok) { toast({ type: "error", title: "Couldn't save", message: r.error }); return; }
+                toast({ type: "success", title: "Thank you for donating!", message: `You'll be eligible again in ${DONATION_WAIT_DAYS} days.` });
+                setAskDonated(false);
+              } finally {
+                setStamping(false);
+              }
+            }}>Yes, I donated today</Button>
+          </>
+        } />
     </AppShell>
   );
 }
@@ -407,7 +554,7 @@ export function BloodWidget() {
   const { bloodRequests } = useApp();
   const urgent = bloodRequests.filter((r) => r.urgency === "Urgent").length;
   return (
-    <button onClick={() => navigate("/blood")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-danger hover:bg-danger-bg/40">
+    <button onClick={() => navigate("/blood")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-danger hover:bg-danger-bg">
       <AccentTile icon="Droplet" tone="red" size={44} />
       <div className="min-w-0 flex-1">
         <p className="text-base font-semibold text-ink">Blood Donation</p>
