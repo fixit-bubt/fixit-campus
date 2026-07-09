@@ -39,8 +39,8 @@ export function eventStatus(ev) {
 export function EventBanner({ ev, className = "" }) {
   if (ev.banner) return <img src={ev.banner} alt={ev.title} className={`object-cover ${className}`} />;
   return (
-    <div className={`flex items-center justify-center bg-fuchsia-50 ${className}`}>
-      <Icon name={EVENT_CATEGORY_ICON[ev.category] || "CalendarDays"} size={44} strokeWidth={1.5} className="text-fuchsia-300" />
+    <div className={`flex items-center justify-center bg-fuchsia-50 dark:bg-fuchsia-500/10 ${className}`}>
+      <Icon name={EVENT_CATEGORY_ICON[ev.category] || "CalendarDays"} size={44} strokeWidth={1.5} className="text-fuchsia-300 dark:text-fuchsia-400" />
     </div>
   );
 }
@@ -58,20 +58,20 @@ export function gcalLink(ev) {
 export function EventCard({ ev, onOpen }) {
   const status = eventStatus(ev);
   return (
-    <button onClick={onOpen} className="group flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-left shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
+    <button onClick={onOpen} className="group flex flex-col overflow-hidden rounded-md border border-brd bg-surface text-left shadow-sm transition-all hover:border-brd-2 hover:shadow-md">
       <div className="relative h-32 w-full overflow-hidden">
         <EventBanner ev={ev} className="h-full w-full" />
         <div className="absolute left-3 top-3"><Badge tone="fuchsia" icon={EVENT_CATEGORY_ICON[ev.category]}>{ev.category}</Badge></div>
         <div className="absolute right-3 top-3"><Badge tone={EVENT_STATUS_TONE[status]}>{status}</Badge></div>
       </div>
       <div className="flex flex-1 flex-col p-4">
-        <h3 className="line-clamp-1 text-sm font-semibold text-slate-900">{ev.title}</h3>
-        <p className="mt-0.5 text-xs text-slate-400">{ev.organizer}</p>
-        <div className="mt-2.5 space-y-1 text-xs text-slate-500">
-          <p className="flex items-center gap-1.5"><Icon name="CalendarDays" size={13} className="text-slate-400" />{fmtDate(ev.date)} · {fmtTime(ev.time)}</p>
-          <p className="flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-slate-400" />{ev.venue}</p>
+        <h3 className="line-clamp-1 text-base font-semibold text-ink">{ev.title}</h3>
+        <p className="mt-0.5 text-xs text-ink-3">{ev.organizer}</p>
+        <div className="mt-2.5 space-y-1 text-xs text-ink-3">
+          <p className="flex items-center gap-1.5"><Icon name="CalendarDays" size={13} className="text-ink-3" />{fmtDate(ev.date)} · {fmtTime(ev.time)}</p>
+          <p className="flex items-center gap-1.5"><Icon name="MapPin" size={13} className="text-ink-3" />{ev.venue}</p>
         </div>
-        <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 pt-2.5 text-xs text-slate-400">
+        <div className="mt-3 flex items-center gap-1.5 border-t border-brd pt-2.5 text-xs text-ink-3">
           <Icon name="Users" size={13} />{ev.attendees.length} going
         </div>
       </div>
@@ -97,24 +97,24 @@ export function CalendarView({ events, onOpen }) {
 
   return (
     <Card className="p-4 sm:p-5">
-      <p className="mb-3 text-sm font-semibold text-slate-900">{p.month} {year}</p>
+      <p className="mb-3 text-base font-semibold text-ink">{p.month} {year}</p>
       <div className="grid grid-cols-7 gap-1 text-center">
-        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => <div key={d} className="pb-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">{d}</div>)}
+        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => <div key={d} className="pb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-3">{d}</div>)}
         {cells.map((d, i) => {
           if (!d) return <div key={`e${i}`} className="min-h-[64px]"></div>;
           const iso = isoFor(d);
           const dayEvents = events.filter((e) => e.date === iso);
           const isToday = iso === today;
           return (
-            <div key={d} className={`min-h-[64px] rounded-lg border p-1 text-left ${isToday ? "border-fuchsia-300 bg-fuchsia-50/50" : "border-slate-100"}`}>
-              <span className={`text-xs font-medium ${isToday ? "text-fuchsia-700" : "text-slate-500"}`}>{d}</span>
+            <div key={d} className={`min-h-[64px] rounded-md border p-1 text-left ${isToday ? "border-fuchsia-300 dark:border-fuchsia-500/40 bg-fuchsia-50/50 dark:bg-fuchsia-500/10" : "border-brd"}`}>
+              <span className={`text-xs font-semibold ${isToday ? "text-fuchsia-700 dark:text-fuchsia-300 dark:text-fuchsia-400" : "text-ink-3"}`}>{d}</span>
               <div className="mt-0.5 space-y-0.5">
                 {dayEvents.slice(0, 2).map((e) => (
-                  <button key={e.id} onClick={() => onOpen(e)} className="block w-full truncate rounded bg-fuchsia-100 px-1 py-0.5 text-left text-[10px] font-medium text-fuchsia-700 hover:bg-fuchsia-200">
+                  <button key={e.id} onClick={() => onOpen(e)} className="block w-full truncate rounded bg-fuchsia-100 dark:bg-fuchsia-500/15 px-1 py-0.5 text-left text-[10px] font-semibold text-fuchsia-700 dark:text-fuchsia-300 dark:text-fuchsia-400 hover:bg-fuchsia-200 dark:hover:bg-fuchsia-500/25">
                     {e.title}
                   </button>
                 ))}
-                {dayEvents.length > 2 && <span className="block px-1 text-[10px] text-slate-400">+{dayEvents.length - 2} more</span>}
+                {dayEvents.length > 2 && <span className="block px-1 text-[10px] text-ink-3">+{dayEvents.length - 2} more</span>}
               </div>
             </div>
           );
@@ -205,7 +205,7 @@ export function EventDetail({ id }) {
   return (
     <AppShell activeKey="events" title="Event">
       <div className="mx-auto max-w-4xl">
-        <button onClick={() => navigate("/events")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/events")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to Events
         </button>
 
@@ -220,31 +220,31 @@ export function EventDetail({ id }) {
           <div className="p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{ev.title}</h2>
-                <p className="mt-1 text-sm text-slate-500">Organized by {ev.organizer}</p>
+                <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{ev.title}</h2>
+                <p className="mt-1 text-base text-ink-3">Organized by {ev.organizer}</p>
               </div>
-              {canManage && <Button variant="secondary" icon="Trash2" className="text-red-600" onClick={() => setConfirmDelete(true)}>Delete</Button>}
+              {canManage && <Button variant="secondary" icon="Trash2" className="text-danger" onClick={() => setConfirmDelete(true)}>Delete</Button>}
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              <div className="flex items-start gap-2.5"><Icon name="CalendarDays" size={18} className="mt-0.5 text-fuchsia-600" /><div><p className="text-xs text-slate-400">Date</p><p className="text-sm font-medium text-slate-900">{fmtDate(ev.date)}</p></div></div>
-              <div className="flex items-start gap-2.5"><Icon name="Clock" size={18} className="mt-0.5 text-fuchsia-600" /><div><p className="text-xs text-slate-400">Time</p><p className="text-sm font-medium text-slate-900">{fmtTime(ev.time)}{ev.endTime ? ` – ${fmtTime(ev.endTime)}` : ""}</p></div></div>
-              <div className="flex items-start gap-2.5"><Icon name="MapPin" size={18} className="mt-0.5 text-fuchsia-600" /><div><p className="text-xs text-slate-400">Venue</p><p className="text-sm font-medium text-slate-900">{ev.venue}</p></div></div>
+              <div className="flex items-start gap-2.5"><Icon name="CalendarDays" size={18} className="mt-0.5 text-fuchsia-600 dark:text-fuchsia-300 dark:text-fuchsia-400" /><div><p className="text-xs text-ink-3">Date</p><p className="text-base font-semibold text-ink">{fmtDate(ev.date)}</p></div></div>
+              <div className="flex items-start gap-2.5"><Icon name="Clock" size={18} className="mt-0.5 text-fuchsia-600 dark:text-fuchsia-300 dark:text-fuchsia-400" /><div><p className="text-xs text-ink-3">Time</p><p className="text-base font-semibold text-ink">{fmtTime(ev.time)}{ev.endTime ? ` – ${fmtTime(ev.endTime)}` : ""}</p></div></div>
+              <div className="flex items-start gap-2.5"><Icon name="MapPin" size={18} className="mt-0.5 text-fuchsia-600 dark:text-fuchsia-300 dark:text-fuchsia-400" /><div><p className="text-xs text-ink-3">Venue</p><p className="text-base font-semibold text-ink">{ev.venue}</p></div></div>
             </div>
 
-            <p className="mt-5 border-t border-slate-100 pt-5 text-sm leading-relaxed text-slate-700">{ev.description}</p>
+            <p className="mt-5 border-t border-brd pt-5 text-base leading-relaxed text-ink-2">{ev.description}</p>
 
-            <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-sm text-slate-500">
-                <Icon name="Users" size={16} className="text-slate-400" />
-                <span className="font-semibold text-slate-900">{ev.attendees.length}</span> going{ev.capacity ? ` · ${ev.capacity} capacity` : ""}
+            <div className="mt-6 flex flex-col gap-3 border-t border-brd pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-base text-ink-3">
+                <Icon name="Users" size={16} className="text-ink-3" />
+                <span className="font-semibold text-ink">{ev.attendees.length}</span> going{ev.capacity ? ` · ${ev.capacity} capacity` : ""}
               </div>
               <div className="flex gap-2">
-                <a href={gcalLink(ev)} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                <a href={gcalLink(ev)} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-md border border-brd bg-surface px-4 text-base font-semibold text-ink-2 shadow-sm hover:bg-surface-2">
                   <Icon name="CalendarPlus" size={16} /> Add to calendar
                 </a>
                 {!ended && !going && full && (
-                  <span className="inline-flex h-10 items-center rounded-lg bg-slate-100 px-4 text-sm font-medium text-slate-500">Event full</span>
+                  <span className="inline-flex h-10 items-center rounded-md bg-surface-3 px-4 text-base font-semibold text-ink-3">Event full</span>
                 )}
                 {!ended && (going || !full) && (
                   <Button variant={going ? "secondary" : "primary"} icon={going ? "Check" : "Ticket"} disabled={rsvpBusy} onClick={onToggleRSVP}>
@@ -307,7 +307,7 @@ export function EventForm() {
   return (
     <AppShell activeKey="events" title="Create Event">
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate("/events")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/events")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to Events
         </button>
         <PageHeader title="Create an event" subtitle="Publish an event to the campus calendar." />
@@ -352,13 +352,13 @@ export function EventsWidget() {
   const { events } = useApp();
   const next = events.filter((e) => eventStatus(e) !== "Ended").sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
   return (
-    <button onClick={() => navigate("/events")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-fuchsia-300 hover:bg-fuchsia-50/40">
+    <button onClick={() => navigate("/events")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-fuchsia-300 dark:hover:border-fuchsia-500/40 hover:bg-fuchsia-50/40 dark:hover:bg-fuchsia-500/10">
       <AccentTile icon="CalendarDays" tone="fuchsia" size={44} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900">{next ? "Next event" : "Events"}</p>
-        <p className="truncate text-xs text-slate-500">{next ? `${next.title} · ${fmtDate(next.date)}` : "Browse what's happening on campus"}</p>
+        <p className="text-base font-semibold text-ink">{next ? "Next event" : "Events"}</p>
+        <p className="truncate text-xs text-ink-3">{next ? `${next.title} · ${fmtDate(next.date)}` : "Browse what's happening on campus"}</p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-fuchsia-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-fuchsia-500 dark:group-hover:text-fuchsia-300 dark:text-fuchsia-400" />
     </button>
   );
 }

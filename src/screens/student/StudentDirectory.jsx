@@ -215,12 +215,12 @@ export default function StudentDirectory() {
                   <Check size={14} /> You're connected — contact unlocked
                 </p>
                 {selected.email && (
-                  <a href={`mailto:${selected.email}`} className="flex min-w-0 items-center gap-2 rounded-md border border-brd bg-surface-2 p-3 text-base text-brand hover:bg-surface-2">
+                  <a href={`mailto:${selected.email}`} className="flex min-w-0 items-center gap-2 rounded-md border border-brd bg-surface-2 p-3 text-base text-brand hover:bg-surface-3">
                     <Mail size={15} className="shrink-0" /> <span className="truncate">{selected.email}</span>
                   </a>
                 )}
                 {selected.whatsapp && selected.whatsapp.replace(/[^0-9]/g, "") ? (
-                  <a href={`https://wa.me/${selected.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2 rounded-md border border-brd bg-surface-2 p-3 text-base text-success hover:bg-surface-2">
+                  <a href={`https://wa.me/${selected.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2 rounded-md border border-brd bg-surface-2 p-3 text-base text-success hover:bg-surface-3">
                     <MessageCircle size={15} className="shrink-0" /> <span className="truncate">{selected.whatsapp}</span>
                   </a>
                 ) : (

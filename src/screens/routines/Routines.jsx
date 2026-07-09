@@ -61,13 +61,13 @@ export function Routines() {
       <PageHeader title="Routines" subtitle="Class and exam schedules posted by faculty and staff." />
 
       {/* Tabs */}
-      <div className="mb-4 flex gap-1 border-b border-slate-200">
+      <div className="mb-4 flex gap-1 border-b border-brd">
         {TABS.map((t) => {
           const count = routines.filter((r) => r.type === t.id).length;
           const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${active ? "border-teal-600 text-teal-700" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+              className={`-mb-px border-b-2 px-4 py-2.5 text-base font-semibold transition-colors ${active ? "border-teal-600 text-teal-700 dark:text-teal-300" : "border-transparent text-ink-3 hover:text-ink-2"}`}>
               {t.label}{count > 0 ? ` (${count})` : ""}
             </button>
           );
@@ -75,11 +75,11 @@ export function Routines() {
       </div>
 
       {/* Search */}
-      <div className="mb-4 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3">
-        <Search size={16} className="text-slate-400" />
+      <div className="mb-4 flex items-center gap-2 rounded-md border border-brd bg-surface px-3">
+        <Search size={16} className="text-ink-3" />
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search title, department, semester…"
-          aria-label="Search routines" className="h-10 flex-1 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none" />
-        {search && <button onClick={() => setSearch("")} aria-label="Clear search"><X size={15} className="text-slate-400 hover:text-slate-600" /></button>}
+          aria-label="Search routines" className="h-10 flex-1 bg-transparent text-base text-ink placeholder:text-ink-3 focus:outline-none" />
+        {search && <button onClick={() => setSearch("")} aria-label="Clear search"><X size={15} className="text-ink-3 hover:text-ink-2" /></button>}
       </div>
 
       {/* List */}
@@ -95,24 +95,24 @@ export function Routines() {
                 {r.imageUrl ? (
                   <img src={r.imageUrl} alt="" className="h-20 w-20 shrink-0 object-cover" />
                 ) : (
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center bg-teal-50 text-teal-600"><FileText size={26} /></div>
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-300"><FileText size={26} /></div>
                 )}
                 <div className="min-w-0 flex-1 p-3">
-                  <p className="truncate text-sm font-semibold text-slate-900">{r.title}</p>
+                  <p className="truncate text-base font-semibold text-ink">{r.title}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     {r.department && <Badge tone="teal">{r.department}</Badge>}
-                    {r.semester && <span className="text-xs text-slate-400">{r.semester}</span>}
-                    {r.intake && <span className="text-xs text-slate-400">Intake {r.intake}{r.section ? ` · Sec ${r.section}` : ""}</span>}
+                    {r.semester && <span className="text-xs text-ink-3">{r.semester}</span>}
+                    {r.intake && <span className="text-xs text-ink-3">Intake {r.intake}{r.section ? ` · Sec ${r.section}` : ""}</span>}
                   </div>
-                  <p className="mt-1 text-xs text-slate-400">{relTime(r.createdAt)}</p>
+                  <p className="mt-1 text-xs text-ink-3">{relTime(r.createdAt)}</p>
                   <div className="mt-2 flex items-center gap-3">
                     {url && (
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-teal-700 hover:text-teal-800">
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-800 dark:hover:text-teal-300">
                         <ExternalLink size={13} /> Open
                       </a>
                     )}
                     {canDelete && (
-                      <button onClick={() => setConfirmDel(r)} className="inline-flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-700"><Trash2 size={13} /> Delete</button>
+                      <button onClick={() => setConfirmDel(r)} className="inline-flex items-center gap-1 text-xs font-semibold text-danger hover:text-danger"><Trash2 size={13} /> Delete</button>
                     )}
                   </div>
                 </div>
@@ -138,7 +138,7 @@ export function Routines() {
             <div className="flex gap-2">
               {TABS.map((t) => (
                 <button key={t.id} type="button" onClick={() => setForm((f) => ({ ...f, type: t.id }))}
-                  className={`rounded-full border px-4 py-1.5 text-sm font-medium ${form.type === t.id ? "border-teal-600 bg-teal-50 text-teal-700" : "border-slate-200 bg-white text-slate-500"}`}>
+                  className={`rounded-full border px-4 py-1.5 text-base font-semibold ${form.type === t.id ? "border-teal-600 bg-teal-50 dark:bg-teal-500/15 text-teal-700 dark:text-teal-300" : "border-brd bg-surface text-ink-3"}`}>
                   {t.id === "class" ? "Class" : "Exam"}
                 </button>
               ))}
@@ -155,8 +155,8 @@ export function Routines() {
             <input ref={fileRef} type="file" accept="application/pdf,image/*" className="hidden"
               onChange={(e) => setForm((f) => ({ ...f, file: e.target.files?.[0] || null }))} />
             <button type="button" onClick={() => fileRef.current?.click()}
-              className={`flex h-11 w-full items-center gap-2 rounded-lg border border-dashed px-3 text-sm ${form.file ? "border-teal-500 text-slate-700" : "border-slate-300 text-slate-400"} hover:bg-slate-50`}>
-              <Upload size={18} className={form.file ? "text-teal-600" : "text-slate-400"} />
+              className={`flex h-11 w-full items-center gap-2 rounded-md border border-dashed px-3 text-base ${form.file ? "border-teal-500 text-ink-2" : "border-brd-2 text-ink-3"} hover:bg-surface-2`}>
+              <Upload size={18} className={form.file ? "text-teal-600 dark:text-teal-300" : "text-ink-3"} />
               <span className="truncate">{form.file ? form.file.name : "Choose a PDF or image…"}</span>
             </button>
           </Field>

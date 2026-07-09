@@ -33,9 +33,9 @@ export function excerpt(text, n = 120) {
 // --- Notice card ------------------------------------------------------------
 export function NoticeCard({ note, unread, onOpen }) {
   return (
-    <button onClick={onOpen} className="group flex w-full items-start gap-4 rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50/30">
+    <button onClick={onOpen} className="group flex w-full items-start gap-4 rounded-md border border-brd bg-surface p-4 text-left shadow-sm transition-colors hover:border-warn hover:bg-warn-bg">
       {note.image ? (
-        <img src={note.image} alt="" className="h-10 w-10 shrink-0 rounded-lg border border-slate-200 object-cover" />
+        <img src={note.image} alt="" className="h-10 w-10 shrink-0 rounded-md border border-brd object-cover" />
       ) : (
         <AccentTile icon={PRIORITY_ICON[note.priority]} tone={PRIORITY_TONE[note.priority] === "slate" ? "amber" : PRIORITY_TONE[note.priority]} size={40} />
       )}
@@ -43,17 +43,17 @@ export function NoticeCard({ note, unread, onOpen }) {
         <div className="flex flex-wrap items-center gap-2">
           {note.pinned && <Badge tone="amber" icon="Pin">Pinned</Badge>}
           <Badge tone={PRIORITY_TONE[note.priority]}>{note.priority}</Badge>
-          {note.attachment && <Icon name="Paperclip" size={14} className="text-slate-400" />}
-          {unread && <span className="h-2 w-2 rounded-full bg-blue-600" title="Unread"></span>}
+          {note.attachment && <Icon name="Paperclip" size={14} className="text-ink-3" />}
+          {unread && <span className="h-2 w-2 rounded-full bg-brand" title="Unread"></span>}
         </div>
-        <p className={`mt-1.5 text-sm ${unread ? "font-bold" : "font-semibold"} text-slate-900`}>{note.title}</p>
-        <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{excerpt(note.body)}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+        <p className={`mt-1.5 text-base ${unread ? "font-bold" : "font-semibold"} text-ink`}>{note.title}</p>
+        <p className="mt-0.5 line-clamp-2 text-base text-ink-3">{excerpt(note.body)}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-3">
           <span className="inline-flex items-center gap-1"><Icon name="Building2" size={12} />{note.department}</span>
           <span className="inline-flex items-center gap-1"><Icon name="Calendar" size={12} />{fmtDate(note.date)}</span>
         </div>
       </div>
-      <Icon name="ChevronRight" size={16} className="mt-1 hidden text-slate-300 sm:block" />
+      <Icon name="ChevronRight" size={16} className="mt-1 hidden text-ink-3 sm:block" />
     </button>
   );
 }
@@ -125,7 +125,7 @@ export function AnnouncementDetail({ id }) {
   return (
     <AppShell activeKey="announcements" title="Notice">
       <div className="mx-auto max-w-3xl">
-        <button onClick={() => navigate("/announcements")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/announcements")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to Announcements
         </button>
 
@@ -135,29 +135,29 @@ export function AnnouncementDetail({ id }) {
             <Badge tone={PRIORITY_TONE[note.priority]} icon={PRIORITY_ICON[note.priority]}>{note.priority}</Badge>
           </div>
           <div className="mt-3 flex items-start justify-between gap-4">
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{note.title}</h2>
-            {canManage && <Button size="sm" variant="secondary" icon="Trash2" className="shrink-0 text-red-600" onClick={() => setConfirmDelete(true)}>Delete</Button>}
+            <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{note.title}</h2>
+            {canManage && <Button size="sm" variant="secondary" icon="Trash2" className="shrink-0 text-danger" onClick={() => setConfirmDelete(true)}>Delete</Button>}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-ink-3">
             <span className="inline-flex items-center gap-1.5"><Icon name="Building2" size={14} />{note.department}</span>
             <span className="inline-flex items-center gap-1.5"><Icon name="Calendar" size={14} />{fmtDate(note.date)}</span>
           </div>
 
-          <div className="mt-5 whitespace-pre-line border-t border-slate-100 pt-5 text-sm leading-relaxed text-slate-700">{note.body}</div>
+          <div className="mt-5 whitespace-pre-line border-t border-brd pt-5 text-base leading-relaxed text-ink-2">{note.body}</div>
 
           {note.image && (
             <a href={note.image} target="_blank" rel="noreferrer" title="Open full image" className="mt-5 block">
-              <img src={note.image} alt={note.title} className="w-full cursor-zoom-in rounded-lg border border-slate-200 transition hover:opacity-95" />
+              <img src={note.image} alt={note.title} className="w-full cursor-zoom-in rounded-md border border-brd transition hover:opacity-95" />
             </a>
           )}
 
           {note.attachment && note.attachmentUrl && (
             <div className="mt-6">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Attachment</p>
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">Attachment</p>
+              <div className="flex items-center justify-between gap-3 rounded-md border border-brd bg-surface-2 p-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-700"><Icon name="FileText" size={18} /></span>
-                  <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-900">{note.attachment}</p><p className="text-xs text-slate-400">PDF document</p></div>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-danger-bg text-danger"><Icon name="FileText" size={18} /></span>
+                  <div className="min-w-0"><p className="truncate text-base font-semibold text-ink">{note.attachment}</p><p className="text-xs text-ink-3">PDF document</p></div>
                 </div>
                 <Button size="sm" variant="secondary" icon="Download" onClick={() => downloadFile(note.attachmentUrl, note.attachment)}>Download</Button>
               </div>
@@ -208,7 +208,7 @@ export function AnnouncementForm() {
   return (
     <AppShell activeKey="announcements" title="Post Notice">
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate("/announcements")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/announcements")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to Announcements
         </button>
         <PageHeader title="Post a notice" subtitle="Publish to the campus notice board." />
@@ -228,7 +228,7 @@ export function AnnouncementForm() {
                     const active = form.priority === p;
                     const tone = PRIORITY_TONE[p];
                     return <button type="button" key={p} onClick={() => set("priority", p)}
-                      className={`flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${active ? (tone === "red" ? "border-red-300 bg-red-50 text-red-700" : tone === "amber" ? "border-amber-300 bg-amber-50 text-amber-700" : "border-slate-300 bg-slate-100 text-slate-700") : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}>{p}</button>;
+                      className={`flex-1 rounded-md border px-2 py-2 text-xs font-semibold transition-colors ${active ? (tone === "red" ? "border-danger bg-danger-bg text-danger" : tone === "amber" ? "border-warn bg-warn-bg text-warn" : "border-brd-2 bg-surface-3 text-ink-2") : "border-brd bg-surface text-ink-3 hover:bg-surface-2"}`}>{p}</button>;
                   })}
                 </div>
               </Field>
@@ -238,16 +238,16 @@ export function AnnouncementForm() {
               <FileUpload id="an-image" value={form.image} onChange={(url, file) => setForm((f) => ({ ...f, image: url, imageFile: file }))} label="Upload notice image" />
             </Field>
             <div>
-              <label className="text-sm font-medium text-slate-700">Attachment <span className="text-slate-400">(optional PDF)</span></label>
+              <label className="text-base font-semibold text-ink-2">Attachment <span className="text-ink-3">(optional PDF)</span></label>
               <div className="mt-1.5 flex items-center gap-2">
                 <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const file = e.target.files[0] || null; setForm((f) => ({ ...f, attachmentFile: file, attachment: file ? file.name : null })); }} />
                 <Button type="button" variant="secondary" size="sm" icon="Paperclip" onClick={() => fileRef.current && fileRef.current.click()}>{form.attachment ? "Change file" : "Attach PDF"}</Button>
-                {form.attachment && <span className="inline-flex items-center gap-1.5 text-sm text-slate-600"><Icon name="FileText" size={14} className="text-red-600" />{form.attachment}<button type="button" onClick={() => setForm((f) => ({ ...f, attachment: null, attachmentFile: null }))} className="text-slate-400 hover:text-slate-600"><Icon name="X" size={14} /></button></span>}
+                {form.attachment && <span className="inline-flex items-center gap-1.5 text-base text-ink-2"><Icon name="FileText" size={14} className="text-danger" />{form.attachment}<button type="button" onClick={() => setForm((f) => ({ ...f, attachment: null, attachmentFile: null }))} className="text-ink-3 hover:text-ink-2"><Icon name="X" size={14} /></button></span>}
               </div>
             </div>
-            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-4 py-3">
-              <input type="checkbox" checked={form.pinned} onChange={(e) => set("pinned", e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
-              <span className="flex items-center gap-1.5 text-sm text-slate-700"><Icon name="Pin" size={14} className="text-amber-600" /> Pin to top of the board</span>
+            <label className="flex cursor-pointer items-center gap-3 rounded-md border border-brd px-4 py-3">
+              <input type="checkbox" checked={form.pinned} onChange={(e) => set("pinned", e.target.checked)} className="h-4 w-4 rounded border-brd-2 text-warn focus:ring-warn" />
+              <span className="flex items-center gap-1.5 text-base text-ink-2"><Icon name="Pin" size={14} className="text-warn" /> Pin to top of the board</span>
             </label>
           </Card>
           <div className="flex justify-end gap-3">
@@ -266,13 +266,13 @@ export function AnnouncementsWidget() {
   const unread = announcements.filter((a) => !(a.readBy ?? []).includes(currentUser?.id)).length;
   const latest = [...announcements].sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || b.date.localeCompare(a.date))[0];
   return (
-    <button onClick={() => navigate("/announcements")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50/40">
+    <button onClick={() => navigate("/announcements")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-warn hover:bg-warn-bg">
       <AccentTile icon="Megaphone" tone="amber" size={44} />
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">Announcements {unread > 0 && <span className="rounded-full bg-blue-100 px-1.5 text-xs font-medium text-blue-700">{unread} new</span>}</p>
-        <p className="truncate text-xs text-slate-500">{latest ? latest.title : "Campus notice board"}</p>
+        <p className="flex items-center gap-2 text-base font-semibold text-ink">Announcements {unread > 0 && <span className="rounded-full bg-brand-100 px-1.5 text-xs font-semibold text-brand-700">{unread} new</span>}</p>
+        <p className="truncate text-xs text-ink-3">{latest ? latest.title : "Campus notice board"}</p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-amber-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-warn" />
     </button>
   );
 }

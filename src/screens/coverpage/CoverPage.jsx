@@ -144,8 +144,8 @@ export default function CoverPage() {
                   <button
                     key={dt}
                     onClick={() => setDocType(dt)}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                      a ? "border-teal-600 bg-teal-600 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-base font-semibold transition-colors ${
+                      a ? "border-teal-600 bg-teal-600 text-white" : "border-brd bg-surface text-ink-2 hover:bg-surface-2"
                     }`}
                   >
                     <DtIcon size={15} /> {DOC_TYPE_LABELS[dt]}
@@ -165,8 +165,8 @@ export default function CoverPage() {
                       <button
                         key={tmpl}
                         onClick={() => setTemplate(tmpl)}
-                        className={`relative rounded-lg border p-3 text-left transition-colors ${
-                          a ? "border-teal-600 bg-teal-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                        className={`relative rounded-md border p-3 text-left transition-colors ${
+                          a ? "border-teal-600 bg-teal-50 dark:bg-teal-500/15" : "border-brd bg-surface hover:bg-surface-2"
                         }`}
                       >
                         {a && (
@@ -174,8 +174,8 @@ export default function CoverPage() {
                             <Check size={11} />
                           </span>
                         )}
-                        <p className={`text-sm font-semibold ${a ? "text-teal-700" : "text-slate-800"}`}>{TEMPLATE_LABELS[tmpl].replace(" Style", "")}</p>
-                        <p className="mt-0.5 text-xs text-slate-400">{TEMPLATE_DESC[tmpl]}</p>
+                        <p className={`text-base font-semibold ${a ? "text-teal-700 dark:text-teal-300" : "text-ink"}`}>{TEMPLATE_LABELS[tmpl].replace(" Style", "")}</p>
+                        <p className="mt-0.5 text-xs text-ink-3">{TEMPLATE_DESC[tmpl]}</p>
                       </button>
                     );
                   })}
@@ -271,7 +271,7 @@ export default function CoverPage() {
                   <Input value={m.name} onChange={(e) => updateMember(i, { name: e.target.value })} placeholder={`Member ${i + 1} name`} className="flex-[1.4]" />
                   <Input value={m.id} onChange={(e) => updateMember(i, { id: e.target.value })} placeholder="ID" className="flex-1" />
                   {members.length > 1 && (
-                    <button onClick={() => removeMember(i)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-red-600">
+                    <button onClick={() => removeMember(i)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-brd text-ink-3 hover:bg-surface-2 hover:text-danger">
                       <Trash2 size={16} />
                     </button>
                   )}
@@ -312,15 +312,15 @@ export default function CoverPage() {
             <Button icon={Printer} full disabled={!canGenerate} onClick={generate}>
               Generate &amp; print
             </Button>
-            {!canGenerate && <p className="text-center text-xs text-slate-400">Fill in name, ID{needCourse ? ", course code & title" : ""}{needTitle ? " & title" : ""} to generate.</p>}
+            {!canGenerate && <p className="text-center text-xs text-ink-3">Fill in name, ID{needCourse ? ", course code & title" : ""}{needTitle ? " & title" : ""} to generate.</p>}
           </Card>
         </div>
 
         {/* ---- Live preview ---- */}
         <div className="hidden lg:block">
           <div className="sticky top-20">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Live preview</p>
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-sm" style={{ aspectRatio: "210 / 297" }}>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-3">Live preview</p>
+            <div className="overflow-hidden rounded-md border border-brd bg-surface-3 shadow-sm" style={{ aspectRatio: "210 / 297" }}>
               <iframe title="Cover page preview" srcDoc={html} className="h-full w-full" style={{ border: 0, transformOrigin: "top left" }} />
             </div>
           </div>
@@ -329,30 +329,30 @@ export default function CoverPage() {
 
       {/* Faculty picker */}
       <Modal open={facultyModal} onClose={() => { setFacultyModal(false); setFacultySearch(""); }} title="Select teacher" size="md">
-        <div className="mb-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
-          <Search size={15} className="text-slate-400" />
+        <div className="mb-3 flex items-center gap-2 rounded-md border border-brd bg-surface-2 px-3">
+          <Search size={15} className="text-ink-3" />
           <input
             autoFocus
             value={facultySearch}
             onChange={(e) => setFacultySearch(e.target.value)}
             placeholder="Search name or department…"
-            className="h-10 flex-1 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+            className="h-10 flex-1 bg-transparent text-base text-ink placeholder:text-ink-3 focus:outline-none"
           />
         </div>
         <div className="max-h-80 overflow-y-auto">
           {filteredFaculty.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-400">No teachers found</p>
+            <p className="py-8 text-center text-base text-ink-3">No teachers found</p>
           ) : (
             filteredFaculty.map((f) => (
               <button
                 key={f.id}
                 onClick={() => selectTeacher(f)}
-                className="flex w-full items-center gap-3 border-b border-slate-100 py-2.5 text-left last:border-0 hover:bg-slate-50"
+                className="flex w-full items-center gap-3 border-b border-brd py-2.5 text-left last:border-0 hover:bg-surface-2"
               >
                 <Avatar name={f.name} src={f.photo} size={34} />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-900">{f.name}</p>
-                  <p className="truncate text-xs text-slate-400">
+                  <p className="truncate text-base font-semibold text-ink">{f.name}</p>
+                  <p className="truncate text-xs text-ink-3">
                     {deptName(f.departmentId).replace(/^Department of\s*/i, "")}{f.designation ? ` · ${f.designation}` : ""}
                   </p>
                 </div>
@@ -366,5 +366,5 @@ export default function CoverPage() {
 }
 
 function SecLabel({ children, className = "" }) {
-  return <p className={`text-sm font-semibold text-slate-900 ${className}`}>{children}</p>;
+  return <p className={`text-base font-semibold text-ink ${className}`}>{children}</p>;
 }

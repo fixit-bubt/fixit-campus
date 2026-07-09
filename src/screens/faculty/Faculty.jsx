@@ -77,8 +77,8 @@ function SaveStar({ saved, onClick }) {
     <button
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={saved ? "Saved" : "Save teacher"}
-      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-        saved ? "text-amber-500 hover:bg-amber-50" : "text-slate-300 hover:bg-slate-100 hover:text-slate-400"
+      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors ${
+        saved ? "text-warn hover:bg-warn-bg" : "text-ink-3 hover:bg-surface-2 hover:text-ink-3"
       }`}
     >
       <Icon name="Star" size={18} className={saved ? "fill-amber-400" : ""} />
@@ -107,10 +107,10 @@ function FacultyCard({ f, dept, saved, onToggleSave }) {
         </button>
         <div className="min-w-0 flex-1">
           <button onClick={open} className="block max-w-full text-left">
-            <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-indigo-700">{f.name}</p>
+            <p className="truncate text-base font-semibold text-ink group-hover:text-indigo-700 dark:group-hover:text-indigo-300">{f.name}</p>
           </button>
-          <p className="mt-0.5 truncate text-xs text-slate-500">{f.designation}</p>
-          {dept && <p className="mt-0.5 truncate text-xs text-slate-400">{shortDept(dept.name)}</p>}
+          <p className="mt-0.5 truncate text-xs text-ink-3">{f.designation}</p>
+          {dept && <p className="mt-0.5 truncate text-xs text-ink-3">{shortDept(dept.name)}</p>}
         </div>
         <SaveStar saved={saved} onClick={onToggleSave} />
       </div>
@@ -120,25 +120,25 @@ function FacultyCard({ f, dept, saved, onToggleSave }) {
       {f.interests.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {f.interests.slice(0, 3).map((i) => (
-            <span key={i} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">{i}</span>
+            <span key={i} className="rounded-full bg-indigo-50 dark:bg-indigo-500/15 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">{i}</span>
           ))}
           {f.interests.length > 3 && (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">+{f.interests.length - 3}</span>
+            <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-semibold text-ink-3">+{f.interests.length - 3}</span>
           )}
         </div>
       )}
 
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+      <div className="mt-4 flex items-center justify-between border-t border-brd pt-3">
         {f.email ? (
           <a
             href={`mailto:${f.email}`}
             onClick={(e) => e.stopPropagation()}
             title={f.email}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-700"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-3 hover:text-indigo-700 dark:hover:text-indigo-300"
           >
             <Icon name="Mail" size={14} /> Email
           </a>
-        ) : <span className="text-xs text-slate-300">No email listed</span>}
+        ) : <span className="text-xs text-ink-3">No email listed</span>}
         <Button size="sm" variant="secondary" iconRight="ArrowRight" onClick={open}>Profile</Button>
       </div>
     </Card>
@@ -150,14 +150,14 @@ function DepartmentCard({ dept, count }) {
   return (
     <button
       onClick={() => navigate(`/faculty/dept/${dept.deptNumber}`)}
-      className="group flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50/40"
+      className="group flex items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10"
     >
       <AccentTile icon={BRANCH_ICON[dept.branch] || "GraduationCap"} tone={ACCENT} size={44} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">{shortDept(dept.name)}</p>
-        <p className="mt-0.5 truncate text-xs text-slate-400">{count} teacher{count === 1 ? "" : "s"}</p>
+        <p className="truncate text-base font-semibold text-ink">{shortDept(dept.name)}</p>
+        <p className="mt-0.5 truncate text-xs text-ink-3">{count} teacher{count === 1 ? "" : "s"}</p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-indigo-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-indigo-500 dark:group-hover:text-indigo-300" />
     </button>
   );
 }
@@ -166,18 +166,18 @@ function DepartmentCard({ dept, count }) {
 function SearchField({ value, onChange, placeholder }) {
   return (
     <div className="relative">
-      <Icon name="Search" size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+      <Icon name="Search" size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+        className="h-11 w-full rounded-md border border-brd bg-surface pl-10 pr-10 text-base text-ink placeholder:text-ink-3 transition-colors focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
       />
       {value && (
         <button
           onClick={() => onChange("")}
           aria-label="Clear search"
-          className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-ink-3 hover:bg-surface-2 hover:text-ink-2"
         >
           <Icon name="X" size={15} />
         </button>
@@ -283,7 +283,7 @@ export function FacultyDirectory() {
 
       {popularInterests.length > 0 && (
         <div className="mt-4">
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-3">
             <Icon name="FlaskConical" size={13} /> Find a supervisor by research area
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -293,12 +293,12 @@ export function FacultyDirectory() {
                 <button
                   key={it.label}
                   onClick={() => setInterest(active ? null : it.label)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    active ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    active ? "bg-indigo-600 text-white" : "bg-surface text-ink-2 border border-brd hover:bg-surface-2"
                   }`}
                 >
                   {it.label}
-                  <span className={`rounded-full px-1.5 text-[10px] ${active ? "bg-white/20" : "bg-slate-100 text-slate-500"}`}>{it.n}</span>
+                  <span className={`rounded-full px-1.5 text-[10px] ${active ? "bg-white/20" : "bg-surface-3 text-ink-3"}`}>{it.n}</span>
                 </button>
               );
             })}
@@ -309,11 +309,11 @@ export function FacultyDirectory() {
       {filtering ? (
         <div className="mt-6">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm text-slate-500">
+            <p className="text-base text-ink-3">
               {results.length} result{results.length === 1 ? "" : "s"}
-              {interest && <> in <span className="font-medium text-slate-700">{interest}</span></>}
+              {interest && <> in <span className="font-semibold text-ink-2">{interest}</span></>}
             </p>
-            <button onClick={() => { setQuery(""); setInterest(null); }} className="text-xs font-medium text-slate-500 hover:text-slate-700">
+            <button onClick={() => { setQuery(""); setInterest(null); }} className="text-xs font-semibold text-ink-3 hover:text-ink-2">
               Clear
             </button>
           </div>
@@ -337,7 +337,7 @@ export function FacultyDirectory() {
         <div className="mt-8 space-y-8">
           {branches.map(({ branch, depts }) => (
             <section key={branch}>
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">{branch}</h3>
+              <h3 className="mb-3 text-base font-semibold text-ink">{branch}</h3>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {depts.map((d) => (
                   <DepartmentCard key={d.id} dept={d} count={countByDept[d.id] || 0} />
@@ -391,16 +391,16 @@ export function DepartmentFaculty({ deptNo }) {
   return (
     <AppShell activeKey="faculty" title={shortDept(dept.name)}>
       <div className="mx-auto max-w-5xl">
-        <button onClick={() => navigate("/faculty")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/faculty")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> All departments
         </button>
 
         <div className="mb-6 flex items-start gap-4">
           <AccentTile icon={BRANCH_ICON[dept.branch] || "GraduationCap"} tone={ACCENT} size={48} />
           <div className="min-w-0">
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{shortDept(dept.name)}</h2>
-            <p className="mt-0.5 text-sm text-slate-400">{dept.branch} · {roster.length} teacher{roster.length === 1 ? "" : "s"}</p>
-            {dept.chairman && <p className="mt-1 text-sm text-slate-600"><span className="text-slate-400">Chair:</span> {dept.chairman}</p>}
+            <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{shortDept(dept.name)}</h2>
+            <p className="mt-0.5 text-base text-ink-3">{dept.branch} · {roster.length} teacher{roster.length === 1 ? "" : "s"}</p>
+            {dept.chairman && <p className="mt-1 text-base text-ink-2"><span className="text-ink-3">Chair:</span> {dept.chairman}</p>}
           </div>
         </div>
 
@@ -439,10 +439,10 @@ function LinkPill({ href, icon, label }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40"
+      className="flex items-center justify-between gap-2 rounded-md border border-brd bg-surface px-3 py-2.5 text-base font-semibold text-ink-2 transition-colors hover:border-indigo-300 dark:hover:border-indigo-500/40 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10"
     >
-      <span className="flex items-center gap-2.5"><Icon name={icon} size={16} className="text-slate-400" /> {label}</span>
-      <Icon name="ExternalLink" size={14} className="text-slate-300" />
+      <span className="flex items-center gap-2.5"><Icon name={icon} size={16} className="text-ink-3" /> {label}</span>
+      <Icon name="ExternalLink" size={14} className="text-ink-3" />
     </a>
   );
 }
@@ -483,7 +483,7 @@ export function FacultyProfile({ id }) {
       <div className="mx-auto max-w-4xl">
         <button
           onClick={() => navigate(dept ? `/faculty/dept/${dept.deptNumber}` : "/faculty")}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700"
+          className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2"
         >
           <Icon name="ArrowLeft" size={16} /> {dept ? shortDept(dept.name) : "Directory"}
         </button>
@@ -492,14 +492,14 @@ export function FacultyProfile({ id }) {
         <Card className="p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-4">
-              <Avatar name={f.name} src={f.photo} size={88} className="text-2xl" />
+              <Avatar name={f.name} src={f.photo} size={88} className="text-4xl" />
               <div className="min-w-0">
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{f.name}</h2>
-                <p className="mt-0.5 text-sm text-slate-600">{f.designation}</p>
+                <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{f.name}</h2>
+                <p className="mt-0.5 text-base text-ink-2">{f.designation}</p>
                 {dept && (
                   <button
                     onClick={() => navigate(`/faculty/dept/${dept.deptNumber}`)}
-                    className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-700 hover:text-indigo-800"
+                    className="mt-1 inline-flex items-center gap-1.5 text-base font-semibold text-indigo-700 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-300"
                   >
                     <Icon name={BRANCH_ICON[dept.branch] || "GraduationCap"} size={14} /> {shortDept(dept.name)}
                   </button>
@@ -516,7 +516,7 @@ export function FacultyProfile({ id }) {
               variant={saved ? "secondary" : "primary"}
               icon="Star"
               onClick={toggleSave}
-              className={saved ? "text-amber-600" : ""}
+              className={saved ? "text-warn" : ""}
             >
               {saved ? "Saved" : "Save"}
             </Button>
@@ -528,10 +528,10 @@ export function FacultyProfile({ id }) {
           <div className="space-y-6 lg:col-span-2">
             {f.interests.length > 0 && (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Research interests</h3>
+                <h3 className="text-base font-semibold text-ink">Research interests</h3>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {f.interests.map((i) => (
-                    <span key={i} className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">{i}</span>
+                    <span key={i} className="rounded-full bg-indigo-50 dark:bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300">{i}</span>
                   ))}
                 </div>
               </Card>
@@ -539,11 +539,11 @@ export function FacultyProfile({ id }) {
 
             {f.qualifications.length > 0 && (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Qualifications</h3>
+                <h3 className="text-base font-semibold text-ink">Qualifications</h3>
                 <ul className="mt-3 space-y-2.5">
                   {f.qualifications.map((qual, i) => (
-                    <li key={i} className="flex gap-2.5 text-sm text-slate-600">
-                      <Icon name="GraduationCap" size={16} className="mt-0.5 shrink-0 text-slate-400" />
+                    <li key={i} className="flex gap-2.5 text-base text-ink-2">
+                      <Icon name="GraduationCap" size={16} className="mt-0.5 shrink-0 text-ink-3" />
                       <span>{qual}</span>
                     </li>
                   ))}
@@ -553,7 +553,7 @@ export function FacultyProfile({ id }) {
 
             {f.interests.length === 0 && f.qualifications.length === 0 && (
               <Card className="p-5">
-                <p className="text-sm text-slate-500">
+                <p className="text-base text-ink-3">
                   No research interests or qualifications are listed for this teacher on BUBT's site yet.
                   Use the contact details to reach out directly.
                 </p>
@@ -564,25 +564,25 @@ export function FacultyProfile({ id }) {
           {/* Sidebar */}
           <div className="space-y-4">
             <Card className="p-5">
-              <h3 className="text-sm font-semibold text-slate-900">Contact</h3>
+              <h3 className="text-base font-semibold text-ink">Contact</h3>
               <div className="mt-3 space-y-2.5">
                 {f.email ? (
                   <a
                     href={`mailto:${f.email}`}
-                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-brand px-4 text-base font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
                   >
                     <Icon name="Mail" size={16} /> Email
                   </a>
                 ) : (
-                  <p className="text-sm text-slate-400">No email listed.</p>
+                  <p className="text-base text-ink-3">No email listed.</p>
                 )}
-                {f.email && <p className="break-all text-center text-xs text-slate-400">{f.email}</p>}
+                {f.email && <p className="break-all text-center text-xs text-ink-3">{f.email}</p>}
                 {phoneDigits && (
                   <div className="flex gap-2">
-                    <a href={`tel:${f.phone}`} className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <a href={`tel:${f.phone}`} className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-brd bg-surface text-base font-semibold text-ink-2 hover:bg-surface-2">
                       <Icon name="Phone" size={15} /> Call
                     </a>
-                    <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noreferrer" className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 text-sm font-medium text-white hover:bg-emerald-700">
+                    <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noreferrer" className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md bg-success text-base font-semibold text-white hover:brightness-95">
                       <Icon name="MessageCircle" size={15} /> WhatsApp
                     </a>
                   </div>
@@ -592,7 +592,7 @@ export function FacultyProfile({ id }) {
 
             {links.length > 0 && (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Academic profiles</h3>
+                <h3 className="text-base font-semibold text-ink">Academic profiles</h3>
                 <div className="mt-3 space-y-2">
                   {links.map((k) => (
                     <LinkPill key={k} href={f.links[k]} icon={LINK_META[k].icon} label={LINK_META[k].label} />
@@ -606,7 +606,7 @@ export function FacultyProfile({ id }) {
                 href={f.profileUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 px-3 py-2.5 text-xs font-medium text-slate-500 hover:bg-slate-100"
+                className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-brd-2 bg-surface-2 px-3 py-2.5 text-xs font-semibold text-ink-3 hover:bg-surface-3"
               >
                 <Icon name="ExternalLink" size={14} /> View official profile on bubt.edu.bd
               </a>
@@ -637,7 +637,7 @@ export function SavedFaculty() {
   return (
     <AppShell activeKey="faculty" title="Saved Teachers">
       <div className="mx-auto max-w-5xl">
-        <button onClick={() => navigate("/faculty")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/faculty")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Directory
         </button>
         <PageHeader title="Saved Teachers" subtitle="Teachers you've bookmarked — your shortlist of supervisors and contacts." />

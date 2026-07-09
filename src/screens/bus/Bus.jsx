@@ -49,8 +49,8 @@ export function BusRouteCard({ route, direction, saved, onToggleSave, onOpen }) 
         <div className="flex items-start gap-3">
           <AccentTile icon="Bus" tone="sky" />
           <div>
-            <p className="text-sm font-semibold text-slate-900">{route.name}</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400 whitespace-nowrap">
+            <p className="text-base font-semibold text-ink">{route.name}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-3 whitespace-nowrap">
               <span className="font-mono">{route.busNo}</span> · {route.area}
             </p>
           </div>
@@ -58,38 +58,38 @@ export function BusRouteCard({ route, direction, saved, onToggleSave, onOpen }) 
         <button
           onClick={onToggleSave}
           title={saved ? "Saved route" : "Save route"}
-          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${saved ? "text-amber-500 hover:bg-amber-50" : "text-slate-300 hover:bg-slate-100 hover:text-slate-400"}`}
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${saved ? "text-warn hover:bg-warn-bg" : "text-ink-3 hover:bg-surface-2 hover:text-ink-3"}`}
         >
           <Icon name="Star" size={18} className={saved ? "fill-amber-400" : ""} />
         </button>
       </div>
 
-      <div className="mt-4 flex items-end justify-between rounded-lg bg-slate-50 px-3 py-2.5">
+      <div className="mt-4 flex items-end justify-between rounded-md bg-surface-2 px-3 py-2.5">
         {next ? (
           <>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Next departure</p>
-              <p className="text-lg font-bold text-slate-900">{fmtTime(minutesToHHMM(next.mins))}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">Next departure</p>
+              <p className="text-2xl font-bold text-ink">{fmtTime(minutesToHHMM(next.mins))}</p>
             </div>
             <Badge tone="sky">{next.tomorrow ? "tomorrow" : `in ${fmtCountdown(next.wait)}`}</Badge>
           </>
         ) : (
-          <p className="text-sm text-slate-400">No departures scheduled</p>
+          <p className="text-base text-ink-3">No departures scheduled</p>
         )}
       </div>
 
       {/* compact stops timeline */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-500">
+      <div className="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-ink-3">
         {timeline.map((s, i) => (
           <React.Fragment key={s}>
-            <span className={i === timeline.length - 1 ? "font-medium text-slate-700" : ""}>{s}</span>
-            {i < timeline.length - 1 && <Icon name="ChevronRight" size={12} className="text-slate-300" />}
+            <span className={i === timeline.length - 1 ? "font-semibold text-ink-2" : ""}>{s}</span>
+            {i < timeline.length - 1 && <Icon name="ChevronRight" size={12} className="text-ink-3" />}
           </React.Fragment>
         ))}
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        <span className="text-xs text-slate-400">{route.days}</span>
+      <div className="mt-4 flex items-center justify-between border-t border-brd pt-3">
+        <span className="text-xs text-ink-3">{route.days}</span>
         <Button size="sm" variant="secondary" iconRight="ArrowRight" onClick={onOpen}>Timetable</Button>
       </div>
     </Card>
@@ -155,7 +155,7 @@ export function BusSchedule() {
           value={direction}
           onChange={setDirection}
         />
-        <span className="hidden text-sm text-slate-400 sm:block">{busRoutes.length} routes</span>
+        <span className="hidden text-base text-ink-3 sm:block">{busRoutes.length} routes</span>
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -177,24 +177,24 @@ export function BusSchedule() {
 // --- Detail -----------------------------------------------------------------
 export function TimetableTable({ rows }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
-      <table className="w-full text-left text-sm">
+    <div className="overflow-hidden rounded-md border border-brd">
+      <table className="w-full text-left text-base">
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
-            <th className="px-4 py-2.5 font-medium">Stop</th>
-            <th className="px-4 py-2.5 text-right font-medium">Time</th>
+          <tr className="border-b border-brd bg-surface-2 text-xs uppercase tracking-wide text-ink-3">
+            <th className="px-4 py-2.5 font-semibold">Stop</th>
+            <th className="px-4 py-2.5 text-right font-semibold">Time</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-brd">
           {rows.map((r, i) => (
-            <tr key={r.stop} className={i === rows.length - 1 ? "bg-sky-50/40" : ""}>
+            <tr key={r.stop} className={i === rows.length - 1 ? "bg-sky-50/40 dark:bg-sky-500/10" : ""}>
               <td className="px-4 py-2.5">
                 <span className="inline-flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${i === rows.length - 1 ? "bg-sky-600" : "bg-slate-300"}`}></span>
-                  <span className={i === rows.length - 1 ? "font-medium text-slate-900" : "text-slate-700"}>{r.stop}</span>
+                  <span className={`h-2 w-2 rounded-full ${i === rows.length - 1 ? "bg-sky-600" : "bg-brd-2"}`}></span>
+                  <span className={i === rows.length - 1 ? "font-semibold text-ink" : "text-ink-2"}>{r.stop}</span>
                 </span>
               </td>
-              <td className="px-4 py-2.5 text-right font-medium text-slate-900">{fmtTime(r.time)}</td>
+              <td className="px-4 py-2.5 text-right font-semibold text-ink">{fmtTime(r.time)}</td>
             </tr>
           ))}
         </tbody>
@@ -222,7 +222,7 @@ export function BusDetail({ id }) {
   return (
     <AppShell activeKey="bus" title="Route Timetable">
       <div className="mx-auto max-w-4xl">
-        <button onClick={() => navigate("/bus")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/bus")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back to routes
         </button>
 
@@ -230,8 +230,8 @@ export function BusDetail({ id }) {
           <div className="flex items-start gap-3">
             <AccentTile icon="Bus" tone="sky" size={48} />
             <div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{route.name}</h2>
-              <p className="mt-0.5 text-sm text-slate-400"><span className="font-mono">{route.busNo}</span> · {route.area} · {route.days}</p>
+              <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{route.name}</h2>
+              <p className="mt-0.5 text-base text-ink-3"><span className="font-mono">{route.busNo}</span> · {route.area} · {route.days}</p>
             </div>
           </div>
           {currentUser?.role === "Admin" && (
@@ -247,26 +247,26 @@ export function BusDetail({ id }) {
                 value={direction}
                 onChange={setDirection}
               />
-              <span className="text-xs text-slate-400">Departs {departures.map((d) => fmtTime(d)).join(", ")}</span>
+              <span className="text-xs text-ink-3">Departs {departures.map((d) => fmtTime(d)).join(", ")}</span>
             </div>
             <TimetableTable rows={sched} />
-            <p className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
-              <Icon name="Info" size={13} className="text-slate-400" />
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-3">
+              <Icon name="Info" size={13} className="text-ink-3" />
               Representative timing for the first trip. Daily trips depart at {departures.map((d) => fmtTime(d)).join(" & ")}.
             </p>
           </div>
 
           <div className="space-y-4">
             <Card className="p-5">
-              <h3 className="text-sm font-semibold text-slate-900">Service details</h3>
-              <dl className="mt-3 space-y-2.5 text-sm">
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">Bus number</dt><dd className="font-medium text-slate-900">{route.busNo}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">Days operated</dt><dd className="font-medium text-slate-900">{route.days}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">To-campus trips</dt><dd className="font-medium text-slate-900">{route.toDepartures.length}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">From-campus trips</dt><dd className="font-medium text-slate-900">{route.fromDepartures.length}</dd></div>
+              <h3 className="text-base font-semibold text-ink">Service details</h3>
+              <dl className="mt-3 space-y-2.5 text-base">
+                <div className="flex justify-between gap-3"><dt className="text-ink-3">Bus number</dt><dd className="font-semibold text-ink">{route.busNo}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-ink-3">Days operated</dt><dd className="font-semibold text-ink">{route.days}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-ink-3">To-campus trips</dt><dd className="font-semibold text-ink">{route.toDepartures.length}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-ink-3">From-campus trips</dt><dd className="font-semibold text-ink">{route.fromDepartures.length}</dd></div>
               </dl>
               {route.fridayNote && (
-                <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                <div className="mt-3 flex items-start gap-2 rounded-md bg-warn-bg px-3 py-2 text-xs text-warn">
                   <Icon name="TriangleAlert" size={14} className="mt-0.5 shrink-0" />
                   {route.fridayNote}
                 </div>
@@ -275,17 +275,17 @@ export function BusDetail({ id }) {
 
             {route.helperName && (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900">Route helper</h3>
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <h3 className="text-base font-semibold text-ink">Route helper</h3>
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface-2 p-3">
                   <div className="flex items-center gap-2.5">
                     <Avatar name={route.helperName} size={32} />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-900">{route.helperName}</p>
-                      <p className="truncate text-xs text-slate-500">{route.helperPhone || "No number listed"}</p>
+                      <p className="truncate text-base font-semibold text-ink">{route.helperName}</p>
+                      <p className="truncate text-xs text-ink-3">{route.helperPhone || "No number listed"}</p>
                     </div>
                   </div>
                   {route.helperPhone && (
-                    <a href={`https://wa.me/${route.helperPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white hover:bg-emerald-700">
+                    <a href={`https://wa.me/${route.helperPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95">
                       <Icon name="MessageCircle" size={15} /> Chat
                     </a>
                   )}
@@ -376,7 +376,7 @@ function BusRouteEditor({ id, existing }) {
   return (
     <AppShell activeKey="bus" title={editing ? "Edit Route" : "Add Route"}>
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate(editing ? `/bus/${id}` : "/bus")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate(editing ? `/bus/${id}` : "/bus")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <Icon name="ArrowLeft" size={16} /> Back
         </button>
         <PageHeader title={editing ? "Edit Route" : "Add a Route"} subtitle="Admin · manage campus shuttle routes and times." />
@@ -426,15 +426,15 @@ export function BusWidget() {
     .sort((a, b) => a.wait - b.wait)[0];
   if (!next) return null;
   return (
-    <button onClick={() => navigate("/bus")} className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-sky-300 hover:bg-sky-50/40">
+    <button onClick={() => navigate("/bus")} className="group flex w-full items-center gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-sky-300 dark:hover:border-sky-500/40 hover:bg-sky-50/40 dark:hover:bg-sky-500/10">
       <AccentTile icon="Bus" tone="sky" size={44} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900">Next bus to campus</p>
-        <p className="truncate text-xs text-slate-500">
+        <p className="text-base font-semibold text-ink">Next bus to campus</p>
+        <p className="truncate text-xs text-ink-3">
           {next.route.name} · {fmtTime(minutesToHHMM(next.mins))} {next.tomorrow ? "(tomorrow)" : `· in ${fmtCountdown(next.wait)}`}
         </p>
       </div>
-      <Icon name="ArrowRight" size={18} className="text-slate-300 group-hover:text-sky-500" />
+      <Icon name="ArrowRight" size={18} className="text-ink-3 group-hover:text-sky-500 dark:group-hover:text-sky-300" />
     </button>
   );
 }

@@ -77,8 +77,8 @@ function ClubImage({ path }) {
     return () => { on = false; };
   }, [path]);
   if (failed) return null;
-  if (!url) return <div className="mt-3 h-40 w-full animate-pulse rounded-lg bg-slate-100" />;
-  return <img src={url} alt="" onError={() => setFailed(true)} className="mt-3 w-full rounded-lg object-cover max-h-64 border border-slate-100" />;
+  if (!url) return <div className="mt-3 h-40 w-full animate-pulse rounded-md bg-surface-3" />;
+  return <img src={url} alt="" onError={() => setFailed(true)} className="mt-3 w-full rounded-md object-cover max-h-64 border border-brd" />;
 }
 
 // ── Download attachment button ─────────────────────────────────────────────
@@ -101,7 +101,7 @@ function AttachmentButton({ fileUrl, fileName }) {
     <button
       onClick={handleDownload}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+      className="inline-flex items-center gap-1.5 rounded-sm border border-brd bg-surface-2 px-2.5 py-1 text-xs font-semibold text-ink-2 hover:bg-surface-3 disabled:opacity-50"
     >
       {loading ? <Spinner size={12} /> : <Paperclip size={12} />}
       {fileName || "Attachment"}
@@ -122,7 +122,7 @@ function PostCard({ post, clubId, onEdit, onDelete, onPin }) {
   const canPin  = canEdit;
 
   return (
-    <div className={`rounded-lg border bg-white ${post.isPinned ? "border-l-4 border-l-amber-400 border-slate-200 bg-amber-50/20" : "border-slate-200"} shadow-sm`}>
+    <div className={`rounded-md border bg-surface ${post.isPinned ? "border-l-4 border-l-amber-400 border-brd bg-amber-50/20 dark:bg-amber-500/10" : "border-brd"} shadow-sm`}>
       <div className="p-4">
         {/* header */}
         <div className="flex items-start justify-between gap-3">
@@ -130,15 +130,15 @@ function PostCard({ post, clubId, onEdit, onDelete, onPin }) {
             <Avatar name={author?.name || "?"} size={32} src={author?.avatar} />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-sm font-medium text-slate-900 truncate">{author?.name || "Unknown"}</span>
+                <span className="text-base font-semibold text-ink truncate">{author?.name || "Unknown"}</span>
                 <RoleBadge role={authorRole} />
               </div>
-              <p className="text-xs text-slate-400">{relativeDate(post.createdAt)}</p>
+              <p className="text-xs text-ink-3">{relativeDate(post.createdAt)}</p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {post.isPinned && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-semibold text-warn">
                 <Pin size={10} /> Pinned
               </span>
             )}
@@ -154,9 +154,9 @@ function PostCard({ post, clubId, onEdit, onDelete, onPin }) {
 
         {/* content */}
         <div className="mt-3">
-          <p className="text-sm font-semibold text-slate-900">{post.title}</p>
+          <p className="text-base font-semibold text-ink">{post.title}</p>
           {post.body && (
-            <p className="mt-1 text-sm text-slate-600 whitespace-pre-line line-clamp-4">{post.body}</p>
+            <p className="mt-1 text-base text-ink-2 whitespace-pre-line line-clamp-4">{post.body}</p>
           )}
         </div>
 
@@ -180,26 +180,26 @@ function PostMenu({ isPinned, canEdit, canDel, canPin, onEdit, onDelete, onPin }
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+        className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-3 hover:bg-surface-2 hover:text-ink-2"
       >
         <MoreHorizontal size={16} />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-8 z-20 min-w-[150px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          <div className="absolute right-0 top-8 z-20 min-w-[150px] rounded-md border border-brd bg-surface py-1 shadow-lg">
             {canPin && (
-              <button onClick={() => { onPin(); setOpen(false); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+              <button onClick={() => { onPin(); setOpen(false); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-base text-ink-2 hover:bg-surface-2">
                 <Pin size={14} /> {isPinned ? "Unpin" : "Pin"}
               </button>
             )}
             {canEdit && (
-              <button onClick={() => { onEdit(); setOpen(false); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+              <button onClick={() => { onEdit(); setOpen(false); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-base text-ink-2 hover:bg-surface-2">
                 <Pencil size={14} /> Edit
               </button>
             )}
             {canDel && (
-              <button onClick={() => { onDelete(); setOpen(false); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50">
+              <button onClick={() => { onDelete(); setOpen(false); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-base text-danger hover:bg-danger-bg">
                 <Trash2 size={14} /> Delete
               </button>
             )}
@@ -247,31 +247,31 @@ function AddMembersModal({ clubId, existingUserIds, onClose }) {
     <Modal open title="Add Members" onClose={onClose}>
       <div className="flex flex-col gap-4">
         <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
           <input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search students by name"
             placeholder="Search students by name…"
-            className="h-9 w-full rounded-lg border border-slate-200 pl-8 pr-3 text-sm outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+            className="h-9 w-full rounded-md border border-brd pl-8 pr-3 text-base outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25"
           />
         </div>
 
         {selected.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {selected.map((u) => (
-              <span key={u.id} className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
+              <span key={u.id} className="inline-flex items-center gap-1 rounded-full bg-purple-100 dark:bg-purple-500/15 px-2.5 py-0.5 text-xs font-semibold text-purple-700 dark:text-purple-300">
                 {u.name}
-                <button onClick={() => toggle(u)} className="ml-0.5 hover:text-purple-900"><X size={11} /></button>
+                <button onClick={() => toggle(u)} className="ml-0.5 hover:text-purple-900 dark:hover:text-purple-200"><X size={11} /></button>
               </span>
             ))}
           </div>
         )}
 
-        <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 rounded-lg border border-slate-200">
+        <div className="max-h-60 overflow-y-auto divide-y divide-brd rounded-md border border-brd">
           {eligible.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">{query ? "No students match." : "All students are already members."}</p>
+            <p className="py-6 text-center text-base text-ink-3">{query ? "No students match." : "All students are already members."}</p>
           ) : (
             eligible.slice(0, 40).map((u) => {
               const isSelected = selected.some((x) => x.id === u.id);
@@ -279,12 +279,12 @@ function AddMembersModal({ clubId, existingUserIds, onClose }) {
                 <button
                   key={u.id}
                   onClick={() => toggle(u)}
-                  className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${isSelected ? "bg-purple-50" : "hover:bg-slate-50"}`}
+                  className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${isSelected ? "bg-purple-50 dark:bg-purple-500/15" : "hover:bg-surface-2"}`}
                 >
                   <Avatar name={u.name} size={30} src={u.avatar} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-900 truncate">{u.name}</p>
-                    {u.dept && <p className="text-xs text-slate-400 truncate">{u.dept}</p>}
+                    <p className="text-base font-semibold text-ink truncate">{u.name}</p>
+                    {u.dept && <p className="text-xs text-ink-3 truncate">{u.dept}</p>}
                   </div>
                   {isSelected && <div className="h-4 w-4 rounded-full bg-purple-600 flex items-center justify-center"><svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 12 12"><path d="M10 3L5 8.5 2 5.5 1 6.5l4 4 6-7z"/></svg></div>}
                 </button>
@@ -314,7 +314,7 @@ function ClubCard({ club, role }) {
   return (
     <button
       onClick={() => navigate(`/clubs/${club.id}`)}
-      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:border-purple-300 hover:shadow-md text-left"
+      className="group flex flex-col overflow-hidden rounded-lg border border-brd bg-surface shadow-sm transition-all hover:border-purple-300 dark:hover:border-purple-500/40 hover:shadow-md text-left"
     >
       <ClubBanner club={club} className="h-28 w-full" />
       <div className="flex flex-col gap-1 p-3">
@@ -322,8 +322,8 @@ function ClubCard({ club, role }) {
           <Badge tone={CATEGORY_TONE[club.category] || "slate"}>{club.category}</Badge>
           {role && <RoleBadge role={role} />}
         </div>
-        <p className="mt-1 text-sm font-semibold text-slate-900 group-hover:text-purple-700 transition-colors line-clamp-1">{club.name}</p>
-        {club.tagline && <p className="text-xs text-slate-500 line-clamp-1">{club.tagline}</p>}
+        <p className="mt-1 text-base font-semibold text-ink group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors line-clamp-1">{club.name}</p>
+        {club.tagline && <p className="text-xs text-ink-3 line-clamp-1">{club.tagline}</p>}
       </div>
     </button>
   );
@@ -380,12 +380,12 @@ export function ClubHome({ id }) {
   if (!myRole) {
     return (
       <AppShell activeKey="clubs" title={club.name}>
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-lg border border-brd bg-surface shadow-sm">
           <ClubBanner club={club} className="h-40 w-full" />
           <div className="p-6 text-center">
-            <h2 className="text-lg font-semibold text-slate-900">{club.name}</h2>
+            <h2 className="text-2xl font-semibold text-ink">{club.name}</h2>
             <div className="mt-2 flex justify-center"><Badge tone={CATEGORY_TONE[club.category]}>{club.category}</Badge></div>
-            <p className="mt-4 text-sm text-slate-500">Club membership is by invitation only. Speak to a club officer to join.</p>
+            <p className="mt-4 text-base text-ink-3">Club membership is by invitation only. Speak to a club officer to join.</p>
           </div>
         </div>
       </AppShell>
@@ -416,19 +416,19 @@ export function ClubHome({ id }) {
   return (
     <AppShell activeKey="clubs" title={club.name}>
       {/* Banner + identity */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-brd bg-surface shadow-sm">
         <ClubBanner club={club} className="h-44 w-full" />
         <div className="p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg font-bold text-slate-900">{club.name}</h1>
+                <h1 className="text-2xl font-bold text-ink">{club.name}</h1>
                 <Badge tone={CATEGORY_TONE[club.category]}>{club.category}</Badge>
                 <RoleBadge role={myRole} />
               </div>
-              {club.tagline && <p className="mt-0.5 text-sm text-slate-500">{club.tagline}</p>}
+              {club.tagline && <p className="mt-0.5 text-base text-ink-3">{club.tagline}</p>}
             </div>
-            <Link to={`/clubs/${id}/members`} className="shrink-0 inline-flex items-center gap-1 text-sm font-medium text-purple-600 hover:text-purple-700">
+            <Link to={`/clubs/${id}/members`} className="shrink-0 inline-flex items-center gap-1 text-base font-semibold text-purple-600 dark:text-purple-300 hover:text-purple-700 dark:hover:text-purple-300">
               <UsersRound size={15} /> {members.length} members
             </Link>
           </div>
@@ -436,8 +436,8 @@ export function ClubHome({ id }) {
           {/* Meta chips */}
           {advisor && (
             <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={() => navigate(`/faculty/${advisor.id}`)} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-100">
-                <span className="h-4 w-4 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-[10px] font-bold">F</span>
+              <button onClick={() => navigate(`/faculty/${advisor.id}`)} className="inline-flex items-center gap-1.5 rounded-full border border-brd bg-surface-2 px-2.5 py-1 text-xs text-ink-2 hover:bg-surface-3">
+                <span className="h-4 w-4 rounded-full bg-indigo-100 dark:bg-indigo-500/15 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">F</span>
                 {advisor.name}
               </button>
             </div>
@@ -448,12 +448,12 @@ export function ClubHome({ id }) {
             <div className="mt-3">
               <button
                 onClick={() => setAboutOpen((o) => !o)}
-                className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+                className="flex items-center gap-1 text-xs font-semibold text-ink-3 hover:text-ink-2"
               >
                 <ChevronDown size={13} className={`transition-transform ${aboutOpen ? "rotate-180" : ""}`} />
                 {aboutOpen ? "Hide description" : "About this club"}
               </button>
-              {aboutOpen && <p className="mt-2 text-sm text-slate-600 whitespace-pre-line">{club.about}</p>}
+              {aboutOpen && <p className="mt-2 text-base text-ink-2 whitespace-pre-line">{club.about}</p>}
             </div>
           )}
         </div>
@@ -462,7 +462,7 @@ export function ClubHome({ id }) {
       {/* Posts feed */}
       <div className="relative mt-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Announcements</h2>
+          <h2 className="text-base font-semibold text-ink">Announcements</h2>
           {canPostIn(id) && (
             <Button icon={Plus} onClick={() => navigate(`/clubs/${id}/post/new`)} className="bg-purple-600 text-white hover:bg-purple-700">
               New Post
@@ -498,7 +498,7 @@ export function ClubHome({ id }) {
         <div className="mt-4 flex justify-end">
           <button
             onClick={() => navigate(`/clubs/${id}/manage`)}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600"
+            className="inline-flex items-center gap-1.5 text-base text-ink-3 hover:text-ink-2"
           >
             <Settings size={14} /> Club settings
           </button>
@@ -508,10 +508,10 @@ export function ClubHome({ id }) {
       {/* Delete confirmation */}
       {deleteTarget && (
         <Modal open title="Delete post?" onClose={() => setDeleteTarget(null)}>
-          <p className="text-sm text-slate-600">This post will be permanently removed. This cannot be undone.</p>
+          <p className="text-base text-ink-2">This post will be permanently removed. This cannot be undone.</p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button onClick={handleDelete} loading={deleting} className="bg-red-600 text-white hover:bg-red-700">Delete</Button>
+            <Button onClick={handleDelete} loading={deleting} className="bg-danger text-white hover:brightness-95">Delete</Button>
           </div>
         </Modal>
       )}
@@ -599,7 +599,7 @@ export function ClubMembers({ id }) {
       {/* Officers */}
       {officers.length > 0 && (
         <section className="mb-6">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Officers</h3>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-3">Officers</h3>
           <div className="flex flex-col gap-2">
             {officers.map((m) => (
               <MemberRow
@@ -620,8 +620,8 @@ export function ClubMembers({ id }) {
       {/* Members */}
       {regular.length > 0 && (
         <section>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Members ({regular.length})</h3>
-          <Card className="divide-y divide-slate-100 overflow-hidden">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-3">Members ({regular.length})</h3>
+          <Card className="divide-y divide-brd overflow-hidden">
             {regular.map((m) => (
               <MemberRow
                 key={m.id} member={m}
@@ -644,10 +644,10 @@ export function ClubMembers({ id }) {
 
       {/* Leave club (own row) */}
       {myRole && myRole !== "president" && (
-        <div className="mt-8 border-t border-slate-200 pt-6">
+        <div className="mt-8 border-t border-brd pt-6">
           <button
             onClick={() => setRemoveTarget(currentUser.id)}
-            className="inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700"
+            className="inline-flex items-center gap-1.5 text-base text-danger hover:text-danger"
           >
             <LogOut size={14} /> Leave this club
           </button>
@@ -662,14 +662,14 @@ export function ClubMembers({ id }) {
       {/* Remove/leave confirmation */}
       {removeTarget && (
         <Modal open title={removeTarget === currentUser.id ? "Leave club?" : "Remove member?"} onClose={() => setRemoveTarget(null)}>
-          <p className="text-sm text-slate-600">
+          <p className="text-base text-ink-2">
             {removeTarget === currentUser.id
               ? "You will lose access to this club's posts and will need to be re-added by an officer."
               : "This member will lose access to the club."}
           </p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setRemoveTarget(null)}>Cancel</Button>
-            <Button onClick={handleRemove} loading={saving === removeTarget} className="bg-red-600 text-white hover:bg-red-700">
+            <Button onClick={handleRemove} loading={saving === removeTarget} className="bg-danger text-white hover:brightness-95">
               {removeTarget === currentUser.id ? "Leave" : "Remove"}
             </Button>
           </div>
@@ -687,10 +687,10 @@ function MemberRow({ member, isMe, canChangeRole, canRemove, roleOptions, saving
     <div className="flex items-center gap-3 px-4 py-3">
       <Avatar name={user?.name || "?"} size={36} src={user?.avatar} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-900 truncate">
-          {user?.name || "Unknown"}{isMe && <span className="ml-1 text-xs text-slate-400">(you)</span>}
+        <p className="text-base font-semibold text-ink truncate">
+          {user?.name || "Unknown"}{isMe && <span className="ml-1 text-xs text-ink-3">(you)</span>}
         </p>
-        {user?.dept && <p className="text-xs text-slate-400 truncate">{user.dept}</p>}
+        {user?.dept && <p className="text-xs text-ink-3 truncate">{user.dept}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {saving ? (
@@ -699,7 +699,7 @@ function MemberRow({ member, isMe, canChangeRole, canRemove, roleOptions, saving
           <select
             value={member.role}
             onChange={(e) => onRoleChange(e.target.value)}
-            className="rounded-md border border-slate-200 py-1 pl-2 pr-6 text-xs text-slate-700 outline-none focus:border-purple-400"
+            className="rounded-sm border border-brd py-1 pl-2 pr-6 text-xs text-ink-2 outline-none focus:border-purple-400"
           >
             {roleOptions.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -709,7 +709,7 @@ function MemberRow({ member, isMe, canChangeRole, canRemove, roleOptions, saving
           <RoleBadge role={member.role} />
         )}
         {canRemove && (
-          <button onClick={onRemove} className="flex h-7 w-7 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-500">
+          <button onClick={onRemove} className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-3 hover:bg-danger-bg hover:text-danger">
             <UserMinus size={14} />
           </button>
         )}
@@ -827,10 +827,10 @@ export function ClubPostForm({ id, postId }) {
           <Field label="Attachment" hint="PDF, DOCX, or similar.">
             <div className="flex flex-col gap-2">
               {form.attachmentName && !form.attachmentFile && (
-                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                  <Paperclip size={14} className="text-slate-400" />
-                  <span className="flex-1 truncate text-sm text-slate-600">{form.attachmentName}</span>
-                  <button onClick={() => setForm((f) => ({ ...f, attachmentName: null }))} className="text-slate-300 hover:text-slate-500"><X size={14} /></button>
+                <div className="flex items-center gap-2 rounded-sm border border-brd bg-surface-2 px-3 py-2">
+                  <Paperclip size={14} className="text-ink-3" />
+                  <span className="flex-1 truncate text-base text-ink-2">{form.attachmentName}</span>
+                  <button onClick={() => setForm((f) => ({ ...f, attachmentName: null }))} className="text-ink-3 hover:text-ink-3"><X size={14} /></button>
                 </div>
               )}
               <input
@@ -840,23 +840,23 @@ export function ClubPostForm({ id, postId }) {
                   const file = e.target.files?.[0];
                   if (file) setForm((f) => ({ ...f, attachmentFile: file, attachmentName: file.name }));
                 }}
-                className="text-sm text-slate-500 file:mr-2 file:rounded-md file:border-0 file:bg-purple-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-purple-700 hover:file:bg-purple-100"
+                className="text-base text-ink-3 file:mr-2 file:rounded-sm file:border-0 file:bg-purple-50 dark:file:bg-purple-500/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-purple-700 dark:file:text-purple-300 hover:file:bg-purple-100 dark:hover:file:bg-purple-500/25"
               />
             </div>
           </Field>
         </div>
 
         {["president", "vp", "editor"].includes(myRole) && (
-          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white p-3.5 hover:bg-slate-50">
+          <label className="flex cursor-pointer items-center gap-3 rounded-md border border-brd bg-surface p-3.5 hover:bg-surface-2">
             <input
               type="checkbox"
               checked={form.isPinned}
               onChange={(e) => set("isPinned")(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 accent-amber-500"
+              className="h-4 w-4 rounded border-brd-2 accent-amber-500"
             />
             <div>
-              <p className="text-sm font-medium text-slate-900">Pin this post</p>
-              <p className="text-xs text-slate-400">Pinned posts appear at the top of the feed.</p>
+              <p className="text-base font-semibold text-ink">Pin this post</p>
+              <p className="text-xs text-ink-3">Pinned posts appear at the top of the feed.</p>
             </div>
             <Pin size={15} className="ml-auto text-amber-400" />
           </label>
@@ -946,7 +946,7 @@ export function ClubManage({ id }) {
             {(faculty || []).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </Select>
         </Field>
-        <p className="text-xs text-slate-400">The cover image is managed by an administrator.</p>
+        <p className="text-xs text-ink-3">The cover image is managed by an administrator.</p>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={() => navigate(`/clubs/${id}`)}>Cancel</Button>
@@ -997,55 +997,55 @@ export function AdminManageClubs() {
       {allClubs.length === 0 ? (
         <EmptyState icon={UsersRound} title="No clubs yet" message="Create the first club." action={<Button icon={Plus} onClick={() => setShowCreate(true)} className="bg-purple-600 text-white hover:bg-purple-700">New Club</Button>} />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
+        <div className="overflow-hidden rounded-lg border border-brd bg-surface shadow-sm">
+          <table className="w-full text-base">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50 text-left">
-                <th className="px-4 py-3 text-xs font-semibold text-slate-500">Club</th>
-                <th className="hidden px-4 py-3 text-xs font-semibold text-slate-500 sm:table-cell">Category</th>
-                <th className="hidden px-4 py-3 text-xs font-semibold text-slate-500 md:table-cell">Members</th>
-                <th className="hidden px-4 py-3 text-xs font-semibold text-slate-500 lg:table-cell">President</th>
-                <th className="px-4 py-3 text-xs font-semibold text-slate-500">Status</th>
+              <tr className="border-b border-brd bg-surface-2 text-left">
+                <th className="px-4 py-3 text-xs font-semibold text-ink-3">Club</th>
+                <th className="hidden px-4 py-3 text-xs font-semibold text-ink-3 sm:table-cell">Category</th>
+                <th className="hidden px-4 py-3 text-xs font-semibold text-ink-3 md:table-cell">Members</th>
+                <th className="hidden px-4 py-3 text-xs font-semibold text-ink-3 lg:table-cell">President</th>
+                <th className="px-4 py-3 text-xs font-semibold text-ink-3">Status</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-brd">
               {allClubs.map((club) => {
                 const members = clubMembersIn(club.id);
                 const president = members.find((m) => m.role === "president");
                 const presidentUser = president ? users.find((u) => u.id === president.userId) : null;
                 return (
-                  <tr key={club.id} className="hover:bg-slate-50/60">
+                  <tr key={club.id} className="hover:bg-surface-2">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg">
+                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md">
                           <ClubBanner club={club} className="h-full w-full" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-slate-900 truncate">{club.name}</p>
-                          {club.tagline && <p className="text-xs text-slate-400 truncate">{club.tagline}</p>}
+                          <p className="font-semibold text-ink truncate">{club.name}</p>
+                          {club.tagline && <p className="text-xs text-ink-3 truncate">{club.tagline}</p>}
                         </div>
                       </div>
                     </td>
                     <td className="hidden px-4 py-3 sm:table-cell">
                       <Badge tone={CATEGORY_TONE[club.category]}>{club.category}</Badge>
                     </td>
-                    <td className="hidden px-4 py-3 text-slate-600 md:table-cell">{members.length}</td>
+                    <td className="hidden px-4 py-3 text-ink-2 md:table-cell">{members.length}</td>
                     <td className="hidden px-4 py-3 lg:table-cell">
                       {presidentUser ? (
-                        <span className="flex items-center gap-1.5 text-slate-700">
-                          <Crown size={13} className="text-purple-500" /> {presidentUser.name}
+                        <span className="flex items-center gap-1.5 text-ink-2">
+                          <Crown size={13} className="text-purple-500 dark:text-purple-400" /> {presidentUser.name}
                         </span>
-                      ) : <span className="text-slate-400 text-xs">— unassigned —</span>}
+                      ) : <span className="text-ink-3 text-xs">— unassigned —</span>}
                     </td>
                     <td className="px-4 py-3">
                       <Badge tone={club.isActive ? "emerald" : "slate"}>{club.isActive ? "Active" : "Inactive"}</Badge>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => setEditTarget(club)} title="Edit" className="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Pencil size={14} /></button>
-                        <button onClick={() => setReassignTarget(club)} title="Assign President" className="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-purple-50 hover:text-purple-700"><Crown size={14} /></button>
-                        <button onClick={() => setDeactivateTarget(club)} title={club.isActive ? "Deactivate" : "Reactivate"} className="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                        <button onClick={() => setEditTarget(club)} title="Edit" className="flex h-7 w-7 items-center justify-center rounded text-ink-3 hover:bg-surface-2 hover:text-ink-2"><Pencil size={14} /></button>
+                        <button onClick={() => setReassignTarget(club)} title="Assign President" className="flex h-7 w-7 items-center justify-center rounded text-ink-3 hover:bg-purple-50 dark:hover:bg-purple-500/15 hover:text-purple-700 dark:hover:text-purple-300"><Crown size={14} /></button>
+                        <button onClick={() => setDeactivateTarget(club)} title={club.isActive ? "Deactivate" : "Reactivate"} className="flex h-7 w-7 items-center justify-center rounded text-ink-3 hover:bg-surface-2 hover:text-ink-2">
                           {actioning === club.id ? <Spinner size={14} /> : club.isActive ? <X size={14} /> : <Plus size={14} />}
                         </button>
                       </div>
@@ -1105,7 +1105,7 @@ export function AdminManageClubs() {
       {/* Deactivate confirm */}
       {deactivateTarget && (
         <Modal open title={deactivateTarget.isActive ? "Deactivate club?" : "Reactivate club?"} onClose={() => setDeactivateTarget(null)}>
-          <p className="text-sm text-slate-600">
+          <p className="text-base text-ink-2">
             {deactivateTarget.isActive
               ? "Members will no longer be able to access this club. The data is preserved and can be restored."
               : "This will make the club visible and accessible to its members again."}
@@ -1115,7 +1115,7 @@ export function AdminManageClubs() {
             <Button
               onClick={() => handleSetActive(deactivateTarget.id, !deactivateTarget.isActive)}
               loading={actioning === deactivateTarget.id}
-              className={deactivateTarget.isActive ? "bg-red-600 text-white hover:bg-red-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}
+              className={deactivateTarget.isActive ? "bg-danger text-white hover:brightness-95" : "bg-success text-white hover:brightness-95"}
             >
               {deactivateTarget.isActive ? "Deactivate" : "Reactivate"}
             </Button>
@@ -1225,28 +1225,28 @@ function ReassignPresidentModal({ club, users, clubMembers, onSave, onClose }) {
   return (
     <Modal open title={`Reassign President — ${club.name}`} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        <p className="text-sm text-slate-500">The current president will be demoted to member. The new president will have full control.</p>
+        <p className="text-base text-ink-3">The current president will be demoted to member. The new president will have full control.</p>
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
           <input
             value={query} onChange={(e) => setQuery(e.target.value)}
             aria-label="Search students"
             placeholder="Search students…"
-            className="h-9 w-full rounded-lg border border-slate-200 pl-8 pr-3 text-sm outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+            className="h-9 w-full rounded-md border border-brd pl-8 pr-3 text-base outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25"
           />
         </div>
-        <div className="max-h-52 overflow-y-auto divide-y divide-slate-100 rounded-lg border border-slate-200">
+        <div className="max-h-52 overflow-y-auto divide-y divide-brd rounded-md border border-brd">
           {candidates.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">No students match.</p>
+            <p className="py-6 text-center text-base text-ink-3">No students match.</p>
           ) : candidates.slice(0, 30).map((u) => (
             <button
               key={u.id}
               onClick={() => setSelected(u)}
-              className={`flex w-full items-center gap-3 px-3 py-2.5 text-left ${selected?.id === u.id ? "bg-purple-50" : "hover:bg-slate-50"}`}
+              className={`flex w-full items-center gap-3 px-3 py-2.5 text-left ${selected?.id === u.id ? "bg-purple-50 dark:bg-purple-500/15" : "hover:bg-surface-2"}`}
             >
               <Avatar name={u.name} size={28} src={u.avatar} />
-              <span className="text-sm text-slate-900">{u.name}</span>
-              {selected?.id === u.id && <Crown size={14} className="ml-auto text-purple-500" />}
+              <span className="text-base text-ink">{u.name}</span>
+              {selected?.id === u.id && <Crown size={14} className="ml-auto text-purple-500 dark:text-purple-400" />}
             </button>
           ))}
         </div>
@@ -1273,26 +1273,26 @@ export function ClubsWidget() {
   return (
     <button
       onClick={() => navigate("/clubs")}
-      className="group flex w-full items-start gap-4 rounded-lg border border-slate-200 bg-white p-5 text-left shadow-sm transition-colors hover:border-purple-300 hover:bg-purple-50/40"
+      className="group flex w-full items-start gap-4 rounded-md border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-purple-300 dark:hover:border-purple-500/40 hover:bg-purple-50/40 dark:hover:bg-purple-500/10"
     >
       <AccentTile icon="UsersRound" tone="purple" size={44} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900">My Clubs</p>
+        <p className="text-base font-semibold text-ink">My Clubs</p>
         {clubs.length === 0 ? (
-          <p className="text-xs text-slate-400">You're not in any clubs yet.</p>
+          <p className="text-xs text-ink-3">You're not in any clubs yet.</p>
         ) : (
           <div className="mt-1 flex flex-col gap-0.5">
             {clubs.slice(0, 3).map((c) => (
-              <p key={c.id} className="truncate text-xs text-slate-500">
+              <p key={c.id} className="truncate text-xs text-ink-3">
                 {c.name}
-                <span className="ml-1.5 text-slate-400">· {ROLE_LABEL[userRoleIn(c.id)] || "Member"}</span>
+                <span className="ml-1.5 text-ink-3">· {ROLE_LABEL[userRoleIn(c.id)] || "Member"}</span>
               </p>
             ))}
-            {clubs.length > 3 && <p className="text-xs text-slate-400">+{clubs.length - 3} more</p>}
+            {clubs.length > 3 && <p className="text-xs text-ink-3">+{clubs.length - 3} more</p>}
           </div>
         )}
       </div>
-      <ArrowRight size={18} className="mt-0.5 shrink-0 text-slate-300 group-hover:text-purple-500" />
+      <ArrowRight size={18} className="mt-0.5 shrink-0 text-ink-3 group-hover:text-purple-500 dark:group-hover:text-purple-300" />
     </button>
   );
 }

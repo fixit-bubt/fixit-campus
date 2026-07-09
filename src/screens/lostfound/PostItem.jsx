@@ -23,7 +23,7 @@ export default function PostItem() {
   return (
     <AppShell activeKey="lost-found" title="Post an Item">
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate("/lost-found")} className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700">
+        <button onClick={() => navigate("/lost-found")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <ArrowLeft size={16} /> Back to Lost &amp; Found
         </button>
         <PageHeader title="Post an Item" subtitle="Report something you've lost or found on campus." />
