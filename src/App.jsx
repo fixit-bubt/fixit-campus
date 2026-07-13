@@ -42,7 +42,7 @@ import { PrayerTimes } from "./screens/prayer/Prayer.jsx";
 import { Events, EventDetail, EventForm } from "./screens/events/Events.jsx";
 import { RideShare, RideDetail, OfferRide } from "./screens/rides/Rides.jsx";
 import { BloodDonation, RegisterDonor, RequestBlood } from "./screens/blood/Blood.jsx";
-import { MedicalCenter, DoctorBooking, MyAppointments, DoctorQueue } from "./screens/medical/Medical.jsx";
+import { MedicalCenter } from "./screens/medical/Medical.jsx";
 import { StudyHub, StudyHubBrowse, StudyHubDept, StudyHubIntake, StudyHubSection, StudyHubCourse, StudyHubManage } from "./screens/studyhub/StudyHub.jsx";
 import { ClubsHome, ClubHome, ClubMembers, ClubPostForm, ClubManage, AdminManageClubs } from "./screens/clubs/Clubs.jsx";
 import { Jobs, JobDetail, JobForm, ModerateJobs, SavedJobs } from "./screens/jobs/Jobs.jsx";
@@ -245,9 +245,6 @@ export default function App() {
 
   // ---- Services: Medical Center (any signed-in user) ----
   if (path === "/medical") return <RequireAuth><MedicalCenter /></RequireAuth>;
-  if (path === "/medical/appointments") return <RequireAuth><MyAppointments /></RequireAuth>;
-  if (path === "/medical/queue") return <RequireAuth><DoctorQueue /></RequireAuth>;
-  if ((m = matchRoute("/medical/:id", path))) return <RequireAuth><DoctorBooking id={m.id} /></RequireAuth>;
 
   // ---- Community: Blood Donation (any signed-in user) ----
   if (path === "/blood") return <RequireAuth><BloodDonation /></RequireAuth>;
