@@ -95,13 +95,28 @@ const NAV_BY_ROLE = {
 
 export const ROLE_TONE = { Student: "blue", Staff: "amber", Admin: "emerald" };
 
+// Remembers the sidebar's scroll offset across navigations (and even a remount),
+// so clicking a nav item never snaps the list back to the top.
+let navScrollStore = 0;
+
 function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
+  const navRef = React.useRef(null);
+  // Restore after every render (route change re-renders this); a no-op when the
+  // position is already correct, but reasserts it if anything reset the scroll.
+  React.useLayoutEffect(() => {
+    const el = navRef.current;
+    if (el && el.scrollTop !== navScrollStore) el.scrollTop = navScrollStore;
+  });
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 shrink-0 items-center px-5">
         <Link to="/"><Logo /></Link>
       </div>
-      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
+      <nav
+        ref={navRef}
+        onScroll={(e) => { navScrollStore = e.currentTarget.scrollTop; }}
+        className="flex-1 min-h-0 space-y-4 overflow-y-auto px-3 py-2"
+      >
         {nav.map((group, gi) => (
           <div key={group.section || `g${gi}`} className="space-y-1">
             {group.section && (
