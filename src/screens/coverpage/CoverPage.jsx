@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from "react";
 import {
   FileText, FlaskConical, FolderKanban, ListOrdered, Briefcase,
-  Sparkles, Search, Plus, Trash2, Check, X, Printer,
+  Sparkles, Search, Plus, Trash2, Check, X, Printer, ArrowLeft,
 } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
+import { navigate } from "../../lib/router.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { Card, Button, Field, Input, Select, Modal, Avatar, useToast } from "../../components/ui.jsx";
 import {
@@ -128,6 +129,9 @@ export default function CoverPage() {
 
   return (
     <AppShell activeKey="cover-page" title="Cover Page Generator">
+      <button onClick={() => navigate("/dashboard")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
+        <ArrowLeft size={16} /> Dashboard
+      </button>
       <PageHeader title="Cover Page Generator" subtitle="BUBT assignment, lab, project, index & internship cover pages — print or save as PDF." />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,440px)]">

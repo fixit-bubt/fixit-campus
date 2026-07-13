@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  UsersRound, Pin, Paperclip, Plus, ArrowRight, Pencil, Trash2,
+  UsersRound, Pin, Paperclip, Plus, ArrowRight, ArrowLeft, Pencil, Trash2,
   Crown, UserMinus, UserPlus, ChevronDown, Search, X,
   FileText, MoreHorizontal, LogOut, Settings,
 } from "lucide-react";
@@ -415,6 +415,9 @@ export function ClubHome({ id }) {
 
   return (
     <AppShell activeKey="clubs" title={club.name}>
+      <button onClick={() => navigate("/clubs")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
+        <ArrowLeft size={16} /> Clubs
+      </button>
       {/* Banner + identity */}
       <div className="overflow-hidden rounded-lg border border-brd bg-surface shadow-sm">
         <ClubBanner club={club} className="h-44 w-full" />
