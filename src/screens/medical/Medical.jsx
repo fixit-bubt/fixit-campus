@@ -302,6 +302,9 @@ export function MyAppointments() {
 
   return (
     <AppShell activeKey="medical" title="My Appointments">
+      <button onClick={() => navigate("/medical")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
+        <Icon name="ArrowLeft" size={16} /> Back to medical center
+      </button>
       <PageHeader title="My Appointments" subtitle="Your bookings at the campus medical center."
         action={<Button icon="Plus" onClick={() => navigate("/medical")}>Book new</Button>} />
 
