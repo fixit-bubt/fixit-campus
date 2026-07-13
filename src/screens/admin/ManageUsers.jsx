@@ -142,12 +142,18 @@ export default function ManageUsers() {
                     <td className="px-4 py-3"><Badge tone={ROLE_TONE[u.role]}>{u.role}</Badge></td>
                     <td className="px-4 py-3 text-ink-3 whitespace-nowrap">{fmtDate(u.joined)}</td>
                     <td className="px-4 py-3 text-right">
-                      <div className="inline-flex w-40">
-                        <Select value={u.role} onChange={(e) => setPending({ user: u, newRole: e.target.value })}>
+                      <div className="inline-flex w-40 flex-col items-end gap-1">
+                        <Select
+                          value={u.role}
+                          disabled={isSelf}
+                          title={isSelf ? "You can't change your own role — ask another admin." : undefined}
+                          onChange={(e) => setPending({ user: u, newRole: e.target.value })}
+                        >
                           <option value="Student">Student</option>
                           <option value="Staff">Staff</option>
                           {u.role !== "Student" && <option value="Admin">Admin</option>}
                         </Select>
+                        {isSelf && <span className="text-[10px] text-ink-3">Ask another admin to change your role</span>}
                       </div>
                     </td>
                   </tr>

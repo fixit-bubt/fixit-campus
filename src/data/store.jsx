@@ -1058,6 +1058,11 @@ export function AppProvider({ children }) {
     .map((u) => ({ id: u.id, name: u.name, dept: u.dept || "Staff" }));
 
   async function setRole(userId, role) {
+    // An admin can't change their OWN role — prevents accidental self-lockout
+    // out of admin tools. Another admin must do it. (DB also enforces this in 0069.)
+    if (currentUser && userId === currentUser.id && lower(role) !== lower(currentUser.role)) {
+      return { ok: false, error: "You can't change your own role — ask another admin to do it." };
+    }
     // Don't let the last admin be demoted (DB also enforces this in 0009).
     const target = users.find((u) => u.id === userId);
     if (target && target.role === "Admin" && role !== "Admin") {
