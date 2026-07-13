@@ -107,6 +107,20 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
     const el = navRef.current;
     if (el && el.scrollTop !== navScrollStore) el.scrollTop = navScrollStore;
   });
+  // When the ACTIVE item changes (navigation / fresh load), make sure it's in
+  // view — scrolls only this list, never the window. Scoped to activeKey so it
+  // never fights the user's manual scrolling on unrelated re-renders.
+  React.useLayoutEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const act = el.querySelector('[data-active="true"]');
+    if (!act) return;
+    const er = el.getBoundingClientRect();
+    const ar = act.getBoundingClientRect();
+    if (er.height > 0 && (ar.top < er.top || ar.bottom > er.bottom)) {
+      el.scrollTop += ar.top - er.top - (er.height - ar.height) / 2;
+    }
+  }, [activeKey]);
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 shrink-0 items-center px-5">
@@ -127,6 +141,7 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
               return (
                 <button
                   key={item.key}
+                  data-active={active ? "true" : undefined}
                   onClick={() => onNavigate(item.path)}
                   className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-base font-semibold transition-colors ${
                     active ? "bg-brand-50 text-brand-700" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
