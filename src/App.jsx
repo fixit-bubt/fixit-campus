@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useHashRoute, matchRoute, navigate } from "./lib/router.jsx";
 import { useApp } from "./data/store.jsx";
 import { Spinner } from "./components/ui.jsx";
+import { AppLayout } from "./components/AppShell.jsx";
 
 import Landing from "./screens/public/Landing.jsx";
 import Login from "./screens/public/Login.jsx";
@@ -133,12 +134,20 @@ export default function App() {
   if (path === "/forgot-password") return <ForgotPassword />;
   if (path === "/verify-email") return <VerifyEmail />;
 
+  // ---- Authenticated app: everything below shares ONE persistent sidebar,
+  // so the sidebar (and its scroll position) survives navigation. ----
+  return <AppLayout><AuthedRoutes path={path} /></AppLayout>;
+}
+
+// The signed-in route table. Rendered inside the persistent <AppLayout>, so
+// only this inner content swaps on navigation — the sidebar does not remount.
+function AuthedRoutes({ path }) {
+  let m;
   // ---- Student routes ----
   if (path === "/dashboard") return <RequireRole role="Student"><StudentDashboard /></RequireRole>;
   if (path === "/students") return <RequireRole role="Student"><StudentDirectory /></RequireRole>;
   if (path === "/reports") return <RequireRole role="Student"><MyReports /></RequireRole>;
   if (path === "/reports/new") return <RequireRole role="Student"><ReportIssue /></RequireRole>;
-  let m;
   if ((m = matchRoute("/reports/:id/edit", path))) return <RequireRole role="Student"><EditReport id={m.id} /></RequireRole>;
   // Report Detail is shared by the reporter (student), the assigned staff, and admins.
   if ((m = matchRoute("/reports/:id", path))) return <RequireAuth><ReportDetail id={m.id} /></RequireAuth>;

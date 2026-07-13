@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { LogOut, Menu, X, Bell } from "lucide-react";
 import { useApp } from "../data/store.jsx";
-import { navigate, Link } from "../lib/router.jsx";
+import { navigate, Link, useHashRoute } from "../lib/router.jsx";
 import { Avatar, Badge } from "./ui.jsx";
 import { Icon } from "./Icon.jsx";
 import { Logo } from "./Brand.jsx";
@@ -138,9 +138,33 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
   );
 }
 
-export function AppShell({ activeKey, title, actions, children }) {
-  const { currentUser, logout, dataError, retryData, unreadNotifCount = 0 } = useApp();
+// Maps the current route to the nav key to highlight, by longest matching item
+// path (so /clubs/123 → clubs, /reports/new → report-new).
+function activeKeyForPath(path, role) {
+  const items = (NAV_BY_ROLE[role] || []).flatMap((g) => g.items);
+  let bestKey = null, bestLen = -1;
+  for (const it of items) {
+    if ((path === it.path || path.startsWith(it.path + "/")) && it.path.length > bestLen) {
+      bestKey = it.key; bestLen = it.path.length;
+    }
+  }
+  return bestKey;
+}
+
+// Lets the per-screen top bar open the mobile drawer, which now lives in the
+// persistent AppLayout rather than in each screen's AppShell.
+const LayoutContext = React.createContext({ openDrawer: () => {} });
+export function useLayout() { return React.useContext(LayoutContext); }
+
+// AppLayout — persistent frame for all signed-in screens. Rendered ONCE around
+// the routed content (see App.jsx) so the sidebar and its scroll position
+// survive navigation instead of remounting per screen. Active nav is derived
+// from the route, so screens don't pass activeKey to keep the sidebar in sync.
+export function AppLayout({ children }) {
+  const { currentUser, logout } = useApp();
+  const path = useHashRoute();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
   // Close the mobile drawer on Escape (it's an aria-modal dialog).
   React.useEffect(() => {
     if (!drawerOpen) return;
@@ -148,44 +172,61 @@ export function AppShell({ activeKey, title, actions, children }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
-  if (!currentUser) return null;
-  const nav = NAV_BY_ROLE[currentUser.role] || [];
 
-  function go(path) {
-    setDrawerOpen(false);
-    navigate(path);
-  }
+  // Close the drawer whenever the route changes.
+  React.useEffect(() => { setDrawerOpen(false); }, [path]);
+
+  if (!currentUser) return <>{children}</>;
+  const nav = NAV_BY_ROLE[currentUser.role] || [];
+  const activeKey = activeKeyForPath(path, currentUser.role);
+  const go = (p) => { setDrawerOpen(false); navigate(p); };
 
   return (
-    <div className="min-h-screen bg-bg">
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-brd bg-surface lg:block">
-        <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} />
-      </aside>
+    <LayoutContext.Provider value={{ openDrawer: () => setDrawerOpen(true) }}>
+      <div className="min-h-screen bg-bg">
+        {/* Desktop sidebar — mounts once, persists across navigation */}
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-brd bg-surface lg:block">
+          <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} />
+        </aside>
 
-      {/* Mobile drawer */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60" onClick={() => setDrawerOpen(false)} />
-          <div role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 w-64 bg-surface shadow-xl">
-            <button
-              onClick={() => setDrawerOpen(false)}
-              aria-label="Close menu"
-              className="absolute right-3 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2"
-            >
-              <X size={18} />
-            </button>
-            <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} />
+        {/* Mobile drawer */}
+        {drawerOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60" onClick={() => setDrawerOpen(false)} />
+            <div role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 w-64 bg-surface shadow-xl">
+              <button
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close menu"
+                className="absolute right-3 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2"
+              >
+                <X size={18} />
+              </button>
+              <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Main column */}
-      <div className="lg:pl-60">
+        {/* Main column */}
+        <div className="lg:pl-60">{children}</div>
+      </div>
+    </LayoutContext.Provider>
+  );
+}
+
+// AppShell — per-screen top bar + content, rendered inside AppLayout's main
+// column. `activeKey` is accepted for backward-compat but unused (active nav is
+// now route-derived in AppLayout).
+export function AppShell({ activeKey, title, actions, children }) {
+  const { currentUser, logout, dataError, retryData, unreadNotifCount = 0 } = useApp();
+  const { openDrawer } = useLayout();
+  if (!currentUser) return null;
+
+  return (
+    <>
         {/* Top bar */}
         <header className="topbar-blur sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-brd px-4 backdrop-blur sm:px-6">
           <button
-            onClick={() => setDrawerOpen(true)}
+            onClick={openDrawer}
             aria-label="Open menu"
             className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 lg:hidden"
           >
@@ -249,8 +290,7 @@ export function AppShell({ activeKey, title, actions, children }) {
 
         {/* Content */}
         <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
-      </div>
-    </div>
+    </>
   );
 }
 
