@@ -151,7 +151,7 @@ export default function ManageUsers() {
                         >
                           <option value="Student">Student</option>
                           <option value="Staff">Staff</option>
-                          {u.role !== "Student" && <option value="Admin">Admin</option>}
+                          <option value="Admin">Admin</option>
                         </Select>
                         {isSelf && <span className="text-[10px] text-ink-3">Ask another admin to change your role</span>}
                       </div>
