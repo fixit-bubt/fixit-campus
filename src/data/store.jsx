@@ -1072,8 +1072,14 @@ export function AppProvider({ children }) {
         return { ok: false, error: "You can't remove the last admin — promote another admin first." };
       }
     }
-    const { error } = await supabase.from("profiles").update({ role: lower(role) }).eq("id", userId);
+    const { data, error } = await supabase
+      .from("profiles").update({ role: lower(role) }).eq("id", userId).select("id, role");
     if (error) return { ok: false, error: error.message };
+    // An RLS-filtered UPDATE returns no error but changes 0 rows. Without this
+    // check the UI would falsely report success while the role never changed.
+    if (!data || data.length === 0) {
+      return { ok: false, error: "The change didn't save — your account may not have admin rights, or the DB blocked it. Try signing out and back in." };
+    }
     await refreshUsers();
     if (currentUser && currentUser.id === userId) setCurrentUser((c) => ({ ...c, role }));
     return { ok: true };
