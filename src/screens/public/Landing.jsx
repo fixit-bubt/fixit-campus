@@ -100,7 +100,7 @@ export default function Landing() {
             </div>
           </Card>
         </div>
-        <div className="mx-auto max-w-7xl px-6 pt-20 pb-16 sm:pt-24 sm:pb-20">
+        <div className="mx-auto max-w-7xl px-6 2xl:max-w-[96rem] pt-20 pb-16 sm:pt-24 sm:pb-20">
           <div className="mx-auto max-w-2xl text-center">
             <Badge tone="blue" icon={GraduationCap} className="mb-6">BUBT Campus</Badge>
             <h1 className="text-[40px] leading-[1.08] font-extrabold tracking-tight text-ink sm:text-[54px]">
@@ -133,7 +133,7 @@ export default function Landing() {
 
       {/* Features */}
       <section className="border-t border-brd bg-bg">
-        <div className="mx-auto max-w-7xl px-6 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-6 2xl:max-w-[96rem] py-16 sm:py-20">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-brand">Everything on campus</p>
             <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
@@ -165,7 +165,7 @@ export default function Landing() {
 
       {/* CTA band */}
       <section className="border-t border-brd bg-bg">
-        <div className="mx-auto max-w-7xl px-6 pb-16 sm:pb-20">
+        <div className="mx-auto max-w-7xl px-6 2xl:max-w-[96rem] pb-16 sm:pb-20">
           {/* Fixed brand hues (not tokens) so white text keeps contrast in both themes. */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#2b5be3] to-[#1f47c4] px-6 py-12 text-center sm:py-14">
             <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10" />
