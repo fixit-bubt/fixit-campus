@@ -30,8 +30,8 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-surface">
       {/* Top nav */}
-      <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Logo />
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -51,7 +51,7 @@ export default function Landing() {
 
       {/* Hero */}
       <section className="hero-glow">
-        <div className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-24 sm:pb-20">
+        <div className="mx-auto max-w-7xl px-6 pt-20 pb-16 sm:pt-24 sm:pb-20">
           <div className="mx-auto max-w-2xl text-center">
             <Badge tone="blue" icon={GraduationCap} className="mb-6">BUBT Campus</Badge>
             <h1 className="text-[40px] leading-[1.08] font-extrabold tracking-tight text-ink sm:text-[54px]">
@@ -69,9 +69,6 @@ export default function Landing() {
               <Button size="md" className="px-6" onClick={() => navigate("/register")} iconRight={ArrowRight}>
                 Get started
               </Button>
-              <Button size="md" variant="secondary" className="px-6" onClick={() => navigate("/login")}>
-                Log In
-              </Button>
             </div>
             <div className="mt-12 flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
               {STATS.map((s) => (
@@ -87,7 +84,7 @@ export default function Landing() {
 
       {/* Features */}
       <section className="border-t border-brd bg-bg">
-        <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-6 py-16 sm:py-20">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-brand">Everything on campus</p>
             <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
@@ -97,7 +94,7 @@ export default function Landing() {
               A quick look at what's inside — each tool built around how BUBT actually runs.
             </p>
           </div>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
+          <div className="mt-12 grid gap-6 md:grid-cols-3 lg:gap-8">
             {FEATURES.map((f) => {
               const FeatureIcon = f.Icon;
               return (
@@ -119,7 +116,7 @@ export default function Landing() {
 
       {/* CTA band */}
       <section className="border-t border-brd bg-bg">
-        <div className="mx-auto max-w-6xl px-6 pb-16 sm:pb-20">
+        <div className="mx-auto max-w-7xl px-6 pb-16 sm:pb-20">
           {/* Fixed brand hues (not tokens) so white text keeps contrast in both themes. */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#2b5be3] to-[#1f47c4] px-6 py-12 text-center sm:py-14">
             <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10" />
@@ -143,16 +140,8 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-brd bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
           <Logo size="sm" />
-          <div className="flex items-center gap-5">
-            <button onClick={() => navigate("/login")} className="text-base font-medium text-ink-2 hover:text-ink">
-              Log In
-            </button>
-            <button onClick={() => navigate("/register")} className="text-base font-medium text-ink-2 hover:text-ink">
-              Sign Up
-            </button>
-          </div>
           <p className="text-base text-ink-3">© 2026 FixIt · Bangladesh University of Business &amp; Technology</p>
         </div>
       </footer>
