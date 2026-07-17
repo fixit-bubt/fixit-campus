@@ -12,7 +12,7 @@ const FEATURES = [
   { Icon: GraduationCap, title: "Faculty directory", body: "Browse 400+ BUBT teachers across all 13 departments, find a supervisor by research area, and save the ones you need." },
   { Icon: CalendarDays, title: "Campus life", body: "Live bus schedules, daily prayer times, upcoming events, and official announcements — all in one place." },
   { Icon: Store, title: "Student community", body: "Buy and sell in the marketplace, share rides, find blood donors, and connect with your classmates." },
-  { Icon: Stethoscope, title: "Medical center", body: "Book a doctor's appointment, get a queue token, and manage your visits without standing in line." },
+  { Icon: Stethoscope, title: "Medical center", body: "Browse the campus doctor directory — see who's available, their specialties, and visiting hours at a glance." },
 ];
 
 export default function Landing() {
