@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight, GraduationCap, ClipboardList, Search, CalendarDays, Store, Stethoscope, Bus, Droplet } from "lucide-react";
+import { ArrowRight, GraduationCap, ClipboardList, Search, CalendarDays, Store, Stethoscope } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { Button, Badge, Card } from "../../components/ui.jsx";
@@ -51,55 +51,6 @@ export default function Landing() {
 
       {/* Hero */}
       <section className="hero-glow relative overflow-hidden">
-        {/* Decorative app-preview cards fill the side space on wide screens. */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden xl:block">
-          <Card className="absolute top-[22%] xl:left-10 2xl:left-[9%] w-60 -rotate-3 p-4 shadow-lg">
-            <div className="flex items-center gap-3">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${ACCENT_TILE.reports}`}>
-                <ClipboardList size={18} />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-base font-bold text-ink">Broken projector</p>
-                <p className="truncate text-sm text-ink-3">Room 2412 · Reports</p>
-              </div>
-            </div>
-            <Badge tone="emerald" className="mt-3">Resolved</Badge>
-          </Card>
-          <Card className="absolute bottom-[16%] xl:left-16 2xl:left-[13%] w-56 rotate-2 p-4 shadow-lg">
-            <div className="flex items-center gap-3">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${ACCENT_TILE.bus}`}>
-                <Bus size={18} />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-base font-bold text-ink">Route 3 · Mirpur 10</p>
-                <p className="truncate text-sm text-ink-3">Leaves 5:40 PM</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="absolute top-[20%] xl:right-10 2xl:right-[9%] w-60 rotate-3 p-4 shadow-lg">
-            <div className="flex items-center gap-3">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${ACCENT_TILE.blood}`}>
-                <Droplet size={18} />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-base font-bold text-ink">B+ donor request</p>
-                <p className="truncate text-sm text-ink-3">Emergency · 3 matches</p>
-              </div>
-            </div>
-            <Badge tone="red" className="mt-3">Urgent</Badge>
-          </Card>
-          <Card className="absolute bottom-[18%] xl:right-16 2xl:right-[13%] w-56 -rotate-2 p-4 shadow-lg">
-            <div className="flex items-center gap-3">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${ACCENT_TILE.lostfound}`}>
-                <Search size={18} />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-base font-bold text-ink">Blue ID card found</p>
-                <p className="truncate text-sm text-ink-3">Cafeteria · today</p>
-              </div>
-            </div>
-          </Card>
-        </div>
         <div className="mx-auto max-w-7xl px-6 2xl:max-w-[96rem] pt-20 pb-16 sm:pt-24 sm:pb-20">
           <div className="mx-auto max-w-2xl text-center">
             <Badge tone="blue" icon={GraduationCap} className="mb-6">BUBT Campus</Badge>
