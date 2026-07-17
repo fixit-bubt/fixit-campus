@@ -52,5 +52,14 @@ h2 { letter-spacing: -0.01em; }
 /* Translucent top bar — Tailwind can't alpha-modify var() colors, so do it here. */
 .topbar-blur { background: color-mix(in srgb, var(--surface) 88%, transparent); }
 
+/* Landing hero glow — same var() alpha limitation as above. */
+.hero-glow {
+  background: radial-gradient(
+    56rem 30rem at 50% -6rem,
+    color-mix(in srgb, var(--brand) 16%, transparent),
+    transparent 70%
+  );
+}
+
 /* Bengali glyphs need vertical room for matras. */
 :lang(bn) { font-family: "Hind Siliguri", sans-serif; line-height: 1.6; }
