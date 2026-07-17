@@ -31,7 +31,7 @@ export default function Landing() {
     <div className="min-h-screen bg-surface">
       {/* Top nav */}
       <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-4 py-4 sm:px-6">
           <Logo />
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -189,7 +189,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-brd bg-surface">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
+        <div className="flex flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6">
           <Logo size="sm" />
           <p className="text-base text-ink-3">© 2026 FixIt · Bangladesh University of Business &amp; Technology</p>
         </div>
