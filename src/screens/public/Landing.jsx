@@ -34,21 +34,20 @@ export default function Landing() {
       {/* Top nav */}
       <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur-md">
         <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-6">
-            <Logo />
-            {/* Public explore pages — browsable without an account */}
-            <nav className="hidden items-center gap-0.5 xl:flex">
-              {EXPLORE_NAV.map((l) => (
-                <button
-                  key={l.path}
-                  onClick={() => navigate(l.path)}
-                  className="rounded-md px-2.5 py-2 text-[15px] font-semibold text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
-                >
-                  {l.label}
-                </button>
-              ))}
-            </nav>
-          </div>
+          <Logo />
+          {/* Public explore pages — browsable without an account. Spread across
+              the bar so it reads as filled rather than a centered cluster. */}
+          <nav className="hidden flex-1 items-center justify-evenly px-8 xl:flex">
+            {EXPLORE_NAV.map((l) => (
+              <button
+                key={l.path}
+                onClick={() => navigate(l.path)}
+                className="rounded-md px-2.5 py-2 text-[15px] font-semibold text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+              >
+                {l.label}
+              </button>
+            ))}
+          </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {currentUser ? (
