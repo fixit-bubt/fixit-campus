@@ -745,7 +745,15 @@ export function PublicCalendar() {
 
   return (
     <ExploreShell active="/explore/calendar">
-      <PageHead Icon={CalendarDays} title="Academic Calendar" sub="Holidays, exam periods, and semester dates." />
+      <PageHead Icon={CalendarDays} title="Academic Calendar" sub="Holidays, exam periods, and semester dates — BUBT tri-semester (Summer 2026)." />
+      <a
+        href="/bubt-academic-calendar-summer-2026.pdf"
+        target="_blank"
+        rel="noreferrer"
+        className="mb-6 inline-flex items-center gap-2 rounded-md border border-brd bg-surface px-4 py-2 text-base font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
+      >
+        <FileText size={16} /> Official calendar (PDF)
+      </a>
       <LoadState {...q}>
         <div className="mb-6 flex flex-wrap gap-1 rounded-md border border-brd bg-surface p-1">
           {[["all", "All"], ["semester", "Semester"], ["exam", "Exams"], ["holiday", "Holidays"], ["general", "General"]].map(([v, label]) => (
