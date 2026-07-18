@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, CalendarDays, FileText } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { Card, Button, Field, Input, Textarea, Modal, EmptyState, useToast } from "../../components/ui.jsx";
@@ -94,7 +94,17 @@ export function AcademicCalendar() {
     <AppShell
       activeKey="calendar"
       title="Academic Calendar"
-      actions={canManageCalendar ? <Button size="sm" icon={Plus} onClick={openAdd}>Add event</Button> : null}
+      actions={<>
+        <a
+          href="/bubt-academic-calendar-summer-2026.pdf"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-brd px-3 text-sm font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
+        >
+          <FileText size={15} /> PDF
+        </a>
+        {canManageCalendar && <Button size="sm" icon={Plus} onClick={openAdd}>Add event</Button>}
+      </>}
     >
       <PageHeader title="Academic Calendar" subtitle="University holidays, exams and semester dates." />
 
