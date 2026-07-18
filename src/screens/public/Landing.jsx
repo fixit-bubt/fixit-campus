@@ -52,7 +52,7 @@ export default function Landing() {
 
       {/* Hero — BUBT campus photo under a theme-aware veil */}
       <section className="relative overflow-hidden">
-        <img src={campusPhoto} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={campusPhoto} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-[50%_30%]" />
         <div className="hero-photo-veil absolute inset-0" />
         <div className="hero-glow absolute inset-0" />
         <div className="relative mx-auto max-w-7xl px-6 2xl:max-w-[96rem] pt-20 pb-16 sm:pt-24 sm:pb-20">
