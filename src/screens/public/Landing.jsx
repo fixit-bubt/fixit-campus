@@ -6,6 +6,7 @@ import { Button, Badge, Card } from "../../components/ui.jsx";
 import { Logo } from "../../components/Brand.jsx";
 import { ThemeToggle } from "../../components/ThemeToggle.jsx";
 import { ACCENT_TILE } from "../../components/featureKit.jsx";
+import campusPhoto from "../../assets/bubt-campus.jpg";
 
 // Landing cards reuse the in-app sector accents so each feature keeps its
 // signature color from the first impression on.
@@ -49,9 +50,12 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="hero-glow relative overflow-hidden">
-        <div className="mx-auto max-w-7xl px-6 2xl:max-w-[96rem] pt-20 pb-16 sm:pt-24 sm:pb-20">
+      {/* Hero — BUBT campus photo under a theme-aware veil */}
+      <section className="relative overflow-hidden">
+        <img src={campusPhoto} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="hero-photo-veil absolute inset-0" />
+        <div className="hero-glow absolute inset-0" />
+        <div className="relative mx-auto max-w-7xl px-6 2xl:max-w-[96rem] pt-20 pb-16 sm:pt-24 sm:pb-20">
           <div className="mx-auto max-w-2xl text-center">
             <Badge tone="blue" icon={GraduationCap} className="mb-6">BUBT Campus</Badge>
             <h1 className="text-[40px] leading-[1.08] font-extrabold tracking-tight text-ink sm:text-[54px]">

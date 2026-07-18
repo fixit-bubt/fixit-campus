@@ -61,5 +61,16 @@ h2 { letter-spacing: -0.01em; }
   );
 }
 
+/* Veil over the hero campus photo — --bg flips with the theme, and the
+   bottom fades to solid so the hero blends into the next section. */
+.hero-photo-veil {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg) 82%, transparent),
+    color-mix(in srgb, var(--bg) 66%, transparent) 55%,
+    var(--bg) 100%
+  );
+}
+
 /* Bengali glyphs need vertical room for matras. */
 :lang(bn) { font-family: "Hind Siliguri", sans-serif; line-height: 1.6; }
