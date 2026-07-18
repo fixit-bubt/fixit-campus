@@ -3,7 +3,7 @@ import { ArrowRight, Search, GraduationCap, CalendarDays, Bus, Moon, MapPin, Clo
 import { supabase } from "../../lib/supabase.js";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
-import { Button, Badge, Card, Spinner, Avatar } from "../../components/ui.jsx";
+import { Button, Badge, Card, Spinner, Avatar, Modal } from "../../components/ui.jsx";
 import { Logo } from "../../components/Brand.jsx";
 import { ThemeToggle } from "../../components/ThemeToggle.jsx";
 import { CoverPageBody } from "../coverpage/CoverPage.jsx";
@@ -177,7 +177,7 @@ export function PublicFaculty() {
       supabase.from("departments").select("id, name, branch, dept_number").order("name"),
       supabase
         .from("faculty")
-        .select("id, department_id, name, designation, photo_url, research_interests, on_leave, is_chairman")
+        .select("id, department_id, name, designation, photo_url, research_interests, qualifications, on_leave, is_chairman, scholar_url, researchgate_url, linkedin_url, orcid_url, website_url, profile_url")
         .order("name"),
     ]);
     if (e1 || e2) throw e1 || e2;
@@ -185,6 +185,16 @@ export function PublicFaculty() {
   });
   const [search, setSearch] = useState("");
   const [deptId, setDeptId] = useState("all");
+  const [selected, setSelected] = useState(null);
+
+  const FAC_LINKS = [
+    ["scholar_url", "Google Scholar"],
+    ["researchgate_url", "ResearchGate"],
+    ["linkedin_url", "LinkedIn"],
+    ["orcid_url", "ORCID"],
+    ["website_url", "Website"],
+    ["profile_url", "BUBT profile"],
+  ];
 
   const deptById = useMemo(() => {
     const m = {};
@@ -244,7 +254,14 @@ export function PublicFaculty() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((f) => (
-              <Card key={f.id} className="flex items-start gap-4 p-5">
+              <Card
+                key={f.id}
+                onClick={() => setSelected(f)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(f); } }}
+                className="flex cursor-pointer items-start gap-4 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:border-brd-2 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
                 <Avatar name={f.name} src={f.photo_url} size={52} />
                 <div className="min-w-0">
                   <p className="truncate text-lg font-bold text-ink">
@@ -267,6 +284,70 @@ export function PublicFaculty() {
           </div>
         )}
       </LoadState>
+
+      {/* Faculty detail — anon can't see email/phone (RLS), so show public info + links */}
+      <Modal open={!!selected} onClose={() => setSelected(null)} title="Faculty details" size="md">
+        {selected && (
+          <div>
+            <div className="flex items-start gap-4">
+              <Avatar name={selected.name} src={selected.photo_url} size={64} />
+              <div className="min-w-0">
+                <p className="text-xl font-bold text-ink">{selected.name}</p>
+                <p className="text-base text-ink-2">{selected.designation}</p>
+                <p className="text-sm text-ink-3">{deptById[selected.department_id]?.name || "—"}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {selected.is_chairman && <Badge tone="blue">Chairman</Badge>}
+                  {selected.on_leave && <Badge tone="amber">On leave</Badge>}
+                </div>
+              </div>
+            </div>
+
+            {Array.isArray(selected.qualifications) && selected.qualifications.length > 0 && (
+              <div className="mt-5">
+                <p className="text-sm font-bold uppercase tracking-wider text-ink-3">Qualifications</p>
+                <ul className="mt-1.5 list-inside list-disc text-base text-ink-2">
+                  {selected.qualifications.map((qual, i) => <li key={i}>{qual}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {(selected.research_interests || []).length > 0 && (
+              <div className="mt-5">
+                <p className="text-sm font-bold uppercase tracking-wider text-ink-3">Research interests</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {selected.research_interests.map((r) => (
+                    <span key={r} className="rounded-full bg-surface-3 px-2.5 py-0.5 text-sm font-semibold text-ink-2">{r}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {FAC_LINKS.some(([k]) => selected[k]) && (
+              <div className="mt-5">
+                <p className="text-sm font-bold uppercase tracking-wider text-ink-3">Links</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {FAC_LINKS.filter(([k]) => selected[k]).map(([k, label]) => (
+                    <a
+                      key={k}
+                      href={selected[k]}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-brd bg-surface px-3 py-1.5 text-base font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
+                    >
+                      <ExternalLink size={14} /> {label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="mt-5 text-sm text-ink-3">
+              Contact details (email, phone) are visible to signed-in members.{" "}
+              <button onClick={() => navigate("/register")} className="font-semibold text-brand hover:underline">Create an account</button>.
+            </p>
+          </div>
+        )}
+      </Modal>
     </ExploreShell>
   );
 }
