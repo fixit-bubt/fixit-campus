@@ -67,11 +67,14 @@ h2 { letter-spacing: -0.01em; }
 .hero-photo-veil {
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--bg) 94%, transparent),
-    color-mix(in srgb, var(--bg) 86%, transparent) 55%,
+    color-mix(in srgb, var(--bg) 87%, transparent),
+    color-mix(in srgb, var(--bg) 74%, transparent) 55%,
     var(--bg) 100%
   );
 }
+/* The pale photo needs extra punch to read through the light veil. */
+.hero-photo { filter: saturate(1.25) contrast(1.06); }
+.dark .hero-photo { filter: none; }
 .dark .hero-photo-veil {
   background: linear-gradient(
     to bottom,
