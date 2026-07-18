@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   FileText, FlaskConical, FolderKanban, ListOrdered, Briefcase,
   Sparkles, Search, Plus, Trash2, Check, X, Printer, ArrowLeft,
@@ -42,6 +42,22 @@ export default function CoverPage() {
 // passes anon-fetched faculty/departments and currentUser=null.
 export function CoverPageBody({ currentUser, faculty = [], departments = [] }) {
   const toast = useToast();
+
+  // The preview iframe renders the cover at true A4 pixel size, then scales to
+  // fit the column width — otherwise the A4 page (794px) overflows the ~440px
+  // pane and shows clipped with scrollbars.
+  const A4_W = 794, A4_H = 1123;
+  const previewRef = useRef(null);
+  const [previewScale, setPreviewScale] = useState(0.5);
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = () => { if (el.clientWidth) setPreviewScale(el.clientWidth / A4_W); };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const [docType, setDocType] = useState("assignment");
   const [template, setTemplate] = useState("default");
@@ -333,8 +349,16 @@ export function CoverPageBody({ currentUser, faculty = [], departments = [] }) {
         <div className="hidden lg:block">
           <div className="sticky top-20">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-3">Live preview</p>
-            <div className="overflow-hidden rounded-md border border-brd bg-surface-3 shadow-sm" style={{ aspectRatio: "210 / 297" }}>
-              <iframe title="Cover page preview" srcDoc={html} className="h-full w-full" style={{ border: 0, transformOrigin: "top left" }} />
+            <div ref={previewRef} className="relative w-full overflow-hidden rounded-md border border-brd bg-surface-3 shadow-sm" style={{ aspectRatio: "210 / 297" }}>
+              <iframe
+                title="Cover page preview"
+                srcDoc={html}
+                scrolling="no"
+                style={{
+                  width: A4_W, height: A4_H, border: 0,
+                  transform: `scale(${previewScale})`, transformOrigin: "top left",
+                }}
+              />
             </div>
           </div>
         </div>
