@@ -33,20 +33,22 @@ export default function Landing() {
     <div className="min-h-screen bg-surface">
       {/* Top nav */}
       <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur-md">
-        <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">
-          <Logo />
-          {/* Public explore pages — browsable without an account */}
-          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
-            {EXPLORE_NAV.map((l) => (
-              <button
-                key={l.path}
-                onClick={() => navigate(l.path)}
-                className="rounded-md px-3 py-2 text-base font-semibold text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
-              >
-                {l.label}
-              </button>
-            ))}
-          </nav>
+        <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <div className="flex items-center gap-6">
+            <Logo />
+            {/* Public explore pages — browsable without an account */}
+            <nav className="hidden items-center gap-1 lg:flex">
+              {EXPLORE_NAV.map((l) => (
+                <button
+                  key={l.path}
+                  onClick={() => navigate(l.path)}
+                  className="rounded-md px-3 py-2 text-base font-semibold text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+                >
+                  {l.label}
+                </button>
+              ))}
+            </nav>
+          </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {currentUser ? (
@@ -60,6 +62,18 @@ export default function Landing() {
               </>
             )}
           </div>
+        </div>
+        {/* Mobile / tablet explore row */}
+        <div className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden">
+          {EXPLORE_NAV.map((l) => (
+            <button
+              key={l.path}
+              onClick={() => navigate(l.path)}
+              className="shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
+            >
+              {l.label}
+            </button>
+          ))}
         </div>
       </header>
 
