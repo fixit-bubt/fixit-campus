@@ -27,6 +27,20 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export default function CoverPage() {
   const { currentUser, faculty = [], departments = [] } = useApp();
+  return (
+    <AppShell activeKey="cover-page" title="Cover Page Generator">
+      <button onClick={() => navigate("/dashboard")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
+        <ArrowLeft size={16} /> Dashboard
+      </button>
+      <PageHeader title="Cover Page Generator" subtitle="BUBT assignment, lab, project, index & internship cover pages — print or save as PDF." />
+      <CoverPageBody currentUser={currentUser} faculty={faculty} departments={departments} />
+    </AppShell>
+  );
+}
+
+// Also rendered by the public /explore/cover-page route (no login), which
+// passes anon-fetched faculty/departments and currentUser=null.
+export function CoverPageBody({ currentUser, faculty = [], departments = [] }) {
   const toast = useToast();
 
   const [docType, setDocType] = useState("assignment");
@@ -128,12 +142,7 @@ export default function CoverPage() {
   }
 
   return (
-    <AppShell activeKey="cover-page" title="Cover Page Generator">
-      <button onClick={() => navigate("/dashboard")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
-        <ArrowLeft size={16} /> Dashboard
-      </button>
-      <PageHeader title="Cover Page Generator" subtitle="BUBT assignment, lab, project, index & internship cover pages — print or save as PDF." />
-
+    <>
       <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,440px)]">
         {/* ---- Form ---- */}
         <div className="space-y-6">
@@ -365,7 +374,7 @@ export default function CoverPage() {
           )}
         </div>
       </Modal>
-    </AppShell>
+    </>
   );
 }
 
