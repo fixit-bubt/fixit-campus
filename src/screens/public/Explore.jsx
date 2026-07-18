@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Search, GraduationCap, CalendarDays, Bus, Moon, MapPin, Clock, FileText, CalendarRange, ExternalLink } from "lucide-react";
+import { ArrowRight, Search, GraduationCap, CalendarDays, Bus, Moon, MapPin, Clock, FileText, CalendarRange, ExternalLink, Megaphone, Pin, Paperclip, Calculator, Plus, Trash2 } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
@@ -18,10 +18,13 @@ import { CoverPageBody } from "../coverpage/CoverPage.jsx";
 export const EXPLORE_NAV = [
   { label: "Faculty", path: "/explore/faculty" },
   { label: "Events", path: "/explore/events" },
+  { label: "Notices", path: "/explore/announcements" },
+  { label: "Calendar", path: "/explore/calendar" },
   { label: "Bus", path: "/explore/bus" },
   { label: "Prayer", path: "/explore/prayer" },
   { label: "Routines", path: "/explore/routines" },
   { label: "Cover Page", path: "/explore/cover-page" },
+  { label: "CGPA", path: "/explore/cgpa" },
 ];
 const NAV = EXPLORE_NAV;
 
@@ -35,12 +38,12 @@ function ExploreShell({ active, children }) {
             <button onClick={() => navigate("/")} aria-label="FixIt home">
               <Logo />
             </button>
-            <nav className="hidden items-center gap-1 lg:flex">
+            <nav className="hidden items-center gap-0.5 xl:flex">
               {NAV.map((l) => (
                 <button
                   key={l.path}
                   onClick={() => navigate(l.path)}
-                  className={`rounded-md px-3 py-2 text-base font-semibold transition-colors ${
+                  className={`rounded-md px-2.5 py-2 text-[15px] font-semibold transition-colors ${
                     active === l.path ? "bg-brand-50 text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
                   }`}
                 >
@@ -64,7 +67,7 @@ function ExploreShell({ active, children }) {
           </div>
         </div>
         {/* Mobile / tablet nav row */}
-        <div className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden">
+        <div className="flex gap-1 overflow-x-auto px-4 pb-2 xl:hidden">
           {NAV.map((l) => (
             <button
               key={l.path}
@@ -546,6 +549,236 @@ export function PublicCoverPage() {
           departments={q.data?.departments || []}
         />
       </LoadState>
+    </ExploreShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Announcements (official notices)
+// ---------------------------------------------------------------------------
+const PRIORITY_TONE = { Urgent: "red", Important: "amber", General: "neutral" };
+
+export function PublicAnnouncements() {
+  const q = useAnonQuery(async () => {
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("id, code, title, body, department, priority, pinned, attachment_url, created_at")
+      .order("pinned", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  });
+
+  return (
+    <ExploreShell active="/explore/announcements">
+      <PageHead Icon={Megaphone} title="Announcements" sub="Official notices from the university and departments." />
+      <LoadState {...q}>
+        {(q.data || []).length === 0 ? (
+          <p className="py-16 text-center text-base text-ink-3">No announcements posted yet. Check back soon.</p>
+        ) : (
+          <div className="mx-auto grid max-w-3xl gap-4">
+            {q.data.map((a) => (
+              <Card key={a.id} className="p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  {a.pinned && <Badge tone="blue" icon={Pin}>Pinned</Badge>}
+                  <Badge tone={PRIORITY_TONE[a.priority] || "neutral"}>{a.priority}</Badge>
+                  <span className="text-sm font-semibold text-ink-3">{a.department}</span>
+                  <span className="ml-auto text-sm text-ink-3">{fmtDate(a.created_at.slice(0, 10))}</span>
+                </div>
+                <h3 className="mt-3 text-xl font-bold text-ink">{a.title}</h3>
+                <p className="mt-2 whitespace-pre-line text-base leading-relaxed text-ink-2">{a.body}</p>
+                {a.attachment_url && (
+                  <a
+                    href={a.attachment_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex items-center gap-1.5 text-base font-semibold text-brand hover:underline"
+                  >
+                    <Paperclip size={15} /> View attachment
+                  </a>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </LoadState>
+    </ExploreShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Academic calendar
+// ---------------------------------------------------------------------------
+const CAL_TONE = { holiday: "emerald", exam: "red", semester: "blue", general: "neutral" };
+const CAL_LABEL = { holiday: "Holiday", exam: "Exam", semester: "Semester", general: "General" };
+
+export function PublicCalendar() {
+  const q = useAnonQuery(async () => {
+    const { data, error } = await supabase
+      .from("academic_calendar")
+      .select("id, title, description, event_date, end_date, event_type")
+      .order("event_date", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  });
+  const [type, setType] = useState("all");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const filtered = (q.data || []).filter((e) => type === "all" || e.event_type === type);
+  const upcoming = filtered.filter((e) => (e.end_date || e.event_date) >= today);
+  const past = filtered.filter((e) => (e.end_date || e.event_date) < today);
+
+  const row = (e) => (
+    <Card key={e.id} className="flex items-start gap-4 p-4">
+      <div className="w-16 shrink-0 text-center">
+        <div className="text-2xl font-extrabold leading-none text-ink">{new Date(e.event_date + "T00:00:00").getDate()}</div>
+        <div className="text-xs font-semibold uppercase text-ink-3">
+          {new Date(e.event_date + "T00:00:00").toLocaleDateString("en-GB", { month: "short" })}
+        </div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={CAL_TONE[e.event_type] || "neutral"}>{CAL_LABEL[e.event_type] || e.event_type}</Badge>
+          {e.end_date && e.end_date !== e.event_date && (
+            <span className="text-sm text-ink-3">until {fmtDate(e.end_date)}</span>
+          )}
+        </div>
+        <h3 className="mt-1.5 text-lg font-bold text-ink">{e.title}</h3>
+        {e.description && <p className="mt-0.5 text-base text-ink-2">{e.description}</p>}
+      </div>
+    </Card>
+  );
+
+  return (
+    <ExploreShell active="/explore/calendar">
+      <PageHead Icon={CalendarDays} title="Academic Calendar" sub="Holidays, exam periods, and semester dates." />
+      <LoadState {...q}>
+        <div className="mb-6 flex flex-wrap gap-1 rounded-md border border-brd bg-surface p-1">
+          {[["all", "All"], ["semester", "Semester"], ["exam", "Exams"], ["holiday", "Holidays"], ["general", "General"]].map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setType(v)}
+              className={`rounded-sm px-3 py-1.5 text-sm font-semibold ${
+                type === v ? "bg-brand text-white" : "text-ink-2 hover:bg-surface-2"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {filtered.length === 0 ? (
+          <p className="py-16 text-center text-base text-ink-3">No calendar entries yet. Check back soon.</p>
+        ) : (
+          <div className="mx-auto max-w-3xl space-y-8">
+            {upcoming.length > 0 && (
+              <section>
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-ink-3">Upcoming</h2>
+                <div className="grid gap-3">{upcoming.map(row)}</div>
+              </section>
+            )}
+            {past.length > 0 && (
+              <section>
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-ink-3">Earlier</h2>
+                <div className="grid gap-3 opacity-70">{past.map(row)}</div>
+              </section>
+            )}
+          </div>
+        )}
+      </LoadState>
+    </ExploreShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CGPA calculator — pure client tool, no database, no login
+// ---------------------------------------------------------------------------
+// BUBT / UGC Bangladesh uniform grading scale.
+const GRADE_POINTS = [
+  ["A+", 4.0], ["A", 3.75], ["A-", 3.5], ["B+", 3.25], ["B", 3.0],
+  ["B-", 2.75], ["C+", 2.5], ["C", 2.25], ["D", 2.0], ["F", 0.0],
+];
+const GRADE_MAP = Object.fromEntries(GRADE_POINTS);
+
+export function PublicCGPA() {
+  const [rows, setRows] = useState([
+    { id: 1, name: "", credit: "3", grade: "A" },
+    { id: 2, name: "", credit: "3", grade: "A" },
+    { id: 3, name: "", credit: "3", grade: "A" },
+  ]);
+  const nextId = React.useRef(4);
+
+  const addRow = () => setRows((r) => [...r, { id: nextId.current++, name: "", credit: "3", grade: "A" }]);
+  const removeRow = (id) => setRows((r) => (r.length > 1 ? r.filter((x) => x.id !== id) : r));
+  const update = (id, patch) => setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+
+  const { gpa, totalCredits } = useMemo(() => {
+    let qp = 0, cr = 0;
+    for (const r of rows) {
+      const c = parseFloat(r.credit);
+      if (!Number.isFinite(c) || c <= 0) continue;
+      const p = GRADE_MAP[r.grade];
+      if (p === undefined) continue;
+      qp += c * p;
+      cr += c;
+    }
+    return { gpa: cr > 0 ? qp / cr : 0, totalCredits: cr };
+  }, [rows]);
+
+  return (
+    <ExploreShell active="/explore/cgpa">
+      <PageHead Icon={Calculator} title="CGPA Calculator" sub="Add your courses, credits, and grades to get your GPA — BUBT grading scale." />
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+        <Card className="p-5">
+          <div className="hidden gap-3 px-1 pb-2 text-sm font-bold text-ink-3 sm:grid sm:grid-cols-[1fr_90px_110px_40px]">
+            <span>Course (optional)</span><span>Credit</span><span>Grade</span><span></span>
+          </div>
+          <div className="space-y-2">
+            {rows.map((r) => (
+              <div key={r.id} className="grid grid-cols-[1fr_70px_90px_40px] gap-2 sm:grid-cols-[1fr_90px_110px_40px]">
+                <input
+                  value={r.name}
+                  onChange={(e) => update(r.id, { name: e.target.value })}
+                  placeholder="e.g. CSE 101"
+                  className="h-11 rounded-md border border-brd bg-surface px-3 text-base text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none"
+                />
+                <input
+                  value={r.credit}
+                  onChange={(e) => update(r.id, { credit: e.target.value })}
+                  inputMode="decimal"
+                  className="h-11 rounded-md border border-brd bg-surface px-3 text-base text-ink focus:border-brand focus:outline-none"
+                />
+                <select
+                  value={r.grade}
+                  onChange={(e) => update(r.id, { grade: e.target.value })}
+                  className="h-11 rounded-md border border-brd bg-surface px-2 text-base text-ink focus:border-brand focus:outline-none"
+                >
+                  {GRADE_POINTS.map(([g, p]) => <option key={g} value={g}>{g} ({p.toFixed(2)})</option>)}
+                </select>
+                <button
+                  onClick={() => removeRow(r.id)}
+                  aria-label="Remove course"
+                  className="inline-flex h-11 w-10 items-center justify-center rounded-md border border-brd text-ink-3 hover:bg-surface-2 hover:text-danger"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <Button variant="secondary" icon={Plus} onClick={addRow} className="mt-4">Add course</Button>
+        </Card>
+
+        <div className="lg:sticky lg:top-24 lg:self-start">
+          <Card className="p-6 text-center">
+            <p className="text-sm font-bold uppercase tracking-wider text-ink-3">Your GPA</p>
+            <p className="mt-2 text-5xl font-extrabold tabular-nums text-brand">{gpa.toFixed(2)}</p>
+            <p className="mt-2 text-base text-ink-2">{totalCredits} credit{totalCredits === 1 ? "" : "s"} across {rows.length} course{rows.length === 1 ? "" : "s"}</p>
+            <p className="mt-4 text-xs leading-relaxed text-ink-3">
+              Weighted by credit hours on the BUBT scale (A+ = 4.00). Calculated in your browser — nothing is saved or sent.
+            </p>
+          </Card>
+        </div>
+      </div>
     </ExploreShell>
   );
 }

@@ -37,12 +37,12 @@ export default function Landing() {
           <div className="flex items-center gap-6">
             <Logo />
             {/* Public explore pages — browsable without an account */}
-            <nav className="hidden items-center gap-1 lg:flex">
+            <nav className="hidden items-center gap-0.5 xl:flex">
               {EXPLORE_NAV.map((l) => (
                 <button
                   key={l.path}
                   onClick={() => navigate(l.path)}
-                  className="rounded-md px-3 py-2 text-base font-semibold text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+                  className="rounded-md px-2.5 py-2 text-[15px] font-semibold text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
                 >
                   {l.label}
                 </button>
@@ -64,7 +64,7 @@ export default function Landing() {
           </div>
         </div>
         {/* Mobile / tablet explore row */}
-        <div className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden">
+        <div className="flex gap-1 overflow-x-auto px-4 pb-2 xl:hidden">
           {EXPLORE_NAV.map((l) => (
             <button
               key={l.path}
