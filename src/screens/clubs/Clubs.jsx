@@ -333,26 +333,51 @@ function ClubCard({ club, role }) {
 // Screen 1 — My Clubs  (/clubs)
 // ============================================================================
 export function ClubsHome() {
-  const { myClubs, userRoleIn, dataLoading } = useApp();
+  const { myClubs, clubs: allClubs, userRoleIn, myClubJoinRequest, dataLoading } = useApp();
   const clubs = myClubs();
+  const mineIds = new Set(clubs.map((c) => c.id));
+  const discover = allClubs.filter((c) => c.isActive !== false && !mineIds.has(c.id));
 
   return (
     <AppShell activeKey="clubs" title="Clubs">
-      <PageHeader title="My Clubs" subtitle="Your student club memberships." />
+      <PageHeader title="Clubs" subtitle="Your memberships, and clubs you can ask to join." />
 
       {dataLoading ? (
         <Loading />
-      ) : clubs.length === 0 ? (
-        <EmptyState
-          icon={UsersRound}
-          title="You're not in any clubs yet"
-          message="Club membership is by invitation. Once a club officer adds you, your clubs will appear here."
-        />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {clubs.map((club) => (
-            <ClubCard key={club.id} club={club} role={userRoleIn(club.id)} />
-          ))}
+        <div className="space-y-8">
+          <section>
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-3">My clubs</h3>
+            {clubs.length === 0 ? (
+              <EmptyState
+                icon={UsersRound}
+                title="You're not in any clubs yet"
+                message="Pick a club below and send a join request — an officer will review it."
+              />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {clubs.map((club) => (
+                  <ClubCard key={club.id} club={club} role={userRoleIn(club.id)} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {discover.length > 0 && (
+            <section>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-3">Discover clubs</h3>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {discover.map((club) => (
+                  <div key={club.id} className="relative">
+                    <ClubCard club={club} role={null} />
+                    {myClubJoinRequest(club.id) && (
+                      <span className="absolute right-2 top-2 rounded-full bg-warn-bg px-2 py-0.5 text-[10px] font-bold text-warn">Request pending</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </AppShell>
@@ -366,14 +391,30 @@ export function ClubHome({ id }) {
   const {
     clubById, clubMembersIn, clubPostsIn, userRoleIn, canPostIn, canManageClub,
     facultyById, deleteClubPost, toggleClubPin, dataLoading,
+    myClubJoinRequest, requestJoinClub, cancelClubJoinRequest,
   } = useApp();
   const toast = useToasts();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [reqBusy, setReqBusy] = useState(false);
 
   const club = clubById(id);
   const myRole = userRoleIn(id);
+  const pendingReq = myClubJoinRequest(id);
+
+  async function handleRequestJoin() {
+    if (reqBusy) return;
+    setReqBusy(true);
+    try {
+      const { ok, error } = pendingReq ? await cancelClubJoinRequest(id) : await requestJoinClub(id);
+      if (!ok) toast.error("Couldn't update request", error);
+      else if (pendingReq) toast.success("Request withdrawn.");
+      else toast.success("Request sent — a club officer will review it.");
+    } finally {
+      setReqBusy(false);
+    }
+  }
 
   if (dataLoading) return <AppShell activeKey="clubs" title="Club"><Loading /></AppShell>;
   if (!club) return <AppShell activeKey="clubs" title="Club"><EmptyState icon={UsersRound} title="Club not found" message="This club does not exist or you are not a member." /></AppShell>;
@@ -385,7 +426,22 @@ export function ClubHome({ id }) {
           <div className="p-6 text-center">
             <h2 className="text-2xl font-semibold text-ink">{club.name}</h2>
             <div className="mt-2 flex justify-center"><Badge tone={CATEGORY_TONE[club.category]}>{club.category}</Badge></div>
-            <p className="mt-4 text-base text-ink-3">Club membership is by invitation only. Speak to a club officer to join.</p>
+            {club.tagline && <p className="mt-2 text-base text-ink-3">{club.tagline}</p>}
+            {pendingReq ? (
+              <div className="mt-5">
+                <p className="text-base font-semibold text-warn">Request sent — waiting for a club officer.</p>
+                <Button variant="secondary" className="mt-3" onClick={handleRequestJoin} disabled={reqBusy}>
+                  Withdraw request
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-5">
+                <p className="text-base text-ink-3">Want in? Send a join request — a club officer will review it.</p>
+                <Button icon={UserPlus} className="mt-3 bg-purple-600 text-white hover:bg-purple-700" onClick={handleRequestJoin} disabled={reqBusy}>
+                  Request to join
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </AppShell>
@@ -529,11 +585,27 @@ export function ClubMembers({ id }) {
   const {
     clubById, clubMembersIn, userRoleIn, canManageClub, isPresident,
     updateClubMemberRole, removeClubMember, leaveClub, dataLoading, currentUser,
+    clubJoinRequests, decideClubJoinRequest, userById,
   } = useApp();
   const toast = useToasts();
   const [showAdd, setShowAdd] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [saving, setSaving] = useState(null);
+  const [deciding, setDeciding] = useState(null); // join-request id being decided
+
+  const pendingRequests = clubJoinRequests.filter((r) => r.clubId === id && r.status === "pending");
+
+  async function handleDecide(request, approve) {
+    if (deciding) return;
+    setDeciding(request.id);
+    try {
+      const { ok, error } = await decideClubJoinRequest(request, approve);
+      if (!ok) toast.error("Couldn't update request", error);
+      else toast.success(approve ? "Member added." : "Request denied.");
+    } finally {
+      setDeciding(null);
+    }
+  }
 
   const club = clubById(id);
   const myRole = userRoleIn(id);
@@ -598,6 +670,32 @@ export function ClubMembers({ id }) {
           </div>
         }
       />
+
+      {/* Join requests — officers only */}
+      {canManageClub(id) && pendingRequests.length > 0 && (
+        <section className="mb-6">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-3">Join requests ({pendingRequests.length})</h3>
+          <Card className="divide-y divide-brd overflow-hidden">
+            {pendingRequests.map((r) => {
+              const requester = userById(r.userId);
+              return (
+                <div key={r.id} className="flex items-center gap-3 p-3">
+                  <Avatar name={requester?.name || "?"} size={34} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-semibold text-ink">{requester?.name || "Unknown student"}</p>
+                    <p className="truncate text-xs text-ink-3">{requester?.email || ""}</p>
+                    {r.message && <p className="mt-1 truncate text-xs text-ink-2">"{r.message}"</p>}
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button size="sm" variant="secondary" disabled={deciding === r.id} onClick={() => handleDecide(r, false)}>Deny</Button>
+                    <Button size="sm" disabled={deciding === r.id} className="bg-purple-600 text-white hover:bg-purple-700" onClick={() => handleDecide(r, true)}>Approve</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        </section>
+      )}
 
       {/* Officers */}
       {officers.length > 0 && (
