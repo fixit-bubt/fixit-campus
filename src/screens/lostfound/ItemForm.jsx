@@ -125,7 +125,7 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
 
       {/* Possible matches already on the board */}
       {matches.length > 0 && (
-        <Card className="space-y-3 border-brand bg-brand-50/40 p-5">
+        <Card className="space-y-3 border-brand bg-brand-50 p-5">
           <p className="inline-flex items-center gap-2 text-base font-bold text-ink">
             <Sparkles size={16} className="text-brand" />
             {form.type === "Lost"
