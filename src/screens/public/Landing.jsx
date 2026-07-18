@@ -32,8 +32,24 @@ export default function Landing() {
     <div className="min-h-screen bg-surface">
       {/* Top nav */}
       <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur-md">
-        <div className="flex items-center justify-between px-4 py-4 sm:px-6">
+        <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">
           <Logo />
+          {/* Public explore pages — browsable without an account */}
+          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
+            {[
+              { label: "Faculty", path: "/explore/faculty" },
+              { label: "Events", path: "/explore/events" },
+              { label: "Bus & Prayer", path: "/explore/campus" },
+            ].map((l) => (
+              <button
+                key={l.path}
+                onClick={() => navigate(l.path)}
+                className="rounded-md px-3 py-2 text-base font-semibold text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+              >
+                {l.label}
+              </button>
+            ))}
+          </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {currentUser ? (
@@ -74,6 +90,12 @@ export default function Landing() {
                 Get started
               </Button>
             </div>
+            <button
+              onClick={() => navigate("/explore/faculty")}
+              className="mt-4 text-base font-semibold text-brand hover:underline"
+            >
+              or browse the faculty directory without an account →
+            </button>
             <div className="mt-12 flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
               {STATS.map((s) => (
                 <div key={s.label} className="text-center">
