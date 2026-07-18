@@ -436,6 +436,7 @@ export function AppProvider({ children }) {
   const [clubs, setClubs] = useState([]);
   const [clubMembers, setClubMembers] = useState([]);
   const [clubPosts, setClubPosts] = useState([]);
+  const [clubJoinRequests, setClubJoinRequests] = useState([]);
 
   // ---- jobs & internships ----
   const [jobs, setJobs] = useState([]);
@@ -803,12 +804,15 @@ export function AppProvider({ children }) {
       isPinned: r.is_pinned, createdAt: r.created_at, updatedAt: r.updated_at,
     };
   }
+  function toClubJoinRequest(r) {
+    return { id: r.id, clubId: r.club_id, userId: r.user_id, message: r.message || "", status: r.status, createdAt: r.created_at };
+  }
 
   // Club Hub loader: all active clubs + members/posts for clubs I'm in.
   // Two round-trips: (1) clubs + my memberships in parallel,
   //                  (2) full rosters + posts for my clubs in parallel.
   const loadClubs = useCallback(async () => {
-    const clear = () => { setClubs([]); setClubMembers([]); setClubPosts([]); };
+    const clear = () => { setClubs([]); setClubMembers([]); setClubPosts([]); setClubJoinRequests([]); };
     if (!currentUser) { clear(); return; }
     const uid = currentUser.id;
     const isAdmin = currentUser.role === "Admin";
@@ -816,14 +820,17 @@ export function AppProvider({ children }) {
     // accurate member counts + presidents. Members see only active clubs and
     // only the rosters/posts of clubs they belong to. (Admins are excluded from
     // club_posts by RLS, so we don't fetch posts for them.)
-    const [clubsRes, myRes] = await Promise.all([
+    // Join requests: RLS already scopes rows (own + clubs I officer + admin all).
+    const [clubsRes, myRes, reqRes] = await Promise.all([
       isAdmin
         ? supabase.from("clubs").select("*").order("name")
         : supabase.from("clubs").select("*").eq("is_active", true).order("name"),
       supabase.from("club_members").select("*").eq("user_id", currentUser.id),
+      supabase.from("club_join_requests").select("*").order("created_at", { ascending: false }),
     ]);
     if (!stillCurrent(uid)) return;
-    if (clubsRes.error || myRes.error) { setDataError(true); return; }
+    if (clubsRes.error || myRes.error || reqRes.error) { setDataError(true); return; }
+    setClubJoinRequests((reqRes.data || []).map(toClubJoinRequest));
     const myClubIds = (myRes.data || []).map((m) => m.club_id);
     const [membersRes, postsRes] = await Promise.all([
       isAdmin
@@ -2641,6 +2648,49 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
+  // --- join requests (migration 0076) ---
+  // My pending request for a club, if any.
+  const myClubJoinRequest = (clubId) =>
+    clubJoinRequests.find((r) => r.clubId === clubId && r.userId === currentUser?.id && r.status === "pending");
+
+  async function requestJoinClub(clubId, message = "") {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const { error } = await supabase.from("club_join_requests")
+      .insert({ club_id: clubId, user_id: currentUser.id, message: message.trim() });
+    if (error) {
+      if (error.code === "23505") return { ok: false, error: "You already have a pending request for this club." };
+      if (error.code === "42501") return { ok: false, error: "You're already a member of this club." };
+      return { ok: false, error: error.message };
+    }
+    await loadClubs();
+    return { ok: true };
+  }
+  async function cancelClubJoinRequest(clubId) {
+    const { error } = await supabase.from("club_join_requests")
+      .delete().match({ club_id: clubId, user_id: currentUser.id, status: "pending" });
+    if (error) return { ok: false, error: error.message };
+    await loadClubs();
+    return { ok: true };
+  }
+  // Officer decision. Approve = add the member FIRST, then mark the request,
+  // so a failure can't strand an approved request without a membership.
+  async function decideClubJoinRequest(request, approve) {
+    if (approve) {
+      const { error: memErr } = await supabase.from("club_members")
+        .insert({ club_id: request.clubId, user_id: request.userId, role: "member", added_by: currentUser.id });
+      // 23505 = already a member (e.g. added manually meanwhile) — fine, still mark the request.
+      if (memErr && memErr.code !== "23505") return { ok: false, error: memErr.message };
+    }
+    const { data: rows, error } = await supabase.from("club_join_requests")
+      .update({ status: approve ? "approved" : "denied", decided_by: currentUser.id, decided_at: new Date().toISOString() })
+      .eq("id", request.id)
+      .select("id");
+    if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) return { ok: false, error: "Only this club's officers can decide requests." };
+    await loadClubs();
+    return { ok: true };
+  }
+
   // --- posts ---
   async function addClubPost(clubId, data) {
     let imageUrl = null, fileUrl = null, fileName = null;
@@ -2838,13 +2888,14 @@ export function AppProvider({ children }) {
     requestCreateSection, joinByCode, approveSectionRequest, rejectSectionRequest,
     toggleSectionPublic, initiateIntakeVote, castIntakeVote, checkExpiredVotes,
     // club hub (data)
-    clubs, clubMembers, clubPosts,
+    clubs, clubMembers, clubPosts, clubJoinRequests,
     // club hub (selectors)
-    myClubs, clubById, clubMembersIn, clubPostsIn, userRoleIn, canPostIn, canManageClub, isPresident,
+    myClubs, clubById, clubMembersIn, clubPostsIn, userRoleIn, canPostIn, canManageClub, isPresident, myClubJoinRequest,
     // club hub (files)
     getClubFileUrl,
     // club hub (actions)
     addClubMembers, removeClubMember, updateClubMemberRole, leaveClub,
+    requestJoinClub, cancelClubJoinRequest, decideClubJoinRequest,
     addClubPost, updateClubPost, deleteClubPost, toggleClubPin,
     createClub, updateClubDetails, setClubActive, assignClubPresident,
     currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile, dataError, retryData,
