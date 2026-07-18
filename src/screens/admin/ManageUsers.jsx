@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Search, ShieldCheck, TriangleAlert, UserX, UserPlus } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Search, GraduationCap, Crown, UserX, UserPlus } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { Card, Button, Select, Modal, Badge, Avatar, Field, Input, EmptyState, Spinner, useToast } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
@@ -9,16 +9,21 @@ import { fmtDate } from "../../lib/helpers.js";
 const EMPTY_NEW = { name: "", email: "", password: "", role: "Staff", dept: "", expertise: "" };
 
 export default function ManageUsers() {
-  const { users, currentUser, setRole, createUser } = useApp();
+  const {
+    users, currentUser, createUser,
+    studySections = [], studyIntakes = [], departments = [], clubs = [],
+    assignSectionCR, assignClubPresident,
+  } = useApp();
   const toast = useToast();
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
-  const [pending, setPending] = useState(null); // { user, newRole }
-  const [changing, setChanging] = useState(false);
 
-  const adminCount = users.filter((u) => u.role === "Admin").length;
-  const blockedLastAdmin =
-    pending && pending.user.role === "Admin" && pending.newRole !== "Admin" && adminCount <= 1;
+  // Assign-position modal state
+  const [crFor, setCrFor] = useState(null);          // user getting a CR role
+  const [crSection, setCrSection] = useState("");
+  const [presFor, setPresFor] = useState(null);      // user becoming a club president
+  const [presClub, setPresClub] = useState("");
+  const [busy, setBusy] = useState(false);
 
   // Create-account modal state
   const [addOpen, setAddOpen] = useState(false);
@@ -26,6 +31,24 @@ export default function ManageUsers() {
   const [formErr, setFormErr] = useState({});
   const [saving, setSaving] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  // Section options labelled "Department · Intake N · Section M".
+  const sectionOptions = useMemo(() => {
+    const deptName = (id) => departments.find((d) => d.id === id)?.name || "Department";
+    const intakeById = Object.fromEntries(studyIntakes.map((i) => [i.id, i]));
+    return studySections
+      .map((s) => {
+        const intake = intakeById[s.intakeId];
+        const dept = intake ? deptName(intake.deptId).replace(/^Department of\s*/i, "") : "—";
+        return { id: s.id, label: `${dept} · Intake ${intake?.number ?? "?"} · Section ${s.number}` };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [studySections, studyIntakes, departments]);
+
+  const clubOptions = useMemo(
+    () => clubs.filter((c) => c.isActive !== false).map((c) => ({ id: c.id, label: c.name })).sort((a, b) => a.label.localeCompare(b.label)),
+    [clubs]
+  );
 
   const roles = ["All", "Student", "Staff", "Admin"];
   const filtered = users
@@ -37,20 +60,29 @@ export default function ManageUsers() {
     })
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 
-  async function applyChange() {
-    if (changing) return;
-    setChanging(true);
+  function openCr(u) { setCrFor(u); setCrSection(""); }
+  function openPres(u) { setPresFor(u); setPresClub(""); }
+
+  async function assignCr() {
+    if (busy || !crSection) return;
+    setBusy(true);
     try {
-      const res = await setRole(pending.user.id, pending.newRole);
-      if (res && res.ok === false) {
-        toast({ type: "error", title: "Couldn't update role", message: res.error });
-      } else {
-        toast({ type: "success", title: "Role updated", message: `${pending.user.name} is now ${pending.newRole}.` });
-      }
-    } finally {
-      setChanging(false);
-      setPending(null);
-    }
+      const res = await assignSectionCR(crSection, crFor.id);
+      if (res && res.ok === false) toast({ type: "error", title: "Couldn't assign CR", message: res.error });
+      else toast({ type: "success", title: "CR assigned", message: `${crFor.name} is now the CR of the selected section.` });
+      if (!res || res.ok !== false) setCrFor(null);
+    } finally { setBusy(false); }
+  }
+
+  async function assignPres() {
+    if (busy || !presClub) return;
+    setBusy(true);
+    try {
+      const res = await assignClubPresident(presClub, presFor.id);
+      if (res && res.ok === false) toast({ type: "error", title: "Couldn't set president", message: res.error });
+      else toast({ type: "success", title: "President assigned", message: `${presFor.name} is now the president of the selected club.` });
+      if (!res || res.ok !== false) setPresFor(null);
+    } finally { setBusy(false); }
   }
 
   function openAdd() {
@@ -117,9 +149,9 @@ export default function ManageUsers() {
             <thead>
               <tr className="border-b border-brd bg-surface-2 text-xs uppercase tracking-wide text-ink-3">
                 <th className="px-4 py-3 font-semibold">User</th>
-                <th className="px-4 py-3 font-semibold">Role</th>
+                <th className="px-4 py-3 font-semibold">Account</th>
                 <th className="px-4 py-3 font-semibold">Joined</th>
-                <th className="px-4 py-3 font-semibold text-right">Change role</th>
+                <th className="px-4 py-3 font-semibold text-right">Assign position</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brd">
@@ -141,20 +173,15 @@ export default function ManageUsers() {
                     </td>
                     <td className="px-4 py-3"><Badge tone={ROLE_TONE[u.role]}>{u.role}</Badge></td>
                     <td className="px-4 py-3 text-ink-3 whitespace-nowrap">{fmtDate(u.joined)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="inline-flex w-40 flex-col items-end gap-1">
-                        <Select
-                          value={u.role}
-                          disabled={isSelf}
-                          title={isSelf ? "You can't change your own role — ask another admin." : undefined}
-                          onChange={(e) => setPending({ user: u, newRole: e.target.value })}
-                        >
-                          <option value="Student">Student</option>
-                          <option value="Staff">Staff</option>
-                          <option value="Admin">Admin</option>
-                        </Select>
-                        {isSelf && <span className="text-[10px] text-ink-3">Ask another admin to change your role</span>}
-                      </div>
+                    <td className="px-4 py-3">
+                      {u.role === "Student" ? (
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button size="sm" variant="secondary" icon={GraduationCap} onClick={() => openCr(u)}>Make CR</Button>
+                          <Button size="sm" variant="secondary" icon={Crown} onClick={() => openPres(u)}>Make President</Button>
+                        </div>
+                      ) : (
+                        <p className="text-right text-xs text-ink-3">Positions apply to students</p>
+                      )}
                     </td>
                   </tr>
                 );
@@ -169,32 +196,58 @@ export default function ManageUsers() {
         )}
       </Card>
 
-      {/* Change role confirmation */}
+      {/* Assign CR */}
       <Modal
-        open={!!pending}
-        onClose={() => setPending(null)}
-        icon={pending && pending.user.role === "Admin" && pending.newRole !== "Admin" ? TriangleAlert : ShieldCheck}
-        tone={pending && pending.user.role === "Admin" && pending.newRole !== "Admin" ? "amber" : "blue"}
-        title="Change this user's role?"
-        description={pending ? `${pending.user.name} will change from ${pending.user.role} to ${pending.newRole}. This updates what they can see and do across FixIt.` : ""}
+        open={!!crFor}
+        onClose={() => !busy && setCrFor(null)}
+        icon={GraduationCap}
+        tone="blue"
+        title="Make Class Representative"
+        description={crFor ? `Choose the section ${crFor.name} will be CR of. They keep their Student account — this adds the CR role for that section.` : ""}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setPending(null)} disabled={changing}>Cancel</Button>
-            <Button onClick={applyChange} disabled={changing || blockedLastAdmin}>Change to {pending?.newRole}</Button>
+            <Button variant="secondary" onClick={() => setCrFor(null)} disabled={busy}>Cancel</Button>
+            <Button onClick={assignCr} disabled={busy || !crSection}>{busy ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Assign CR"}</Button>
           </>
         }
       >
-        {blockedLastAdmin ? (
-          <div className="flex items-start gap-2 rounded-md border border-danger-bg bg-danger-bg p-3 text-base text-danger">
-            <TriangleAlert size={16} className="mt-0.5 shrink-0" />
-            <span>This is the last admin — promote another admin first, or you'll lock everyone out of admin tools.</span>
-          </div>
-        ) : pending && pending.user.id === currentUser?.id && pending.newRole !== "Admin" ? (
-          <div className="flex items-start gap-2 rounded-md border border-warn-bg bg-warn-bg p-3 text-base text-warn">
-            <TriangleAlert size={16} className="mt-0.5 shrink-0" />
-            <span>You're changing your own role — you'll lose admin access immediately.</span>
-          </div>
-        ) : null}
+        {sectionOptions.length === 0 ? (
+          <p className="text-base text-ink-3">No sections exist yet. Create sections in Manage Study Hub first.</p>
+        ) : (
+          <Field label="Section" htmlFor="cr-sec">
+            <Select id="cr-sec" value={crSection} onChange={(e) => setCrSection(e.target.value)}>
+              <option value="">Select a section…</option>
+              {sectionOptions.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </Select>
+          </Field>
+        )}
+      </Modal>
+
+      {/* Assign Club President */}
+      <Modal
+        open={!!presFor}
+        onClose={() => !busy && setPresFor(null)}
+        icon={Crown}
+        tone="amber"
+        title="Make Club President"
+        description={presFor ? `Choose the club ${presFor.name} will lead. The current president (if any) is stepped down automatically.` : ""}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPresFor(null)} disabled={busy}>Cancel</Button>
+            <Button onClick={assignPres} disabled={busy || !presClub}>{busy ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Assign president"}</Button>
+          </>
+        }
+      >
+        {clubOptions.length === 0 ? (
+          <p className="text-base text-ink-3">No active clubs exist yet. Create a club in Clubs first.</p>
+        ) : (
+          <Field label="Club" htmlFor="pres-club">
+            <Select id="pres-club" value={presClub} onChange={(e) => setPresClub(e.target.value)}>
+              <option value="">Select a club…</option>
+              {clubOptions.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </Select>
+          </Field>
+        )}
       </Modal>
 
       {/* Create Staff / Admin account */}
