@@ -47,7 +47,9 @@ export default function Register() {
         return;
       }
       toast({ type: "success", title: "Account created", message: "You're signed in as a Student." });
-      navigate(dashboardPath(res.user.role));
+      // res.user can be null if the profile row wasn't readable yet; the session
+      // effect will route once it loads. Default to the student dashboard.
+      navigate(dashboardPath(res.user?.role || "Student"));
     } catch {
       setErrors({ email: "Something went wrong. Please try again." });
     } finally {

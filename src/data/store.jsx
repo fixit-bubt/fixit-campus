@@ -291,20 +291,6 @@ function toDoctor(d) {
   };
 }
 
-// DB appointments row -> screen shape (id = code for routing; uuid = real PK).
-function toAppointment(a) {
-  return {
-    id: a.code,
-    uuid: a.id,
-    doctorId: a.doctor_id,
-    studentId: a.student_id,
-    date: a.date,
-    slot: a.slot,
-    token: a.token,
-    status: a.status,
-  };
-}
-
 // DB departments row -> screen shape (snake_case -> camelCase).
 function toDepartment(d) {
   return {
@@ -417,7 +403,6 @@ export function AppProvider({ children }) {
 
   // ---- medical center (LIVE Supabase) ----
   const [doctors, setDoctors] = useState([]);
-  const [appointments, setAppointments] = useState([]);
 
   // ---- bus schedule (LIVE Supabase) ----
   const [busRoutes, setBusRoutes] = useState([]);
@@ -698,19 +683,16 @@ export function AppProvider({ children }) {
     setDonors((ds || []).map(toDonor));
   }, [currentUser?.id]);
 
-  // Doctors (active reference data) + appointments (RLS returns the student's
-  // own rows; admins see all).
+  // Doctors — active reference data (the medical center is a directory only;
+  // appointment booking was removed in 2518b6d).
   const loadMedical = useCallback(async () => {
-    if (!currentUser) { setDoctors([]); setAppointments([]); return; }
+    if (!currentUser) { setDoctors([]); return; }
     const uid = currentUser.id;
-    const [{ data: docs, error: e1 }, { data: appts, error: e2 }] = await Promise.all([
-      supabase.from("doctors").select("*").eq("active", true).order("id"),
-      supabase.from("appointments").select("*").order("date", { ascending: false }),
-    ]);
+    const { data: docs, error } = await supabase
+      .from("doctors").select("*").eq("active", true).order("id");
     if (!stillCurrent(uid)) return;
-    if (e1 || e2) { setDataError(true); return; }
+    if (error) { setDataError(true); return; }
     setDoctors((docs || []).map(toDoctor));
-    setAppointments((appts || []).map(toAppointment));
   }, [currentUser?.id]);
 
   // Bus routes (active reference data) + this user's saved (starred) route ids.
@@ -979,9 +961,12 @@ export function AppProvider({ children }) {
     // Auto-signed-in: read the profile row to confirm the DB trigger ran and
     // set currentUser directly so RequireRole sees it before the navigate fires.
     const { data: p } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
-    const user = toUser(p) || { name: name.trim(), role: "Student" };
-    setCurrentUser(user);
-    return { ok: true, user };
+    // Only install a real profile. If the row isn't readable yet (signup trigger
+    // still committing, transient error), don't fabricate an id-less user — the
+    // session effect (sessionUserId) refetches the profile once it lands.
+    const user = toUser(p);
+    if (user) setCurrentUser(user);
+    return { ok: true, user: user || null };
   }
 
   async function logout() {
@@ -993,7 +978,7 @@ export function AppProvider({ children }) {
       setUsers([]); setReports([]); setItems([]); setClaims([]);
       setAnnouncements([]); setListings([]); setEvents([]); setEventOrganizers([]);
       setRides([]); setRidesPosted(0); setBloodRequests([]); setDonors([]);
-      setDoctors([]); setAppointments([]); setBusRoutes([]); setSavedBusRoutes([]);
+      setDoctors([]); setBusRoutes([]); setSavedBusRoutes([]);
       setPrayerTimes([]); setMusallahLocations([]); setDepartments([]); setFaculty([]);
       setFacultyBookmarks([]); setStudyIntakes([]); setStudySections([]); setStudyMembers([]);
       setStudyCourses([]); setStudyMaterials([]); setStudyQuestionBank([]); setStudyBooks([]);
@@ -2058,43 +2043,6 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
-  // ---- medical appointments (LIVE Supabase) ----
-  // Token is server-set by a trigger; the unique index blocks double-booking
-  // (a taken slot returns a friendly error). Returns the booked row so the
-  // success modal can show the token.
-  async function addAppointment({ doctorId, date, slot }) {
-    if (!currentUser) return { ok: false, error: "Not signed in." };
-    const { data: row, error } = await supabase
-      .from("appointments")
-      .insert({ doctor_id: doctorId, student_id: currentUser.id, date, slot, status: "Booked" })
-      .select("*")
-      .single();
-    if (error) {
-      const taken = error.code === "23505" || /duplicate|unique/i.test(error.message);
-      return { ok: false, error: taken ? "That slot was just taken — please pick another." : error.message };
-    }
-    await loadMedical();
-    return { ok: true, appt: toAppointment(row) };
-  }
-  async function cancelAppointment(id) {
-    const { error } = await supabase.from("appointments").update({ status: "Cancelled" }).eq("code", id);
-    if (error) return { ok: false, error: error.message };
-    await loadMedical();
-    return { ok: true };
-  }
-  async function setAppointmentStatus(id, status) {
-    const { error } = await supabase.from("appointments").update({ status }).eq("code", id);
-    if (error) return { ok: false, error: error.message };
-    await loadMedical();
-    return { ok: true };
-  }
-  // Taken slots for a doctor+date — via the booked_slots RPC, since RLS hides
-  // other students' appointment rows from the booking grid.
-  async function getBookedSlots(doctorId, date) {
-    const { data } = await supabase.rpc("booked_slots", { p_doctor_id: doctorId, p_date: date });
-    return (data || []).map((r) => (typeof r === "string" ? r : Object.values(r)[0]));
-  }
-
   // ---- bus schedule (LIVE Supabase) ----
   // Star / unstar a route for this user (saved_bus_routes join table).
   async function toggleBusSave(routeId) {
@@ -2868,7 +2816,7 @@ export function AppProvider({ children }) {
     rides, ridesPosted, addRide, requestSeat, deleteRide, getRideContact,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor, getDonorContact, getBloodRequesterContact,
     markDonatedToday, getBloodResponders, confirmBloodDonation, markBloodRequestFulfilled,
-    doctors, doctorById, appointments, addAppointment, cancelAppointment, setAppointmentStatus, getBookedSlots,
+    doctors, doctorById,
     busRoutes, busById, savedBusRoutes, toggleBusSave, addBusRoute, updateBusRoute,
     prayerTimes, updatePrayerJamaat, musallahLocations, addMusallahLocation, updateMusallahLocation, deleteMusallahLocation,
     departments, faculty, facultyBookmarks, facultyById, departmentByNumber, departmentById, toggleFacultyBookmark, updateFaculty, uploadFacultyPhoto,
