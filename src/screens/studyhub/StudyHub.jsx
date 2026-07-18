@@ -1498,7 +1498,7 @@ function MemberRow({ member, label, actions }) {
   );
 }
 
-function MembersTab({ section, members, onAct }) {
+function MembersTab({ section, members, onAct, actBusy }) {
   const pending = members.filter((m) => m.status === "pending");
   const approved = members.filter((m) => m.status === "approved");
   const crs = approved.filter((m) => m.role === "cr");
@@ -1760,7 +1760,7 @@ export function StudyHubManage({ sectionId }) {
           counts={{ Members: pendingCount > 0 ? pendingCount : undefined }}
         />
       </div>
-      {tab === "Members" && <MembersTab section={section} members={members} onAct={onAct} />}
+      {tab === "Members" && <MembersTab section={section} members={members} onAct={onAct} actBusy={actBusy} />}
       {tab === "Settings" && <SettingsTab section={section} intake={intake} onTogglePublic={handleTogglePublic} toggleBusy={toggleBusy} />}
     </AppShell>
   );
