@@ -245,6 +245,7 @@ export function ListingDetail({ id }) {
             <div className="flex items-center gap-2">
               <Badge tone="violet" icon={MKT_CATEGORY_ICON[listing.category]}>{listing.category}</Badge>
               <Badge tone={CONDITION_TONE[listing.condition]}>{listing.condition}</Badge>
+              {listing.courseCode && <Badge tone="sky">{listing.courseCode}</Badge>}
               {sold && <Badge tone="slate">Sold</Badge>}
             </div>
             <h2 className="mt-3 text-4xl font-bold tracking-tight text-ink">{listing.title}</h2>
@@ -323,8 +324,8 @@ function ListingEditor({ id, existing }) {
 
   const [form, setForm] = React.useState(
     existing
-      ? { title: existing.title, price: String(existing.price), category: existing.category, condition: existing.condition, negotiable: existing.negotiable, description: existing.description, photo: existing.photo, photoFile: null }
-      : { title: "", price: "", category: "", condition: "", negotiable: false, description: "", photo: null, photoFile: null }
+      ? { title: existing.title, price: String(existing.price), category: existing.category, condition: existing.condition, negotiable: existing.negotiable, description: existing.description, photo: existing.photo, photoFile: null, courseCode: existing.courseCode || "" }
+      : { title: "", price: "", category: "", condition: "", negotiable: false, description: "", photo: null, photoFile: null, courseCode: "" }
   );
   const [errors, setErrors] = React.useState({});
   const [saving, setSaving] = React.useState(false);
@@ -348,7 +349,7 @@ function ListingEditor({ id, existing }) {
     if (Object.keys(er).length) return;
     setSaving(true);
     try {
-      const data = { title: form.title.trim(), price: Number(form.price), category: form.category, condition: form.condition, negotiable: form.negotiable, description: form.description.trim(), photo: form.photo, photoFile: form.photoFile };
+      const data = { title: form.title.trim(), price: Number(form.price), category: form.category, condition: form.condition, negotiable: form.negotiable, description: form.description.trim(), photo: form.photo, photoFile: form.photoFile, courseCode: form.courseCode };
       const res = editing ? await updateListing(id, data) : await addListing(data);
       if (!res.ok) { toast({ type: "error", title: editing ? "Couldn't update listing" : "Couldn't post listing", message: res.error }); return; }
       if (editing) { toast({ type: "success", title: "Listing updated" }); navigate(`/marketplace/${id}`); }
@@ -384,6 +385,11 @@ function ListingEditor({ id, existing }) {
                 </Select>
               </Field>
             </div>
+            {["Books", "Notes"].includes(form.category) && (
+              <Field label="Course code" htmlFor="lf-course" hint="Optional — links this listing to the course's Study Hub page (e.g. CSE 101).">
+                <Input id="lf-course" placeholder="e.g. CSE 101" value={form.courseCode} onChange={(e) => set("courseCode", e.target.value)} />
+              </Field>
+            )}
             <Field label="Condition" htmlFor="lf-cond" required error={errors.condition}>
               <div className="flex flex-wrap gap-2">
                 {["New", "Like New", "Used"].map((c) => {
