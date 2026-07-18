@@ -318,8 +318,9 @@ export function AppShell({ activeKey, title, actions, children }) {
           </div>
         )}
 
-        {/* Content */}
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+        {/* Content — widen on large screens so feature pages fill the space
+            next to the sidebar instead of sitting in a narrow centered column. */}
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 xl:max-w-7xl 2xl:max-w-[100rem]">{children}</main>
     </>
   );
 }
