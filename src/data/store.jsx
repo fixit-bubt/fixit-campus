@@ -173,6 +173,7 @@ function toListing(r) {
     category: r.category,
     description: r.description,
     photo: r.photo_url || null,
+    courseCode: r.course_code || "",
     status: r.status,
     sellerId: r.seller_id,
     createdAt: day(r.created_at),
@@ -1629,6 +1630,8 @@ export function AppProvider({ children }) {
       category: data.category,
       description: data.description,
       photo_url,
+      // Course tag only makes sense for course materials.
+      course_code: ["Books", "Notes"].includes(data.category) ? (data.courseCode?.trim() || null) : null,
     };
   }
   async function addListing(data) {

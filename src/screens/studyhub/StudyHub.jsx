@@ -1295,7 +1295,7 @@ export function StudyHubCourse({ sectionId, courseId }) {
   const {
     studyCourseById, studySectionById, studyIntakes, studyFilesIn, studyQuestionsIn, studyBooksInCourse,
     resolveMySection, deleteStudyMaterial, deleteStudyQB, setQBVerified, deleteStudyBook, dataLoading,
-    getStudyBookmarks, toggleStudyBookmark,
+    getStudyBookmarks, toggleStudyBookmark, listings = [],
   } = useApp();
   const toast = useToast();
   const [tab, setTab] = React.useState("Notes");
@@ -1422,6 +1422,13 @@ export function StudyHubCourse({ sectionId, courseId }) {
 
   const confirmLabel = { note: "note", qb: "question paper", book: "book" }[confirm?.kind] || "item";
 
+  // Marketplace cross-link: Available listings tagged with this course code
+  // (0077). Codes compared ignoring case/spacing so "CSE101" matches "CSE 101".
+  const normCode = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const courseListings = listings.filter(
+    (l) => l.status === "Available" && l.courseCode && normCode(l.courseCode) === normCode(course.code)
+  );
+
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
       <button onClick={() => navigate(`/study-hub/section/${section.id}`)} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
@@ -1431,6 +1438,28 @@ export function StudyHubCourse({ sectionId, courseId }) {
         title={`${course.code} — ${course.name}`}
         subtitle={section.isMine ? null : `Section ${section.number} · read-only`}
       />
+
+      {/* Used books/notes for this course on the marketplace */}
+      {courseListings.length > 0 && (
+        <Card className="mb-5 p-4">
+          <p className="text-base font-bold text-ink">
+            For sale on the marketplace <span className="font-semibold text-ink-3">· {courseListings.length}</span>
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {courseListings.slice(0, 6).map((l) => (
+              <button
+                key={l.id}
+                onClick={() => navigate(`/marketplace/${l.id}`)}
+                className="inline-flex items-center gap-2 rounded-md border border-brd bg-surface px-3 py-2 text-left hover:bg-surface-2"
+              >
+                <Icon name={l.category === "Books" ? "BookOpen" : "NotebookPen"} size={15} className="text-violet-600 dark:text-violet-300" />
+                <span className="max-w-[180px] truncate text-base font-semibold text-ink">{l.title}</span>
+                <span className="text-base font-bold text-violet-600 dark:text-violet-300">৳{l.price}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="mb-5 flex flex-col gap-3">
         <FilterTabs options={["Notes", "Questions", "Books"]} value={tab} onChange={setTab}
