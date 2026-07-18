@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Search, GraduationCap, CalendarDays, Bus, Moon, MapPin, Clock } from "lucide-react";
+import { ArrowRight, Search, GraduationCap, CalendarDays, Bus, Moon, MapPin, Clock, FileText, CalendarRange, ExternalLink } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { Button, Badge, Card, Spinner, Avatar } from "../../components/ui.jsx";
 import { Logo } from "../../components/Brand.jsx";
 import { ThemeToggle } from "../../components/ThemeToggle.jsx";
+import { CoverPageBody } from "../coverpage/CoverPage.jsx";
 
 // ============================================================================
 // Public "explore without an account" screens: Faculty / Events / Bus & Prayer.
@@ -14,11 +15,15 @@ import { ThemeToggle } from "../../components/ThemeToggle.jsx";
 // select('*') as anon fails with "permission denied for column".
 // ============================================================================
 
-const NAV = [
+export const EXPLORE_NAV = [
   { label: "Faculty", path: "/explore/faculty" },
   { label: "Events", path: "/explore/events" },
-  { label: "Bus & Prayer", path: "/explore/campus" },
+  { label: "Bus", path: "/explore/bus" },
+  { label: "Prayer", path: "/explore/prayer" },
+  { label: "Routines", path: "/explore/routines" },
+  { label: "Cover Page", path: "/explore/cover-page" },
 ];
+const NAV = EXPLORE_NAV;
 
 function ExploreShell({ active, children }) {
   const { currentUser, dashboardPath } = useApp();
@@ -308,99 +313,236 @@ export function PublicEvents() {
 }
 
 // ---------------------------------------------------------------------------
-// Bus & Prayer
+// Bus schedule
 // ---------------------------------------------------------------------------
-export function PublicTransit() {
+export function PublicBus() {
   const q = useAnonQuery(async () => {
-    const [{ data: routes, error: e1 }, { data: prayers, error: e2 }, { data: musallahs, error: e3 }] = await Promise.all([
-      supabase
-        .from("bus_routes")
-        .select("id, name, area, bus_no, days, friday_note, stops, to_departures, from_departures, active")
-        .eq("active", true)
-        .order("id"),
-      supabase.from("prayer_times").select("key, en, ar, azan, jamaat, sort").order("sort"),
-      supabase.from("musallah_locations").select("id, name, floor_desc, sort").order("sort"),
-    ]);
-    if (e1 || e2 || e3) throw e1 || e2 || e3;
-    return { routes: routes || [], prayers: prayers || [], musallahs: musallahs || [] };
+    const { data, error } = await supabase
+      .from("bus_routes")
+      .select("id, name, area, bus_no, days, friday_note, stops, to_departures, from_departures, active")
+      .eq("active", true)
+      .order("id");
+    if (error) throw error;
+    return data || [];
   });
 
   return (
-    <ExploreShell active="/explore/campus">
+    <ExploreShell active="/explore/bus">
+      <PageHead Icon={Bus} title="Bus Schedule" sub="Daily shuttle routes, stops, and departure times." />
+      <LoadState {...q}>
+        {(q.data || []).length === 0 ? (
+          <p className="py-16 text-center text-base text-ink-3">No active routes published.</p>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {q.data.map((r) => (
+              <Card key={r.id} className="p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-lg font-bold text-ink">{r.name} <span className="font-semibold text-ink-3">· {r.area}</span></p>
+                  <Badge tone="neutral">{r.id}{r.bus_no ? ` · Bus ${r.bus_no}` : ""}</Badge>
+                </div>
+                {(r.stops || []).length > 0 && (
+                  <p className="mt-2 text-base text-ink-2">{r.stops.join(" → ")}</p>
+                )}
+                <div className="mt-3 grid gap-2 text-sm text-ink-3 sm:grid-cols-2">
+                  <p><span className="font-bold text-ink-2">To campus:</span> {(r.to_departures || []).map(fmt12).join(", ") || "—"}</p>
+                  <p><span className="font-bold text-ink-2">From campus:</span> {(r.from_departures || []).map(fmt12).join(", ") || "—"}</p>
+                </div>
+                <p className="mt-2 text-sm text-ink-3">
+                  {(r.days || []).join(", ")}{r.friday_note ? ` · ${r.friday_note}` : ""}
+                </p>
+              </Card>
+            ))}
+          </div>
+        )}
+      </LoadState>
+    </ExploreShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Prayer times
+// ---------------------------------------------------------------------------
+export function PublicPrayer() {
+  const q = useAnonQuery(async () => {
+    const [{ data: prayers, error: e1 }, { data: musallahs, error: e2 }] = await Promise.all([
+      supabase.from("prayer_times").select("key, en, ar, azan, jamaat, sort").order("sort"),
+      supabase.from("musallah_locations").select("id, name, floor_desc, sort").order("sort"),
+    ]);
+    if (e1 || e2) throw e1 || e2;
+    return { prayers: prayers || [], musallahs: musallahs || [] };
+  });
+
+  return (
+    <ExploreShell active="/explore/prayer">
+      <PageHead Icon={Moon} title="Prayer Times" sub="Today's azan & jamaat times, and where to pray on campus." />
+      <LoadState {...q}>
+        <div className="mx-auto grid max-w-3xl gap-6">
+          <Card className="overflow-hidden">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-brd bg-surface-2 text-sm text-ink-3">
+                  <th className="px-4 py-2.5 font-bold">Prayer</th>
+                  <th className="px-4 py-2.5 font-bold">Azan</th>
+                  <th className="px-4 py-2.5 font-bold">Jamaat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(q.data?.prayers || []).map((p) => (
+                  <tr key={p.key} className="border-b border-brd last:border-0">
+                    <td className="px-4 py-2.5 text-base font-semibold text-ink">{p.en} <span className="text-ink-3">{p.ar}</span></td>
+                    <td className="px-4 py-2.5 text-base text-ink-2">{fmt12(p.azan)}</td>
+                    <td className="px-4 py-2.5 text-base font-semibold text-brand">{fmt12(p.jamaat)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+          {(q.data?.musallahs || []).length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {q.data.musallahs.map((m) => (
+                <Card key={m.id} className="flex items-center gap-3 p-4">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-100 text-brand-700"><MapPin size={16} /></span>
+                  <div>
+                    <p className="text-base font-bold text-ink">{m.name}</p>
+                    <p className="text-sm text-ink-3">{m.floor_desc}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </LoadState>
+    </ExploreShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Class & exam routines
+// ---------------------------------------------------------------------------
+export function PublicRoutines() {
+  const q = useAnonQuery(async () => {
+    const { data, error } = await supabase
+      .from("routines")
+      .select("id, type, title, department, semester, intake, section, file_url, image_url, created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  });
+  const [type, setType] = useState("all");
+  const [dept, setDept] = useState("all");
+
+  const depts = useMemo(
+    () => [...new Set((q.data || []).map((r) => r.department).filter(Boolean))].sort(),
+    [q.data]
+  );
+  const filtered = (q.data || []).filter(
+    (r) => (type === "all" || r.type === type) && (dept === "all" || r.department === dept)
+  );
+
+  return (
+    <ExploreShell active="/explore/routines">
+      <PageHead Icon={CalendarRange} title="Class & Exam Routines" sub="Latest routine files published by the departments." />
+      <LoadState {...q}>
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <div className="flex gap-1 rounded-md border border-brd bg-surface p-1">
+            {[["all", "All"], ["class", "Class"], ["exam", "Exam"]].map(([v, label]) => (
+              <button
+                key={v}
+                onClick={() => setType(v)}
+                className={`rounded-sm px-3 py-1.5 text-sm font-semibold ${
+                  type === v ? "bg-brand text-white" : "text-ink-2 hover:bg-surface-2"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {depts.length > 0 && (
+            <select
+              value={dept}
+              onChange={(e) => setDept(e.target.value)}
+              className="h-10 rounded-md border border-brd bg-surface px-3 text-base text-ink focus:border-brand focus:outline-none"
+            >
+              <option value="all">All departments</option>
+              {depts.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          )}
+        </div>
+
+        {filtered.length === 0 ? (
+          <p className="py-16 text-center text-base text-ink-3">No routines published yet. Check back soon.</p>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((r) => {
+              const href = r.file_url || r.image_url;
+              return (
+                <Card key={r.id} className="flex flex-col p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge tone={r.type === "exam" ? "amber" : "blue"}>{r.type === "exam" ? "Exam" : "Class"}</Badge>
+                    <span className="text-xs font-semibold text-ink-3">{fmtDate(r.created_at.slice(0, 10))}</span>
+                  </div>
+                  <h3 className="mt-3 text-lg font-bold text-ink">{r.title}</h3>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {[r.department, r.semester, r.intake && `Intake ${r.intake}`, r.section && `Sec ${r.section}`]
+                      .filter(Boolean)
+                      .map((chip) => (
+                        <span key={chip} className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-semibold text-ink-2">{chip}</span>
+                      ))}
+                  </div>
+                  {href && (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-brand px-4 text-base font-bold text-white hover:bg-brand-700"
+                    >
+                      <ExternalLink size={15} /> Open routine
+                    </a>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </LoadState>
+    </ExploreShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cover page generator (full generator, guest edition)
+// ---------------------------------------------------------------------------
+export function PublicCoverPage() {
+  const { currentUser } = useApp();
+  const q = useAnonQuery(async () => {
+    const [{ data: depts, error: e1 }, { data: fac, error: e2 }] = await Promise.all([
+      supabase.from("departments").select("id, name").order("name"),
+      supabase.from("faculty").select("id, department_id, name, designation, photo_url").order("name"),
+    ]);
+    if (e1 || e2) throw e1 || e2;
+    return {
+      departments: depts || [],
+      // CoverPageBody expects the store's camelCase faculty shape.
+      faculty: (fac || []).map((f) => ({
+        id: f.id, name: f.name, designation: f.designation,
+        departmentId: f.department_id, photo: f.photo_url,
+      })),
+    };
+  });
+
+  return (
+    <ExploreShell active="/explore/cover-page">
       <PageHead
-        Icon={Bus}
-        title="Bus Schedule & Prayer Times"
-        sub="Daily shuttle departures and today's azan & jamaat times on campus."
+        Icon={FileText}
+        title="Cover Page Generator"
+        sub="BUBT assignment, lab, project, index & internship cover pages — print or save as PDF. Free, no account needed."
       />
       <LoadState {...q}>
-        <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-          {/* Bus routes */}
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-ink">Bus routes</h2>
-            {(q.data?.routes || []).length === 0 ? (
-              <p className="py-10 text-center text-base text-ink-3">No active routes published.</p>
-            ) : (
-              <div className="grid gap-4">
-                {q.data.routes.map((r) => (
-                  <Card key={r.id} className="p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-lg font-bold text-ink">{r.name} <span className="font-semibold text-ink-3">· {r.area}</span></p>
-                      <Badge tone="neutral">{r.id}{r.bus_no ? ` · Bus ${r.bus_no}` : ""}</Badge>
-                    </div>
-                    {(r.stops || []).length > 0 && (
-                      <p className="mt-2 text-base text-ink-2">{r.stops.join(" → ")}</p>
-                    )}
-                    <div className="mt-3 grid gap-2 text-sm text-ink-3 sm:grid-cols-2">
-                      <p><span className="font-bold text-ink-2">To campus:</span> {(r.to_departures || []).map(fmt12).join(", ") || "—"}</p>
-                      <p><span className="font-bold text-ink-2">From campus:</span> {(r.from_departures || []).map(fmt12).join(", ") || "—"}</p>
-                    </div>
-                    <p className="mt-2 text-sm text-ink-3">
-                      {(r.days || []).join(", ")}{r.friday_note ? ` · ${r.friday_note}` : ""}
-                    </p>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Prayer times */}
-          <section>
-            <h2 className="mb-3 inline-flex items-center gap-2 text-xl font-bold text-ink"><Moon size={18} /> Prayer times</h2>
-            <Card className="overflow-hidden">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-brd bg-surface-2 text-sm text-ink-3">
-                    <th className="px-4 py-2.5 font-bold">Prayer</th>
-                    <th className="px-4 py-2.5 font-bold">Azan</th>
-                    <th className="px-4 py-2.5 font-bold">Jamaat</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(q.data?.prayers || []).map((p) => (
-                    <tr key={p.key} className="border-b border-brd last:border-0">
-                      <td className="px-4 py-2.5 text-base font-semibold text-ink">{p.en} <span className="text-ink-3">{p.ar}</span></td>
-                      <td className="px-4 py-2.5 text-base text-ink-2">{fmt12(p.azan)}</td>
-                      <td className="px-4 py-2.5 text-base font-semibold text-brand">{fmt12(p.jamaat)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-            {(q.data?.musallahs || []).length > 0 && (
-              <div className="mt-4 grid gap-3">
-                {q.data.musallahs.map((m) => (
-                  <Card key={m.id} className="flex items-center gap-3 p-4">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-100 text-brand-700"><MapPin size={16} /></span>
-                    <div>
-                      <p className="text-base font-bold text-ink">{m.name}</p>
-                      <p className="text-sm text-ink-3">{m.floor_desc}</p>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+        <CoverPageBody
+          currentUser={currentUser}
+          faculty={q.data?.faculty || []}
+          departments={q.data?.departments || []}
+        />
       </LoadState>
     </ExploreShell>
   );

@@ -6,6 +6,7 @@ import { Button, Badge, Card } from "../../components/ui.jsx";
 import { Logo } from "../../components/Brand.jsx";
 import { ThemeToggle } from "../../components/ThemeToggle.jsx";
 import { ACCENT_TILE } from "../../components/featureKit.jsx";
+import { EXPLORE_NAV } from "./Explore.jsx";
 import campusPhoto from "../../assets/bubt-campus.jpg";
 
 // Landing cards reuse the in-app sector accents so each feature keeps its
@@ -36,11 +37,7 @@ export default function Landing() {
           <Logo />
           {/* Public explore pages — browsable without an account */}
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
-            {[
-              { label: "Faculty", path: "/explore/faculty" },
-              { label: "Events", path: "/explore/events" },
-              { label: "Bus & Prayer", path: "/explore/campus" },
-            ].map((l) => (
+            {EXPLORE_NAV.map((l) => (
               <button
                 key={l.path}
                 onClick={() => navigate(l.path)}
