@@ -334,6 +334,9 @@ export function Card({ className = "", children, ...rest }) {
 // ---------------------------------------------------------------------------
 export function Avatar({ name = "", src, size = 36, className = "" }) {
   const [failed, setFailed] = useState(false);
+  // Reset the error state when the src changes, so a re-uploaded/corrected
+  // photo replaces the initials fallback instead of being stuck on it.
+  useEffect(() => { setFailed(false); }, [src]);
   if (src && !failed) {
     return (
       <img

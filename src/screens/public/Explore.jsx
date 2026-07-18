@@ -34,24 +34,22 @@ function ExploreShell({ active, children }) {
     <div className="min-h-screen bg-bg">
       <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur-md">
         <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-6">
-            <button onClick={() => navigate("/")} aria-label="FixIt home">
-              <Logo />
-            </button>
-            <nav className="hidden items-center gap-0.5 xl:flex">
-              {NAV.map((l) => (
-                <button
-                  key={l.path}
-                  onClick={() => navigate(l.path)}
-                  className={`rounded-md px-2.5 py-2 text-[15px] font-semibold transition-colors ${
-                    active === l.path ? "bg-brand-50 text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
-                  }`}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </nav>
-          </div>
+          <button onClick={() => navigate("/")} aria-label="FixIt home">
+            <Logo />
+          </button>
+          <nav className="hidden flex-1 items-center justify-evenly px-8 xl:flex">
+            {NAV.map((l) => (
+              <button
+                key={l.path}
+                onClick={() => navigate(l.path)}
+                className={`rounded-md px-2.5 py-2 text-[15px] font-semibold transition-colors ${
+                  active === l.path ? "bg-brand-50 text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+                }`}
+              >
+                {l.label}
+              </button>
+            ))}
+          </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {currentUser ? (
@@ -157,8 +155,17 @@ function fmt12(hhmm) {
 }
 
 function fmtDate(iso) {
+  if (!iso) return "";
   const d = new Date(iso + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+
+// Local (not UTC) 'YYYY-MM-DD' — the DB dates are calendar days in Dhaka time,
+// so upcoming/past splits must compare against the local day, not toISOString().
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -231,7 +238,9 @@ export function PublicFaculty() {
         </div>
 
         {filtered.length === 0 ? (
-          <p className="py-16 text-center text-base text-ink-3">No faculty match that search.</p>
+          <p className="py-16 text-center text-base text-ink-3">
+            {(q.data?.fac || []).length === 0 ? "No faculty listed yet." : "No faculty match that search."}
+          </p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((f) => (
@@ -277,7 +286,7 @@ export function PublicEvents() {
     return data || [];
   });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocal();
   const upcoming = (q.data || []).filter((e) => e.date >= today);
   const past = (q.data || []).length - upcoming.length;
 
@@ -382,6 +391,9 @@ export function PublicPrayer() {
       <PageHead Icon={Moon} title="Prayer Times" sub="Today's azan & jamaat times, and where to pray on campus." />
       <LoadState {...q}>
         <div className="mx-auto grid max-w-3xl gap-6">
+          {(q.data?.prayers || []).length === 0 ? (
+            <p className="py-16 text-center text-base text-ink-3">Prayer times haven't been published yet.</p>
+          ) : (
           <Card className="overflow-hidden">
             <table className="w-full text-left">
               <thead>
@@ -402,6 +414,7 @@ export function PublicPrayer() {
               </tbody>
             </table>
           </Card>
+          )}
           {(q.data?.musallahs || []).length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2">
               {q.data.musallahs.map((m) => (
@@ -623,7 +636,7 @@ export function PublicCalendar() {
   });
   const [type, setType] = useState("all");
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocal();
   const filtered = (q.data || []).filter((e) => type === "all" || e.event_type === type);
   const upcoming = filtered.filter((e) => (e.end_date || e.event_date) >= today);
   const past = filtered.filter((e) => (e.end_date || e.event_date) < today);
