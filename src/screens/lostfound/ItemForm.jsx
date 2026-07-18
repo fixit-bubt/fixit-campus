@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { Search, PackageCheck, Lock, Plus, Check } from "lucide-react";
-import { Card, Button, Field, Input, Textarea, Select, FileUpload, Spinner } from "../../components/ui.jsx";
-import { ITEM_CATEGORIES, todayISO } from "../../lib/helpers.js";
+import React, { useState, useMemo } from "react";
+import { Search, PackageCheck, Lock, Plus, Check, Sparkles, MapPin } from "lucide-react";
+import { useApp } from "../../data/store.jsx";
+import { Card, Button, Field, Input, Textarea, Select, FileUpload, Spinner, Badge } from "../../components/ui.jsx";
+import { ITEM_CATEGORIES, todayISO, findItemMatches, fmtDate } from "../../lib/helpers.js";
 
 const TYPE_OPTIONS = [
   { v: "Lost", Icon: Search, desc: "I lost this" },
@@ -10,12 +11,20 @@ const TYPE_OPTIONS = [
 
 // Shared by "Post an Item" (create) and "Edit Item" (edit).
 export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
+  const { items = [], currentUser } = useApp();
   const [form, setForm] = useState(
     initial || { type: "Found", title: "", category: "", description: "", location: "", date: todayISO(), photo: null }
   );
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Live "is it already here?" matches — opposite type, same category, ranked
+  // by keyword overlap. Only while creating, once there's enough to match on.
+  const matches = useMemo(() => {
+    if (mode !== "create" || !form.category || form.title.trim().length < 3) return [];
+    return findItemMatches(form, items, { excludePosterId: currentUser?.id });
+  }, [mode, form.type, form.category, form.title, form.description, items, currentUser?.id]);
 
   function validate() {
     const er = {};
@@ -113,6 +122,39 @@ export function ItemForm({ initial, mode = "create", onSubmit, onCancel }) {
           Your contact details stay private — they're shared only after you approve a claim on this item.
         </div>
       </Card>
+
+      {/* Possible matches already on the board */}
+      {matches.length > 0 && (
+        <Card className="space-y-3 border-brand bg-brand-50/40 p-5">
+          <p className="inline-flex items-center gap-2 text-base font-bold text-ink">
+            <Sparkles size={16} className="text-brand" />
+            {form.type === "Lost"
+              ? "Someone may have already found this — check before posting"
+              : "Someone may be looking for this — check before posting"}
+          </p>
+          <div className="grid gap-2">
+            {matches.map(({ item: m }) => (
+              <a
+                key={m.id}
+                href={`#/lost-found/${m.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 rounded-md border border-brd bg-surface px-3 py-2.5 hover:bg-surface-2"
+              >
+                <Badge tone={m.type === "Lost" ? "red" : "emerald"}>{m.type}</Badge>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-base font-semibold text-ink">{m.title}</span>
+                  <span className="block truncate text-xs text-ink-3">
+                    <MapPin size={11} className="mr-0.5 inline" />
+                    {m.location} · {fmtDate(m.date)}
+                  </span>
+                </span>
+              </a>
+            ))}
+          </div>
+          <p className="text-xs text-ink-3">Opens in a new tab — your draft here stays as it is.</p>
+        </Card>
+      )}
 
       <div className="flex justify-end gap-3">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>

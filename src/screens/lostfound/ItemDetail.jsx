@@ -8,7 +8,7 @@ import { navigate } from "../../lib/router.jsx";
 import { Card, Button, Field, Textarea, FileUpload, Modal, Avatar, Badge, EmptyState, StatusBadge, Spinner, Loading, useToast } from "../../components/ui.jsx";
 import { AppShell } from "../../components/AppShell.jsx";
 import { ItemPhoto, ItemTypeBadge } from "../../components/ItemBits.jsx";
-import { ITEM_CATEGORY_ICON, fmtDate } from "../../lib/helpers.js";
+import { ITEM_CATEGORY_ICON, fmtDate, findItemMatches } from "../../lib/helpers.js";
 
 function ClaimModal({ open, item, onClose, onSubmitted }) {
   const { addClaim } = useApp();
@@ -354,6 +354,35 @@ export default function ItemDetail({ id }) {
             </div>
           </div>
         </div>
+
+        {/* Poster: possible matches from the other side of the board */}
+        {isPoster && item.status === "Open" && (() => {
+          const matches = findItemMatches(item, items, { excludePosterId: currentUser?.id });
+          if (matches.length === 0) return null;
+          return (
+            <Card className="mt-6 p-6">
+              <h3 className="text-base font-semibold text-ink">
+                Possible matches — {item.type === "Lost" ? "recently found items" : "people looking for something like this"}
+              </h3>
+              <p className="mt-1 text-base text-ink-3">Same category, similar words. Take a look — your item might already be on the board.</p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {matches.map(({ item: m }) => (
+                  <button
+                    key={m.id}
+                    onClick={() => navigate(`/lost-found/${m.id}`)}
+                    className="flex items-center gap-3 rounded-md border border-brd bg-surface px-3 py-2.5 text-left hover:bg-surface-2"
+                  >
+                    <ItemTypeBadge type={m.type} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-base font-semibold text-ink">{m.title}</span>
+                      <span className="block truncate text-xs text-ink-3">{m.location} · {fmtDate(m.date)}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </Card>
+          );
+        })()}
 
         {/* Poster: incoming claims to approve / reject */}
         {isPoster && (

@@ -100,3 +100,49 @@ export async function downloadFile(url, filename) {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Lost & Found match finder — candidates are OPPOSITE-type, same-category,
+// open items by other people, ranked by keyword overlap (title tokens count
+// double) then recency. Used by the post form ("already found?") and the
+// item detail's "possible matches" panel; the DB trigger (0075) mirrors the
+// category/type/date rule for notifications.
+// ---------------------------------------------------------------------------
+const MATCH_STOPWORDS = new Set([
+  "the", "and", "with", "for", "near", "from", "this", "that", "was", "one",
+  "has", "have", "its", "her", "his", "our", "your", "colour", "color",
+]);
+
+function matchTokens(text) {
+  return new Set(
+    (text || "")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 3 && !MATCH_STOPWORDS.has(t))
+  );
+}
+
+export function findItemMatches(target, items, { excludePosterId, limit = 4 } = {}) {
+  if (!target?.type || !target?.category) return [];
+  const titleTokens = matchTokens(target.title);
+  const descTokens = matchTokens(target.description);
+  const candidates = items.filter(
+    (i) =>
+      i.type !== target.type &&
+      i.category === target.category &&
+      i.status === "Open" &&
+      i.id !== target.id &&
+      (!excludePosterId || i.posterId !== excludePosterId)
+  );
+  return candidates
+    .map((i) => {
+      const iTitle = matchTokens(i.title);
+      const iAll = new Set([...iTitle, ...matchTokens(i.description)]);
+      let score = 0;
+      for (const t of titleTokens) { if (iTitle.has(t)) score += 2; else if (iAll.has(t)) score += 1; }
+      for (const t of descTokens) if (iAll.has(t)) score += 1;
+      return { item: i, score };
+    })
+    .sort((a, b) => b.score - a.score || (b.item.createdAt || "").localeCompare(a.item.createdAt || ""))
+    .slice(0, limit);
+}
