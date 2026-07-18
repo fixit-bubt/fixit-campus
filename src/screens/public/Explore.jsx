@@ -30,23 +30,25 @@ function ExploreShell({ active, children }) {
   return (
     <div className="min-h-screen bg-bg">
       <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur-md">
-        <div className="relative flex items-center justify-between px-4 py-3 sm:px-6">
-          <button onClick={() => navigate("/")} aria-label="FixIt home">
-            <Logo />
-          </button>
-          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
-            {NAV.map((l) => (
-              <button
-                key={l.path}
-                onClick={() => navigate(l.path)}
-                className={`rounded-md px-3 py-2 text-base font-semibold transition-colors ${
-                  active === l.path ? "bg-brand-50 text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
-                }`}
-              >
-                {l.label}
-              </button>
-            ))}
-          </nav>
+        <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-6">
+            <button onClick={() => navigate("/")} aria-label="FixIt home">
+              <Logo />
+            </button>
+            <nav className="hidden items-center gap-1 lg:flex">
+              {NAV.map((l) => (
+                <button
+                  key={l.path}
+                  onClick={() => navigate(l.path)}
+                  className={`rounded-md px-3 py-2 text-base font-semibold transition-colors ${
+                    active === l.path ? "bg-brand-50 text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+                  }`}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </nav>
+          </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             {currentUser ? (
@@ -61,8 +63,8 @@ function ExploreShell({ active, children }) {
             )}
           </div>
         </div>
-        {/* Mobile nav row */}
-        <div className="flex gap-1 overflow-x-auto px-4 pb-2 md:hidden">
+        {/* Mobile / tablet nav row */}
+        <div className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden">
           {NAV.map((l) => (
             <button
               key={l.path}
