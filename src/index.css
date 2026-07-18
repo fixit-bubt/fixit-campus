@@ -62,8 +62,17 @@ h2 { letter-spacing: -0.01em; }
 }
 
 /* Veil over the hero campus photo — --bg flips with the theme, and the
-   bottom fades to solid so the hero blends into the next section. */
+   bottom fades to solid so the hero blends into the next section.
+   Light needs a much heavier veil: pale bg over a pale photo washes out. */
 .hero-photo-veil {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg) 94%, transparent),
+    color-mix(in srgb, var(--bg) 86%, transparent) 55%,
+    var(--bg) 100%
+  );
+}
+.dark .hero-photo-veil {
   background: linear-gradient(
     to bottom,
     color-mix(in srgb, var(--bg) 82%, transparent),
