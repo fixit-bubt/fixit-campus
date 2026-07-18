@@ -71,17 +71,27 @@ export function Marketplace() {
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState("All");
   const [status, setStatus] = React.useState("All");
+  const [sortBy, setSortBy] = React.useState("newest"); // newest | price-asc | price-desc
+  const [minPrice, setMinPrice] = React.useState("");
+  const [maxPrice, setMaxPrice] = React.useState("");
 
   const statuses = ["All", "Available", "Sold"];
+  const min = parseInt(minPrice, 10);
+  const max = parseInt(maxPrice, 10);
   const filtered = listings
     .filter((l) => status === "All" || l.status === status)
     .filter((l) => category === "All" || l.category === category)
+    .filter((l) => (Number.isNaN(min) || l.price >= min) && (Number.isNaN(max) || l.price <= max))
     .filter((l) => {
       const q = query.trim().toLowerCase();
       if (!q) return true;
       return (l.title || "").toLowerCase().includes(q) || (l.description || "").toLowerCase().includes(q);
     })
-    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+    .sort((a, b) => {
+      if (sortBy === "price-asc") return a.price - b.price;
+      if (sortBy === "price-desc") return b.price - a.price;
+      return (b.createdAt || "").localeCompare(a.createdAt || "");
+    });
 
   return (
     <AppShell activeKey="marketplace" title="Marketplace">
@@ -106,6 +116,36 @@ export function Marketplace() {
             {MKT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </Select>
         </div>
+      </div>
+
+      {/* Price tools */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-44" aria-label="Sort listings">
+          <option value="newest">Newest first</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+        </Select>
+        <div className="flex items-center gap-1.5">
+          <input
+            value={minPrice} onChange={(e) => setMinPrice(e.target.value.replace(/[^0-9]/g, ""))}
+            inputMode="numeric" aria-label="Minimum price" placeholder="Min ৳"
+            className="h-10 w-24 rounded-md border border-brd bg-surface px-3 text-base placeholder:text-ink-3 focus:border-brand focus:outline-none"
+          />
+          <span className="text-ink-3">–</span>
+          <input
+            value={maxPrice} onChange={(e) => setMaxPrice(e.target.value.replace(/[^0-9]/g, ""))}
+            inputMode="numeric" aria-label="Maximum price" placeholder="Max ৳"
+            className="h-10 w-24 rounded-md border border-brd bg-surface px-3 text-base placeholder:text-ink-3 focus:border-brand focus:outline-none"
+          />
+        </div>
+        {(minPrice || maxPrice || sortBy !== "newest") && (
+          <button
+            onClick={() => { setMinPrice(""); setMaxPrice(""); setSortBy("newest"); }}
+            className="text-sm font-semibold text-brand hover:underline"
+          >
+            Reset
+          </button>
+        )}
       </div>
 
       {dataLoading ? (
