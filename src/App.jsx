@@ -5,6 +5,7 @@ import { Spinner } from "./components/ui.jsx";
 import { AppLayout } from "./components/AppShell.jsx";
 
 import Landing from "./screens/public/Landing.jsx";
+import { PublicFaculty, PublicEvents, PublicTransit } from "./screens/public/Explore.jsx";
 import Login from "./screens/public/Login.jsx";
 import Register from "./screens/public/Register.jsx";
 import ForgotPassword from "./screens/public/ForgotPassword.jsx";
@@ -133,6 +134,11 @@ export default function App() {
   // (verifyOtp), and yanking the user away would interrupt them.
   if (path === "/forgot-password") return <ForgotPassword />;
   if (path === "/verify-email") return <VerifyEmail />;
+
+  // Public explore pages — reference data readable without an account (RLS 0070).
+  if (path === "/explore/faculty") return <PublicFaculty />;
+  if (path === "/explore/events") return <PublicEvents />;
+  if (path === "/explore/campus") return <PublicTransit />;
 
   // ---- Authenticated app: everything below shares ONE persistent sidebar,
   // so the sidebar (and its scroll position) survives navigation. ----
