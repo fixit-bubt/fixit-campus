@@ -90,6 +90,7 @@ export default function MyReports() {
       <PageHeader
         title="My Reports"
         subtitle="Track the campus issues you've reported."
+        action={<Button icon={CirclePlus} onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
       />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -112,8 +113,7 @@ export default function MyReports() {
         <EmptyState
           icon={FileText}
           title="No reports yet"
-          message="When you report a campus issue, it'll show up here so you can track its progress."
-          action={<Button icon={CirclePlus} onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
+          message="When you report a campus issue, it'll show up here so you can track its progress. Use “Report an Issue” at the top to file one."
         />
       ) : filtered.length === 0 ? (
         <EmptyState

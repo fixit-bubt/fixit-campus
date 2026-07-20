@@ -1,8 +1,8 @@
 import React from "react";
-import { PackageSearch, ArrowRight, CircleDot, Loader, CircleCheck, FileText } from "lucide-react";
+import { CirclePlus, PackageSearch, ArrowRight, CircleDot, Loader, CircleCheck, FileText } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
-import { Card, EmptyState, StatCard, Loading } from "../../components/ui.jsx";
+import { Card, Button, EmptyState, StatCard, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ReportListRow } from "../../components/ReportListRow.jsx";
 import { CampusToday } from "../../components/CampusToday.jsx";
@@ -19,6 +19,7 @@ export default function StudentDashboard() {
       <PageHeader
         title={`Welcome back, ${(currentUser.name ?? "").split(" ")[0] || "there"}`}
         subtitle="Here's what's happening with your campus reports."
+        action={<Button icon={CirclePlus} onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
