@@ -683,7 +683,6 @@ export function ClubMembers({ id }) {
                   <Avatar name={requester?.name || "?"} size={34} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-base font-semibold text-ink">{requester?.name || "Unknown student"}</p>
-                    <p className="truncate text-xs text-ink-3">{requester?.email || ""}</p>
                     {r.message && <p className="mt-1 truncate text-xs text-ink-2">"{r.message}"</p>}
                   </div>
                   <div className="flex shrink-0 gap-2">
@@ -1239,11 +1238,15 @@ function ClubFormModal({ initial, faculty, users, onSave, onClose }) {
     coverPreview:    initial?.coverUrl    || null,
   });
   const [saving, setSaving] = useState(false);
+  const [nameErr, setNameErr] = useState("");
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
   const isCreate = !initial;
 
   async function handleSave() {
-    if (saving || !form.name.trim()) return;
+    if (saving) return;
+    // Mirror the DB CHECK (clubs_name_check >= 2) so a short name shows a clean
+    // inline message instead of a raw Postgres error toast.
+    if (form.name.trim().length < 2) { setNameErr("Club name must be at least 2 characters."); return; }
     setSaving(true);
     try {
       await onSave({ ...form, facultyAdvisorId: form.facultyAdvisorId || null, presidentId: form.presidentId || null });
@@ -1255,8 +1258,8 @@ function ClubFormModal({ initial, faculty, users, onSave, onClose }) {
   return (
     <Modal open title={isCreate ? "New Club" : `Edit — ${initial.name}`} onClose={onClose} size="lg">
       <div className="flex flex-col gap-4">
-        <Field label="Club Name" required>
-          <Input autoFocus value={form.name} onChange={(e) => set("name")(e.target.value)} placeholder="e.g. BUBT Robotics Club" />
+        <Field label="Club Name" required error={nameErr}>
+          <Input autoFocus value={form.name} error={!!nameErr} onChange={(e) => { set("name")(e.target.value); if (nameErr) setNameErr(""); }} placeholder="e.g. BUBT Robotics Club" />
         </Field>
         <Field label="Tagline">
           <Input value={form.tagline} onChange={(e) => set("tagline")(e.target.value)} placeholder="One-line description" />

@@ -160,12 +160,15 @@ export function RideShare() {
 // ride_contact RPC) — unless the driver never saved one.
 function DriverContact({ code, driverId, driverName }) {
   const { getRideContact } = useApp();
+  const toast = useToast();
   const [phase, setPhase] = React.useState("idle"); // idle | loading | done
   const [contact, setContact] = React.useState(null);
 
   async function reveal() {
     setPhase("loading");
-    setContact(await getRideContact(code, driverId));
+    const res = await getRideContact(code, driverId);
+    if (res?.error) { toast({ type: "error", title: "Couldn't get contact", message: res.error }); setPhase("idle"); return; }
+    setContact(res);
     setPhase("done");
   }
 
@@ -203,12 +206,15 @@ function DriverContact({ code, driverId, driverName }) {
 // opted in via show_whatsapp (gated inside the ride_contact RPC).
 function RequesterContact({ code, requesterId }) {
   const { getRideContact } = useApp();
+  const toast = useToast();
   const [phase, setPhase] = React.useState("idle"); // idle | loading | done
   const [contact, setContact] = React.useState(null);
 
   async function reveal() {
     setPhase("loading");
-    setContact(await getRideContact(code, requesterId));
+    const res = await getRideContact(code, requesterId);
+    if (res?.error) { toast({ type: "error", title: "Couldn't get contact", message: res.error }); setPhase("idle"); return; }
+    setContact(res);
     setPhase("done");
   }
 

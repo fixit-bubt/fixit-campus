@@ -20,8 +20,10 @@ function EditModal({ faculty: f, deptName, onClose, onSave, onUploadPhoto }) {
   function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast({ type: "error", title: "Invalid file", message: "Please choose an image file." });
+    // The 'photos' storage bucket only accepts these mime types — validate here
+    // so an HEIC/AVIF/SVG/BMP fails with a clear message, not a raw upload error.
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) {
+      toast({ type: "error", title: "Invalid file", message: "Use a PNG, JPG, WebP, or GIF image." });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {

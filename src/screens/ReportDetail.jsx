@@ -14,7 +14,10 @@ function StatusTimeline({ report }) {
   const flow = ["Open", "In Progress", "Resolved"];
   const reached = {};
   report.timeline.forEach((t) => { reached[t.status] = t.date; });
-  const terminal = report.timeline.find((t) => t.status === "Rejected" || t.status === "Closed");
+  // Timeline is chronological — the LATEST terminal event is the current one, so
+  // after Rejected-then-Closed the final node matches the header badge.
+  const terminals = report.timeline.filter((t) => t.status === "Rejected" || t.status === "Closed");
+  const terminal = terminals[terminals.length - 1] || null;
 
   let steps = flow.map((status) => ({ status, date: reached[status] || null, done: !!reached[status] }));
   if (terminal) {

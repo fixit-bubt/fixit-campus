@@ -44,6 +44,7 @@ const LINK_META = {
   scholar: { label: "Google Scholar", icon: "GraduationCap" },
   researchgate: { label: "ResearchGate", icon: "BookOpen" },
   orcid: { label: "ORCID", icon: "Fingerprint" },
+  linkedin: { label: "LinkedIn", icon: "Linkedin" },
   website: { label: "Website", icon: "Globe" },
 };
 

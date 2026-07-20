@@ -591,7 +591,7 @@ export function JobDetail({ id }) {
         icon="ShieldAlert"
         tone="red"
         title="Remove this listing"
-        description="The poster is notified that an admin removed it. Give a short reason."
+        description="This hides the listing from everyone (the poster is not notified). Give a short reason for the record."
         footer={
           <>
             <Button variant="secondary" onClick={() => setRemoveOpen(false)}>Cancel</Button>
@@ -679,10 +679,16 @@ function JobEditor({ id, existing }) {
 
   function validate() {
     const er = {};
+    // Length floors mirror the DB CHECK constraints (0055) so a too-short field
+    // gets a clean inline message instead of a raw Postgres error at insert.
     if (!form.title.trim()) er.title = "Give the role a title.";
+    else if (form.title.trim().length < 3) er.title = "Title must be at least 3 characters.";
     if (!form.company.trim()) er.company = "Add the company or organization.";
+    else if (form.company.trim().length < 2) er.company = "Company must be at least 2 characters.";
     if (!form.location.trim()) er.location = "Where is it based?";
+    else if (form.location.trim().length < 2) er.location = "Location must be at least 2 characters.";
     if (!form.description.trim()) er.description = "Describe the role.";
+    else if (form.description.trim().length < 10) er.description = "Description must be at least 10 characters.";
     if (!form.deadline) er.deadline = "Set an application deadline.";
     else if (form.deadline < dhakaToday() && (!editing || form.deadline !== existing?.deadline)) er.deadline = "Deadline can't be in the past.";
     if (form.applyMethod === "link" && !form.applyValue.trim()) er.applyValue = "Add the application link.";
