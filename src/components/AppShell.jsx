@@ -64,10 +64,14 @@ const NAV_BY_ROLE = {
       { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/staff" },
       { key: "assigned", label: "Assigned to Me", icon: "ClipboardCheck", path: "/staff/assigned" },
     ]},
-    { section: "Campus Life", items: CAMPUS_LIFE },
+    // Staff are maintenance workers, not students — the student-academic items
+    // (Faculty, Clubs, Events, Academic Calendar, Class Routines, Jobs) are
+    // dropped. Only the campus-worker-relevant slice of Campus Life stays.
+    { section: "Campus Life", items: CAMPUS_LIFE.filter((i) => ["bus", "prayer", "announcements"].includes(i.key)) },
     { section: "Services", items: [
       { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
     ]},
+    // Community features are "any adult on campus" — kept in full.
     { section: "Community", items: COMMUNITY },
     { section: null, items: [
       { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
