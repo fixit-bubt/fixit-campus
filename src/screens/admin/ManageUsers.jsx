@@ -4,9 +4,20 @@ import { useApp } from "../../data/store.jsx";
 import { Card, Button, Select, Modal, Badge, Avatar, Field, Input, EmptyState, Spinner, useToast } from "../../components/ui.jsx";
 import { AppShell, PageHeader, ROLE_TONE } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
-import { fmtDate } from "../../lib/helpers.js";
+import { fmtDate, CATEGORIES } from "../../lib/helpers.js";
 
 const EMPTY_NEW = { name: "", email: "", password: "", role: "Staff", dept: "", expertise: "" };
+
+// Staff org units — shown in the assign-report dropdown as "Name — Dept".
+const STAFF_DEPARTMENTS = [
+  "Electrical & Mechanical",
+  "Plumbing & Sanitation",
+  "Cleaning Services",
+  "IT & Network",
+  "Furniture & Carpentry",
+  "Safety & Security",
+  "General Maintenance",
+];
 
 export default function ManageUsers() {
   const {
@@ -286,13 +297,19 @@ export default function ManageUsers() {
             </Field>
             {form.role === "Staff" && (
               <Field label="Department" htmlFor="nu-dept" hint="Optional">
-                <Input id="nu-dept" placeholder="e.g. Electrical & IT" value={form.dept} onChange={set("dept")} />
+                <Select id="nu-dept" value={form.dept} onChange={set("dept")}>
+                  <option value="">Select department</option>
+                  {STAFF_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                </Select>
               </Field>
             )}
           </div>
           {form.role === "Staff" && (
-            <Field label="Expertise" htmlFor="nu-expertise" hint="Optional — area of specialisation.">
-              <Input id="nu-expertise" placeholder="e.g. Network Administration, Lab Support" value={form.expertise} onChange={set("expertise")} />
+            <Field label="Expertise" htmlFor="nu-expertise" hint="Optional — matches the report categories they'll be assigned.">
+              <Select id="nu-expertise" value={form.expertise} onChange={set("expertise")}>
+                <option value="">Select expertise</option>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
             </Field>
           )}
         </div>
