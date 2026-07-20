@@ -28,23 +28,10 @@ export default function StudentDashboard() {
         <StatCard label="Resolved" value={count("Resolved")} icon={CircleCheck} tone="emerald" />
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <button
-          onClick={() => navigate("/reports/new")}
-          className="group flex items-center gap-4 rounded-lg border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-brand hover:bg-brand-50"
-        >
-          <span className="flex h-11 w-11 items-center justify-center rounded-md bg-brand-100 text-brand-700">
-            <CirclePlus size={22} />
-          </span>
-          <div className="flex-1">
-            <p className="text-base font-bold text-ink">Report an Issue</p>
-            <p className="text-xs text-ink-3">Flag a maintenance problem on campus.</p>
-          </div>
-          <ArrowRight size={18} className="text-ink-3 group-hover:text-brand" />
-        </button>
+      <div className="mt-6">
         <button
           onClick={() => navigate("/lost-found")}
-          className="group flex items-center gap-4 rounded-lg border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-brand hover:bg-brand-50"
+          className="group flex w-full items-center gap-4 rounded-lg border border-brd bg-surface p-5 text-left shadow-sm transition-colors hover:border-brand hover:bg-brand-50"
         >
           <span className="flex h-11 w-11 items-center justify-center rounded-md bg-surface-3 text-ink-2">
             <PackageSearch size={22} />
