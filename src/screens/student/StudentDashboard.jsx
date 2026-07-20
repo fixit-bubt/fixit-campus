@@ -57,8 +57,7 @@ export default function StudentDashboard() {
           <EmptyState
             icon={FileText}
             title="No reports yet"
-            message="When you report a campus issue, it'll show up here so you can track its progress."
-            action={<Button icon={CirclePlus} onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
+            message="When you report a campus issue, it'll show up here so you can track its progress. Use “Report an Issue” at the top to file one."
           />
         ) : (
           <Card className="divide-y divide-brd overflow-hidden">
