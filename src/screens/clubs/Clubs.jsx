@@ -1095,7 +1095,7 @@ export function AdminManageClubs() {
       />
 
       {allClubs.length === 0 ? (
-        <EmptyState icon={UsersRound} title="No clubs yet" message="Create the first club." action={<Button icon={Plus} onClick={() => setShowCreate(true)} className="bg-purple-600 text-white hover:bg-purple-700">New Club</Button>} />
+        <EmptyState icon={UsersRound} title="No clubs yet" message="Create the first club using “New Club” at the top." />
       ) : (
         <div className="overflow-hidden rounded-lg border border-brd bg-surface shadow-sm">
           <table className="w-full text-base">

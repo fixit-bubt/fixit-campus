@@ -56,7 +56,7 @@ export default function LostFoundBrowse() {
       {dataLoading ? (
         <Loading />
       ) : items.length === 0 ? (
-        <EmptyState icon={PackageSearch} title="Nothing here yet" message="Be the first to post a lost or found item." action={<Button icon={Plus} onClick={() => navigate("/lost-found/new")}>Post an Item</Button>} />
+        <EmptyState icon={PackageSearch} title="Nothing here yet" message="Be the first to post a lost or found item — use “Post an Item” at the top." />
       ) : filtered.length === 0 ? (
         <EmptyState icon={SearchX} title="No matching items" message="Try a different search or filter." action={<Button variant="secondary" onClick={() => { setQuery(""); setType("All"); setCategory("All"); }}>Clear filters</Button>} />
       ) : (

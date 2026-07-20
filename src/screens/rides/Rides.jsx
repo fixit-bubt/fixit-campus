@@ -145,7 +145,7 @@ export function RideShare() {
           </div>
         )
       ) : mineRides.length === 0 ? (
-        <EmptyState icon="Car" title="You haven't offered a ride" message="Post a ride to share seats and split fare." action={<Button icon="Plus" onClick={() => navigate("/rides/new")}>Offer a Ride</Button>} />
+        <EmptyState icon="Car" title="You haven't offered a ride" message="Post a ride to share seats and split fare — use “Offer a Ride” at the top." />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {mineRides.map((r) => <RideCard key={r.id} ride={r} driver={currentUser} mine onOpen={() => navigate(`/rides/${r.id}`)} />)}
