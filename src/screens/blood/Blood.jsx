@@ -319,10 +319,7 @@ export function BloodDonation() {
       <PageHeader title="Blood Donation"
         subtitle={isAdmin ? "View all donors and active blood requests on campus." : "Find donors and respond to urgent blood requests on campus."}
         action={isAdmin ? null : (
-          <div className="flex gap-2">
-            <Button variant="secondary" icon="UserPlus" onClick={() => navigate("/blood/register")}>{myDonor ? "Update donor info" : "Register as donor"}</Button>
-            <Button icon="Plus" onClick={() => navigate("/blood/request")}>Request blood</Button>
-          </div>
+          <Button variant="secondary" icon="UserPlus" onClick={() => navigate("/blood/register")}>{myDonor ? "Update donor info" : "Register as donor"}</Button>
         )} />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
