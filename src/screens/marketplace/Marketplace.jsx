@@ -151,7 +151,7 @@ export function Marketplace() {
       {dataLoading ? (
         <Loading />
       ) : listings.length === 0 ? (
-        <EmptyState icon="Store" title="Nothing for sale yet" message="Be the first to list an item." action={<Button icon="Plus" onClick={() => navigate("/marketplace/new")}>Post an Item</Button>} />
+        <EmptyState icon="Store" title="Nothing for sale yet" message="Be the first to list an item — use “Post an Item” at the top." />
       ) : filtered.length === 0 ? (
         <EmptyState icon="SearchX" title="No matching listings" message="Try a different search or filter." action={<Button variant="secondary" onClick={() => { setQuery(""); setCategory("All"); setStatus("All"); setMinPrice(""); setMaxPrice(""); setSortBy("newest"); }}>Clear filters</Button>} />
       ) : (
