@@ -90,7 +90,6 @@ export default function MyReports() {
       <PageHeader
         title="My Reports"
         subtitle="Track the campus issues you've reported."
-        action={<Button icon={CirclePlus} onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
       />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
