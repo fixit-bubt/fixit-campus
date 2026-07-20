@@ -167,12 +167,20 @@ export function Marketplace() {
 // (the listing_contact RPC returns a null number otherwise).
 function SellerContact({ code, sellerName }) {
   const { getListingContact } = useApp();
+  const toast = useToast();
   const [phase, setPhase] = React.useState("idle"); // idle | loading | done
   const [contact, setContact] = React.useState(null);
 
   async function reveal() {
     setPhase("loading");
-    setContact(await getListingContact(code));
+    const res = await getListingContact(code);
+    if (res?.error) {
+      // RPC/network failure — keep the button so the buyer can retry.
+      toast({ type: "error", title: "Couldn't get contact", message: res.error });
+      setPhase("idle");
+      return;
+    }
+    setContact(res);
     setPhase("done");
   }
 
@@ -334,7 +342,9 @@ function ListingEditor({ id, existing }) {
   function validate() {
     const er = {};
     if (!form.title.trim()) er.title = "Give your item a title.";
+    else if (form.title.trim().length < 2) er.title = "Title must be at least 2 characters."; // DB check: char_length(title) >= 2
     if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0) er.price = "Enter a valid price.";
+    else if (Number(form.price) > 100000000) er.price = "Enter a realistic price."; // keep well under the int4 column limit
     if (!form.category) er.category = "Choose a category.";
     if (!form.condition) er.condition = "Select the condition.";
     if (!form.description.trim()) er.description = "Add a description.";
