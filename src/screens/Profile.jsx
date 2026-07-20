@@ -73,6 +73,10 @@ export default function Profile() {
     if (saving) return;
     const er = {};
     if (!form.name.trim()) er.name = "Enter your name.";
+    // Students must keep a Student ID — blanking it re-triggers the full-screen
+    // onboarding gate (App.jsx releases on currentUser.studentId), which looks
+    // like the app breaking. Block the save with a clear message instead.
+    if (isStudent && !form.studentId.trim()) er.studentId = "Student ID is required.";
     setErrors(er);
     if (Object.keys(er).length) return;
     setSaving(true);
@@ -160,8 +164,8 @@ export default function Profile() {
 
             {isStudent && (
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Student ID" htmlFor="pf-sid" hint="e.g. 20214103001">
-                  <Input id="pf-sid" placeholder="Student ID" value={form.studentId} onChange={set("studentId")} />
+                <Field label="Student ID" htmlFor="pf-sid" required hint="e.g. 20214103001" error={errors.studentId}>
+                  <Input id="pf-sid" placeholder="Student ID" value={form.studentId} error={!!errors.studentId} onChange={set("studentId")} />
                 </Field>
                 <Field label="Program" htmlFor="pf-program" hint="e.g. B.Sc. in CSE">
                   <Input id="pf-program" placeholder="Program" value={form.program} onChange={set("program")} />

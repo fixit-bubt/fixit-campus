@@ -125,7 +125,13 @@ export default function ManageUsers() {
         setFormErr({ email: res.error });
         return;
       }
-      toast({ type: "success", title: `${form.role} account created`, message: `${form.name.trim()} can now log in with the password you set.` });
+      toast({
+        type: "success",
+        title: `${form.role} account created`,
+        message: res.needsConfirm
+          ? `${form.name.trim()} must confirm their email (a link was sent) before they can log in.`
+          : `${form.name.trim()} can now log in with the password you set.`,
+      });
       setAddOpen(false);
     } finally {
       setSaving(false);

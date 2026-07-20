@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FixIt Campus — Current UI Snapshot (for Stitch redesign)</title>
+<style>
+  :root{
+    --brand:#2b5be3; --brand-700:#1f47c4; --brand-50:#eef3ff; --brand-100:#dde7ff;
+    --bg:#f5f7fb; --surface:#ffffff; --surface-2:#eef2f8; --surface-3:#e6ebf3;
+    --border:#e4e9f1; --border-2:#d4dce8;
+    --text:#0f1a2e; --text-2:#46536e; --text-3:#8693aa;
+    --success:#12915e; --warn:#b9760a; --danger:#d63d35;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;line-height:1.55}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:30px;letter-spacing:-.02em;margin:0 0 4px}
+  h2{font-size:22px;letter-spacing:-.01em;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--brand-100)}
+  h3{font-size:16px;margin:24px 0 8px}
+  p{color:var(--text-2)}
+  .muted{color:var(--text-3);font-size:13px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin:12px 0;box-shadow:0 1px 2px rgba(15,26,46,.05)}
+  table{border-collapse:collapse;width:100%;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th,td{border-bottom:1px solid var(--border);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--surface-2);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)}
+  .sw{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.15);vertical-align:-2px;margin-right:6px}
+  code{background:var(--surface-2);padding:1px 6px;border-radius:6px;font-size:12.5px}
+  .prompt{position:relative;background:#0f1a2e;color:#e9eefb;border-radius:10px;padding:14px 16px;font-size:12.5px;white-space:pre-wrap;font-family:Consolas,monospace;margin:8px 0 4px}
+  .prompt button{position:absolute;top:8px;right:8px;background:var(--brand);color:#fff;border:0;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer}
+  .page{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 20px;margin:14px 0}
+  .page h4{margin:0 0 2px;font-size:15px}
+  .route{font-family:Consolas,monospace;font-size:12px;color:var(--brand);font-weight:700}
+  .role{display:inline-block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-radius:999px;padding:2px 9px;margin-left:6px;vertical-align:1px}
+  .role.pub{background:#e6ebf3;color:#46536e}.role.stu{background:#dde7ff;color:#1f47c4}
+  .role.stf{background:#fbefdb;color:#b9760a}.role.adm{background:#e3f5ec;color:#12915e}.role.all{background:#eef3ff;color:#2b5be3}
+  ul{margin:6px 0;padding-left:20px}li{margin:3px 0;color:var(--text-2);font-size:13.5px}
+  .toc{columns:2;font-size:13px}.toc a{color:var(--brand);text-decoration:none}.toc a:hover{text-decoration:underline}
+  .hint{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:10px;padding:12px 16px;font-size:13.5px;color:var(--text-2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>FixIt Campus — Current UI Snapshot</h1>
+<p class="muted">Generated 2026-07-18 from the live codebase (React + Vite + Tailwind, Supabase backend). ~50 screens across Student / Staff / Admin roles. Purpose: source material for a full UI/UX redesign in <b>Google Stitch</b>.</p>
+
+<div class="hint">
+<b>How to use this with Stitch:</b> Stitch reads <b>text prompts and reference images</b> — it does not import HTML or code. Workflow:
+<ol style="margin:8px 0 2px">
+<li>Start a Stitch project → paste the <b>Master Style Prompt</b> (Section 1) as your first message so every screen shares the design language.</li>
+<li>For each screen, paste that page's <b>prompt block</b> (copy button on each).</li>
+<li>Optional but recommended: run <code>npm run dev</code>, screenshot each real page, and upload the screenshot alongside the prompt — Stitch uses images as layout reference.</li>
+</ol>
+</div>
+
+<h2 id="toc">Contents</h2>
+<div class="toc card">
+<a href="#master">1. Master Style Prompt</a><br>
+<a href="#tokens">2. Design tokens (colors, type, radii, shadows)</a><br>
+<a href="#components">3. Component library</a><br>
+<a href="#shell">4. App shell &amp; navigation</a><br>
+<a href="#routes">5. Full route map</a><br>
+<a href="#public">6. Pages — Public / Auth</a><br>
+<a href="#dash">7. Pages — Dashboards</a><br>
+<a href="#reports">8. Pages — Reports (core FixIt)</a><br>
+<a href="#lostfound">9. Pages — Lost &amp; Found</a><br>
+<a href="#campus">10. Pages — Campus Life</a><br>
+<a href="#community">11. Pages — Community &amp; Services</a><br>
+<a href="#adminpages">12. Pages — Admin tools</a><br>
+<a href="#shared">13. Pages — Notifications / Profile / 404</a>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="master">1. Master Style Prompt (paste into Stitch first)</h2>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Design a web app called "FixIt Campus" — a university super-app for BUBT (Bangladesh University of Business &amp; Technology). Modern, clean, professional SaaS dashboard style.
+
+DESIGN SYSTEM:
+- Font: Plus Jakarta Sans (weights 400–800). Compact type scale: body 13px, small labels 11–12px, page titles 26–32px extrabold with tight letter-spacing.
+- Primary brand color: #2b5be3 (blue). Hover/darker: #1f47c4. Light tints: #eef3ff and #dde7ff.
+- Light theme: page background #f5f7fb, cards white #ffffff, secondary surface #eef2f8, borders #e4e9f1, text #0f1a2e, secondary text #46536e, muted text #8693aa.
+- Dark theme exists too: background #0a0f1c, cards #111829, borders #232f48, text #e9eefb, brand becomes #6a8cf2.
+- Status colors: success #12915e (bg #e3f5ec), warning #b9760a (bg #fbefdb), danger #d63d35 (bg #fbe7e5), info = brand blue.
+- Each feature has its own accent used ONLY for icon tiles and category badges (chrome stays brand blue everywhere): Reports #4f6bed, Lost&amp;Found #c77d1a, Clubs #8b5cf0, Events #e0568a, Jobs #0e9c8a, Announcements #3e7de0, Study #2ba0c9, Bus #e08a2b, Medical #e2483d, Marketplace #2e9e63, RideShare #6e8b1f, Blood #c7344a, Prayer #1f8a5b, Calendar #d4553a, Routines #5c6bc0, CoverPage #00838f.
+- Corner radii generous: buttons/inputs 14px, cards 18px, pills fully rounded. Soft subtle shadows.
+- Buttons: primary = solid brand blue, white bold text, 44px tall; secondary = white with border; destructive = solid red; ghost = text only. Icons (Lucide style) on most buttons.
+- Cards: white, 1px light border, 18px radius, small shadow, 20px padding.
+- Badges: small rounded-full pills with tinted backgrounds.
+- Stat cards: small colored icon tile (rounded square) + big bold number + muted label.
+- Empty states: centered icon, bold title, muted one-line message, action button.
+- Forms: label above input, 48px tall inputs, light border, brand focus ring, red inline errors.
+
+APP LAYOUT (all signed-in screens):
+- Fixed left sidebar 240px, white, logo at top; grouped nav ("Campus Life", "Services", "Community" section labels in 11px uppercase); nav items = icon + label, rounded, active item has light-blue background + brand text; "Log out" pinned at bottom. On mobile it becomes a slide-in drawer.
+- Sticky translucent top bar (blurred white, 64px): page title left; right side = theme toggle, notification bell with red unread badge, user name + email + avatar, role badge (Student blue / Staff amber / Admin green), logout icon.
+- Content column centered, max-width 1152px, generous padding.
+- Every page starts with a big bold page title (26–32px) + one-line muted subtitle, with a primary action button on the right.</div>
+
+<!-- ================================================================ -->
+<h2 id="tokens">2. Design tokens</h2>
+
+<h3>Colors — light theme (default)</h3>
+<table>
+<tr><th>Token</th><th>Value</th><th>Use</th></tr>
+<tr><td><span class="sw" style="background:#2b5be3"></span>brand</td><td>#2b5be3</td><td>Primary buttons, links, active nav, focus rings</td></tr>
+<tr><td><span class="sw" style="background:#1f47c4"></span>brand-700</td><td>#1f47c4</td><td>Hover state, active-nav text</td></tr>
+<tr><td><span class="sw" style="background:#eef3ff"></span>brand-50</td><td>#eef3ff</td><td>Active nav bg, hover tints</td></tr>
+<tr><td><span class="sw" style="background:#dde7ff"></span>brand-100</td><td>#dde7ff</td><td>Icon tiles, focus ring</td></tr>
+<tr><td><span class="sw" style="background:#f5f7fb"></span>bg</td><td>#f5f7fb</td><td>Page background</td></tr>
+<tr><td><span class="sw" style="background:#ffffff"></span>surface</td><td>#ffffff</td><td>Cards, sidebar, top bar</td></tr>
+<tr><td><span class="sw" style="background:#eef2f8"></span>surface-2</td><td>#eef2f8</td><td>Hover bg, table heads, disabled inputs</td></tr>
+<tr><td><span class="sw" style="background:#e6ebf3"></span>surface-3</td><td>#e6ebf3</td><td>Neutral icon tiles</td></tr>
+<tr><td><span class="sw" style="background:#e4e9f1"></span>border</td><td>#e4e9f1</td><td>Card/input borders, dividers</td></tr>
+<tr><td><span class="sw" style="background:#d4dce8"></span>border-2</td><td>#d4dce8</td><td>Stronger borders, dashed hints</td></tr>
+<tr><td><span class="sw" style="background:#0f1a2e"></span>text (ink)</td><td>#0f1a2e</td><td>Headings, primary text</td></tr>
+<tr><td><span class="sw" style="background:#46536e"></span>text-2</td><td>#46536e</td><td>Body/secondary text</td></tr>
+<tr><td><span class="sw" style="background:#8693aa"></span>text-3</td><td>#8693aa</td><td>Muted labels, placeholders</td></tr>
+<tr><td><span class="sw" style="background:#12915e"></span>success</td><td>#12915e / bg #e3f5ec</td><td>Resolved, success toasts</td></tr>
+<tr><td><span class="sw" style="background:#b9760a"></span>warn</td><td>#b9760a / bg #fbefdb</td><td>Open status, warnings</td></tr>
+<tr><td><span class="sw" style="background:#d63d35"></span>danger</td><td>#d63d35 / bg #fbe7e5</td><td>Delete, unread badge, blood</td></tr>
+</table>
+
+<h3>Colors — dark theme (class <code>.dark</code> on &lt;html&gt;, user-toggleable)</h3>
+<table>
+<tr><th>Token</th><th>Value</th></tr>
+<tr><td>brand / brand-700</td><td>#6a8cf2 / #8aa4f7</td></tr>
+<tr><td>bg / surface / surface-2 / surface-3</td><td>#0a0f1c / #111829 / #182034 / #202a42</td></tr>
+<tr><td>border / border-2</td><td>#232f48 / #2e3b58</td></tr>
+<tr><td>text / text-2 / text-3</td><td>#e9eefb / #a4b1cc / #6c7a99</td></tr>
+<tr><td>success / warn / danger</td><td>#36c98a / #e0a23c / #f0685e</td></tr>
+</table>
+
+<h3>Per-feature "sector" accents (icon tiles + category badges only)</h3>
+<table>
+<tr><th>Feature</th><th>Hex</th><th>Feature</th><th>Hex</th></tr>
+<tr><td><span class="sw" style="background:#4f6bed"></span>Reports</td><td>#4f6bed</td><td><span class="sw" style="background:#2e9e63"></span>Marketplace</td><td>#2e9e63</td></tr>
+<tr><td><span class="sw" style="background:#c77d1a"></span>Lost &amp; Found</td><td>#c77d1a</td><td><span class="sw" style="background:#6e8b1f"></span>Ride Share</td><td>#6e8b1f</td></tr>
+<tr><td><span class="sw" style="background:#8b5cf0"></span>Clubs</td><td>#8b5cf0</td><td><span class="sw" style="background:#c7344a"></span>Blood</td><td>#c7344a</td></tr>
+<tr><td><span class="sw" style="background:#e0568a"></span>Events</td><td>#e0568a</td><td><span class="sw" style="background:#5b6b86"></span>Directory</td><td>#5b6b86</td></tr>
+<tr><td><span class="sw" style="background:#0e9c8a"></span>Jobs / Faculty</td><td>#0e9c8a</td><td><span class="sw" style="background:#1f8a5b"></span>Prayer</td><td>#1f8a5b</td></tr>
+<tr><td><span class="sw" style="background:#3e7de0"></span>Announcements</td><td>#3e7de0</td><td><span class="sw" style="background:#d4553a"></span>Calendar</td><td>#d4553a</td></tr>
+<tr><td><span class="sw" style="background:#2ba0c9"></span>Study Hub</td><td>#2ba0c9</td><td><span class="sw" style="background:#5c6bc0"></span>Routines</td><td>#5c6bc0</td></tr>
+<tr><td><span class="sw" style="background:#e08a2b"></span>Bus</td><td>#e08a2b</td><td><span class="sw" style="background:#00838f"></span>Cover Page</td><td>#00838f</td></tr>
+<tr><td><span class="sw" style="background:#e2483d"></span>Medical</td><td>#e2483d</td><td></td><td></td></tr>
+</table>
+
+<h3>Typography</h3>
+<ul>
+<li>Font: <b>Plus Jakarta Sans</b> (400 / 500 / 600 / 700 / 800) + <b>Hind Siliguri</b> for Bengali glyphs (line-height 1.6).</li>
+<li>Compact scale: xs 11px · sm 12px · <b>base 13px</b> · md 14px · lg 15px · xl 16px · 2xl 18px · 3xl 21px · 4xl 26px · 5xl 32px.</li>
+<li>h1 letter-spacing −0.02em, h2 −0.01em. Page titles bold/extrabold; section labels 11px bold UPPERCASE tracking +0.06em muted.</li>
+</ul>
+
+<h3>Radii &amp; shadows</h3>
+<ul>
+<li>Radii: xs 8 · sm 10 · <b>md 14 (buttons/inputs)</b> · <b>lg 18 (cards)</b> · xl 22 · 2xl 26 · 3xl 32 · full 999 (pills/avatars).</li>
+<li>Shadows (very soft, navy-tinted): sm <code>0 1px 2px rgba(15,26,46,.05)</code> · md <code>0 2px 6px .06</code> · lg <code>0 6px 16px .10</code> · xl <code>0 12px 32px .18</code>.</li>
+</ul>
+
+<!-- ================================================================ -->
+<h2 id="components">3. Component library (shared across every page)</h2>
+<div class="card"><ul>
+<li><b>Button</b> — primary (solid brand, white bold text), secondary (white + border), destructive (solid red), ghost (text). md 44px / sm 36px tall, radius 14px, Lucide icon left or right, spinner replaces icon when loading.</li>
+<li><b>Input / Select / Textarea</b> — 48px tall, white, 1px border #e4e9f1, radius 14px, brand focus ring; password gets eye toggle; error = red border + red 11px message with alert icon. Label above (14px semibold, red * when required), optional muted hint below.</li>
+<li><b>Card</b> — white, 1px border, radius 18px, shadow-sm.</li>
+<li><b>Badge</b> — rounded-full pill, tinted bg + strong text (blue/amber/emerald/red…), optional icon. Used for statuses (Open amber, In Progress blue, Resolved green), roles, categories.</li>
+<li><b>StatCard</b> — card with colored rounded icon tile (40–44px), big bold number (26px), muted label.</li>
+<li><b>AccentTile</b> — rounded-square icon chip: feature accent at 15% opacity bg + solid accent icon.</li>
+<li><b>FilterTabs</b> — pill tab row with per-tab count bubbles (e.g. All · Open · In Progress · Resolved).</li>
+<li><b>SegmentToggle</b> — 2-option segmented control (e.g. "To Campus / From Campus", "Today / This month").</li>
+<li><b>SearchField</b> — input with left search icon, placeholder "Search …".</li>
+<li><b>EmptyState</b> — centered big muted icon, bold title, one-line message, optional action button.</li>
+<li><b>Avatar</b> — circular photo, falls back to initials on colored bg.</li>
+<li><b>Modal</b> — centered card, icon + title + description, footer buttons; dimmed backdrop.</li>
+<li><b>Toast</b> — corner notification: success / error with icon.</li>
+<li><b>CountdownBanner</b> — hero strip (Bus/Prayer): soft tinted rounded-xl panel, 48px accent tile, uppercase eyebrow, 21–24px bold title, live countdown ("in 1h 05m") + meta line.</li>
+<li><b>DataTable</b> — bordered rounded table, uppercase 11px muted header row on surface-2, row hover.</li>
+<li><b>PageHeader</b> — 26–32px bold title + muted subtitle, action button(s) right-aligned.</li>
+</ul></div>
+
+<!-- ================================================================ -->
+<h2 id="shell">4. App shell &amp; navigation</h2>
+<div class="card">
+<p><b>Sidebar (fixed, 240px, white, right border):</b> logo in 64px header row; scrollable grouped nav; item = 18px icon + 13px semibold label, radius 14px, active = #eef3ff bg + #1f47c4 text + brand icon; bottom-pinned "Log out". Mobile &lt;1024px: hidden → hamburger opens 256px slide-in drawer with dimmed backdrop.</p>
+<p><b>Top bar (sticky, 64px, translucent blurred white, bottom border):</b> hamburger (mobile) · page title (18–21px bold, truncated) · spacer · theme toggle · bell with red "9+" unread bubble · name+email stacked right-aligned next to avatar · role badge (Student=blue, Staff=amber, Admin=green) · logout icon.</p>
+<p><b>Content:</b> centered max-width 1152px, padding 24–32px.</p>
+<p><b>Nav by role:</b></p>
+<table>
+<tr><th>Student</th><th>Staff</th><th>Admin</th></tr>
+<tr>
+<td>Dashboard · My Reports<br><i>Campus Life:</i> Study Hub · Cover Page · Faculty · Clubs · Bus Schedule · Prayer Times · Events · Academic Calendar · Class Routines · Jobs &amp; Internships · Announcements<br><i>Services:</i> Medical Center · Report an Issue · Lost &amp; Found<br><i>Community:</i> Marketplace · Ride Share · Blood Donation · Students<br>My Profile</td>
+<td>Dashboard · Assigned to Me<br><i>Campus Life:</i> (same 9 shared items, no Study Hub/Cover Page)<br><i>Services:</i> Medical Center<br><i>Community:</i> Marketplace · Ride Share · Blood Donation<br>My Profile</td>
+<td>Dashboard · All Reports · Manage Users · Faculty Profiles · Study Hub · Clubs<br><i>Campus Life:</i> (shared minus Clubs)<br><i>Services:</i> Medical Center<br><i>Community:</i> Marketplace · Ride Share · Blood Donation<br>My Profile</td>
+</tr>
+</table>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="routes">5. Full route map</h2>
+<table>
+<tr><th>Route</th><th>Screen</th><th>Access</th></tr>
+<tr><td>/</td><td>Landing</td><td>Public</td></tr>
+<tr><td>/login · /register · /forgot-password · /verify-email</td><td>Auth screens</td><td>Public</td></tr>
+<tr><td>(gate)</td><td>Onboarding — student must set Student ID</td><td>Student</td></tr>
+<tr><td>/dashboard</td><td>Student Dashboard</td><td>Student</td></tr>
+<tr><td>/students</td><td>Student Directory</td><td>Student</td></tr>
+<tr><td>/reports · /reports/new · /reports/:id/edit · /reports/:id</td><td>My Reports · Report an Issue · Edit · Detail (shared)</td><td>Student (detail: any)</td></tr>
+<tr><td>/staff · /staff/assigned</td><td>Staff Dashboard · Assigned to Me</td><td>Staff</td></tr>
+<tr><td>/admin · /admin/reports · /admin/users · /admin/faculty · /admin/study-hub · /admin/clubs</td><td>Admin dashboard + management screens</td><td>Admin</td></tr>
+<tr><td>/notifications · /notifications/settings</td><td>Notifications · Settings</td><td>Any signed-in</td></tr>
+<tr><td>/profile</td><td>My Profile</td><td>Any signed-in</td></tr>
+<tr><td>/lost-found (+ /new, /:id, /:id/edit)</td><td>Lost &amp; Found browse / post / detail / edit</td><td>Student</td></tr>
+<tr><td>/announcements (+ /new, /:id)</td><td>Notice board / post / detail</td><td>Any (post: Admin)</td></tr>
+<tr><td>/bus (+ /new, /:id, /:id/edit)</td><td>Bus schedule / route form / timetable</td><td>Any (edit: Admin)</td></tr>
+<tr><td>/cover-page</td><td>Cover Page Generator</td><td>Student</td></tr>
+<tr><td>/calendar · /routines</td><td>Academic Calendar · Class Routines</td><td>Any</td></tr>
+<tr><td>/study-hub (+ /browse, /dept/:id, /intake/:id, /section/:id, /section/:id/course/:id, /section/:id/manage)</td><td>Study Hub suite</td><td>Student</td></tr>
+<tr><td>/clubs (+ /:id, /:id/members, /:id/post/new, /:id/post/:pid/edit, /:id/manage)</td><td>Clubs suite</td><td>Student</td></tr>
+<tr><td>/faculty (+ /saved, /dept/:no, /:id)</td><td>Faculty directory / saved / dept / profile</td><td>Any</td></tr>
+<tr><td>/prayer</td><td>Prayer Times</td><td>Any</td></tr>
+<tr><td>/events (+ /new, /:id)</td><td>Events / create / detail</td><td>Any</td></tr>
+<tr><td>/jobs (+ /new, /saved, /moderate, /:id, /:id/edit)</td><td>Jobs board suite</td><td>Any (moderate: Admin)</td></tr>
+<tr><td>/marketplace (+ /new, /mine, /:id, /:id/edit)</td><td>Marketplace suite</td><td>Any</td></tr>
+<tr><td>/rides (+ /new, /:id)</td><td>Ride Share suite</td><td>Any</td></tr>
+<tr><td>/medical</td><td>Medical Center</td><td>Any</td></tr>
+<tr><td>/blood (+ /register, /request)</td><td>Blood Donation suite</td><td>Any</td></tr>
+<tr><td>*</td><td>404 Not Found</td><td>—</td></tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="public">6. Pages — Public / Auth (no sidebar)</h2>
+
+<div class="page"><h4>Landing <span class="route">/</span><span class="role pub">Public</span></h4>
+<ul>
+<li>Top nav: logo left; right = theme toggle + "Log In" (ghost) + "Sign Up" (primary). Border-bottom.</li>
+<li>Hero (centered, max 672px): blue pill badge "BUBT Campus" with graduation-cap icon → 36–48px extrabold headline "Your whole campus, in one app." (2 lines) → 18px lead paragraph → buttons "Get started →" (primary) + "Log In" (secondary).</li>
+<li>Feature section on tinted bg: 3×2 grid of white cards — 44px blue icon tile, bold title, 2-line body. Six features: Report campus issues · Lost &amp; Found · Faculty directory · Campus life · Student community · Medical center.</li>
+<li>Footer: small logo + "© 2026 FixIt · Bangladesh University of Business &amp; Technology".</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Landing page, no sidebar. Slim top nav: logo "FixIt" left, theme toggle + ghost "Log In" + primary "Sign Up" right. Centered hero: small blue pill badge "BUBT Campus" with graduation cap icon; huge extrabold headline "Your whole campus, in one app."; muted lead paragraph about reporting issues, faculty, bus, marketplace, blood, medical; primary button "Get started" with arrow + secondary "Log In". Below on light-tinted band: 3-column grid of six white feature cards, each with a rounded blue icon tile, bold title and two-line description (Report campus issues, Lost &amp; Found, Faculty directory, Campus life, Student community, Medical center). Simple footer with logo and copyright.</div></div>
+
+<div class="page"><h4>Login <span class="route">/login</span><span class="role pub">Public</span></h4>
+<ul><li>Centered column max 384px on page bg; logo + theme toggle in slim header. Centered 26–32px extrabold title, subtitle "Welcome back — pick up where you left off." White card: Email + Password (eye toggle) fields, full-width primary "Log In". Under card: muted footer links → Register, Forgot password.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Auth screen, centered single column (max 384px) on soft grey-blue background, logo top-left, theme toggle top-right. Big extrabold centered title "Log in to FixIt", subtitle "Welcome back — pick up where you left off." White rounded card containing Email field and Password field with show/hide eye, then a full-width primary blue "Log In" button. Below the card, muted centered text links: "New here? Create an account" and "Forgot password?".</div></div>
+
+<div class="page"><h4>Register <span class="route">/register</span><span class="role pub">Public</span></h4>
+<ul><li>Same shell. Subtitle "Join FixIt to report issues and use Lost &amp; Found." Fields: full name, email, password; primary CTA; link to login. Leads into email OTP verification.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Same centered auth layout. Title "Create your account", subtitle "Join FixIt to report issues and use Lost &amp; Found." Card with Full name, University email, Password fields, full-width primary "Sign Up" button, footer link "Already have an account? Log in".</div></div>
+
+<div class="page"><h4>Verify Email <span class="route">/verify-email</span><span class="role pub">Public</span></h4>
+<ul><li>Subtitle "We emailed you a 6-digit code to activate your account." 6-digit OTP input, verify button, resend link.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Same centered auth layout. Title "Verify your email", subtitle "We emailed you a 6-digit code to activate your account." Card with a 6-digit code input (6 boxes), primary "Verify" button, muted "Resend code" link.</div></div>
+
+<div class="page"><h4>Forgot Password <span class="route">/forgot-password</span><span class="role pub">Public</span></h4>
+<ul><li>Two steps in same card: (1) email entry → send code; (2) 6-digit code + new password → reset.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Same centered auth layout, two steps. Step 1: title "Reset password", email field, primary "Send code". Step 2: 6-digit code input + "New password" field, primary "Reset password". Muted back-to-login link.</div></div>
+
+<div class="page"><h4>Onboarding gate <span class="role stu">Student</span></h4>
+<ul><li>Full-screen gate after first sign-in: student cannot enter app until Student ID (and intake/section info) is set. Centered card form, welcoming tone.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Full-screen onboarding gate, centered card on page background, no sidebar. Friendly title "Welcome to FixIt — one last step", subtitle explaining the university Student ID is required. Fields: Student ID, Department select, Intake and Section. Full-width primary "Continue" button.</div></div>
+
+<!-- ================================================================ -->
+<h2 id="dash">7. Pages — Dashboards</h2>
+
+<div class="page"><h4>Student Dashboard <span class="route">/dashboard</span><span class="role stu">Student</span></h4>
+<ul>
+<li>PageHeader "Welcome back, {FirstName}" + subtitle + primary "Report an Issue" button.</li>
+<li>Row of 3 StatCards: My Open (amber) · In Progress (blue) · Resolved (green).</li>
+<li>2 quick-action cards: "Report an Issue" (blue tile) · "Browse Lost &amp; Found" (neutral tile) — icon, bold title, muted line, arrow; border turns brand on hover.</li>
+<li>"RECENT REPORTS" label + "View all" link → card with 5 divided report rows (status badge, category, building, date). Empty state if none.</li>
+<li>"CAMPUS TODAY" — 2-column grid of 10 shortcut widget cards (Bus, Prayer, Announcements, Events, Medical, Marketplace, Ride, Blood, Clubs, Jobs): 44px accent tile + title + one-liner + arrow; some show live data (next bus/prayer countdown, latest notice).</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Student dashboard inside the app shell. Header "Welcome back, Nawyaj" with subtitle "Here's what's happening with your campus reports." and a primary "Report an Issue" button. Three stat cards: My Open (amber icon tile), In Progress (blue), Resolved (green). Then two wide quick-action cards side by side (Report an Issue, Browse Lost &amp; Found) each with icon tile, bold label, muted description, right arrow. Section "RECENT REPORTS" (small uppercase label + "View all" link): a card listing 5 report rows with colored status badge, category title, building, relative date. Finally section "CAMPUS TODAY": a 2-column grid of ten shortcut cards — Bus Schedule, Prayer Times, Announcements, Events, Medical Center, Marketplace, Ride Share, Blood Donation, Clubs, Jobs — each with its own accent-colored icon tile, title, one-line summary (some live: "Next bus in 25m", "Maghrib 6:41 PM"), right arrow.</div></div>
+
+<div class="page"><h4>Staff Dashboard <span class="route">/staff</span><span class="role stf">Staff</span></h4>
+<ul><li>Header "Welcome back" + subtitle "Your maintenance queue · {Dept}". Stat cards for assigned counts; list/table of reports assigned to this staff member with status badges; CampusToday grid below.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Staff dashboard in app shell. Header with subtitle "Your maintenance queue · Electrical." Stat cards: Assigned to me, In Progress, Resolved this week. A card listing assigned report rows (status badge, category, building, reporter, date) each opening a detail. Below, the same "CAMPUS TODAY" 2-column shortcut widget grid.</div></div>
+
+<div class="page"><h4>Admin Dashboard <span class="route">/admin</span><span class="role adm">Admin</span></h4>
+<ul>
+<li>Header "Admin overview" — "Everything happening across campus, at a glance."</li>
+<li>4 StatCards: Total reports (slate) · Open (amber) · In Progress (blue) · Resolved (green).</li>
+<li>"NEEDS ASSIGNMENT" section + "All reports" link: table of open unassigned reports with per-row "Assign" button → assign-to-staff modal (staff picker).</li>
+<li>CampusToday widget grid.</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Admin dashboard in app shell. Header "Admin overview" with subtitle "Everything happening across campus, at a glance." Four stat cards: Total reports (neutral), Open (amber), In Progress (blue), Resolved (green). Section "NEEDS ASSIGNMENT" with muted helper "Open reports waiting for a staff member" and an "All reports" link: a data table (ID, category, building, reporter, date, status badge) where each row has an "Assign" button opening a modal listing staff to pick. Below, the "CAMPUS TODAY" shortcut widget grid.</div></div>
+
+<!-- ================================================================ -->
+<h2 id="reports">8. Pages — Reports (core FixIt)</h2>
+
+<div class="page"><h4>My Reports <span class="route">/reports</span><span class="role stu">Student</span></h4>
+<ul><li>Header + "Report an Issue" button. Toolbar: search field (left) + FilterTabs with counts All/Open/In Progress/Resolved (right). Vertical stack of report cards: status badge, category title, description snippet, building/room, date, actions View · Edit (while Open) · Delete (confirm modal). Two empty states (none yet / no match).</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>"My Reports" list page in app shell. Header with primary "Report an Issue" button. Toolbar row: search input with icon placeholder "Search reports…" on the left, pill filter tabs with count bubbles (All 8 · Open 2 · In Progress 3 · Resolved 3) on the right. Below, stacked wide report cards: colored status badge (Open amber / In Progress blue / Resolved green), bold category title, one-line description, building + room, date, and small View / Edit / Delete actions. Include an empty state variant with document icon, "No reports yet", message and CTA.</div></div>
+
+<div class="page"><h4>Report an Issue <span class="route">/reports/new</span><span class="role stu">Student</span> &nbsp;·&nbsp; Edit Report <span class="route">/reports/:id/edit</span></h4>
+<ul><li>Subtitle "Tell us what's wrong and where — we'll route it to the right staff." Single form card: Category select, Building + Room, Description textarea, optional photo upload (dashed dropzone), submit primary + cancel. Edit = same, prefilled, only while status Open.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>"Report an Issue" form page in app shell, single centered card (max ~640px). Subtitle "Tell us what's wrong and where — we'll route it to the right staff." Fields: Category (select: Electrical, Plumbing, Furniture, Wi-Fi, Cleaning…), Building and Room side by side, Description textarea, optional photo upload as dashed-border dropzone with image icon. Footer: primary "Submit report" + secondary "Cancel".</div></div>
+
+<div class="page"><h4>Report Detail <span class="route">/reports/:id</span><span class="role all">Reporter / assigned Staff / Admin</span></h4>
+<ul><li>Back link. Title "Report Detail" + report code + status badge. Main card: description, photo (if any), meta grid (category, building/room, reported by, assigned staff, dates). Status timeline Open → In Progress → Resolved. Role actions: admin assigns staff, staff advances status; student sees progress.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Report detail page in app shell. Muted back link "&larr; My Reports". Title row: report code "RPT-0042" + large status badge. Two-column layout: left card with description text and an attached photo thumbnail, plus a vertical status timeline (Open → In Progress → Resolved with timestamps, current step highlighted); right sidebar card with meta rows (Category, Building &amp; room, Reported by with avatar, Assigned staff with avatar, Created date) and role action buttons ("Assign to staff" for admin, "Mark In Progress"/"Mark Resolved" for staff).</div></div>
+
+<div class="page"><h4>All Reports <span class="route">/admin/reports</span><span class="role adm">Admin</span> &nbsp;·&nbsp; Assigned to Me <span class="route">/staff/assigned</span><span class="role stf">Staff</span></h4>
+<ul><li>All Reports: subtitle "{n} reports across campus", search + status FilterTabs, full data table (ID, category, building, reporter, assigned, date, status) with Assign/open actions. Assigned to Me: subtitle "Reports routed to you — open one to advance its status.", same list scoped to the staff member.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Admin "All Reports" page in app shell. Subtitle "23 reports across campus." Toolbar: search + status pill tabs with counts. Data table with uppercase muted header (ID, Category, Building, Reporter, Assigned to, Date, Status) — status as colored badges, per-row Assign button when unassigned, row hover, click opens detail.</div></div>
+
+<!-- ================================================================ -->
+<h2 id="lostfound">9. Pages — Lost &amp; Found <span class="role stu">Student</span></h2>
+
+<div class="page"><h4>Browse <span class="route">/lost-found</span> · Detail <span class="route">/lost-found/:id</span> · Post <span class="route">/lost-found/new</span> · Edit</h4>
+<ul>
+<li>Browse: subtitle "Browse items reported lost or found around campus." + "Post an Item" button; Lost/Found filter tabs + search; responsive card grid with photo, Lost/Found badge, title, location, date.</li>
+<li>Detail: photo, badges, description, location/date meta, poster; claim flow — contact stays private until poster approves claim.</li>
+<li>Post/Edit: form card — Lost or Found toggle, title, category, location, date, description, photo dropzone.</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Lost &amp; Found browse page in app shell. Header with "Post an Item" primary button, subtitle "Browse items reported lost or found around campus." Pill tabs "All / Lost / Found" with counts + search field. Grid of item cards (3 columns desktop): square photo, amber "Lost" or green "Found" badge, bold item title, location with pin icon, relative date. Empty state included. Also design the item detail (big photo, meta card, "Claim this item" primary button with note that contact is revealed only after the poster approves) and the post form (Lost/Found segmented toggle, Title, Category select, Location, Date, Description, photo dropzone).</div></div>
+
+<!-- ================================================================ -->
+<h2 id="campus">10. Pages — Campus Life</h2>
+
+<div class="page"><h4>Faculty Directory <span class="route">/faculty</span><span class="role all">All roles</span> (+ dept / profile / saved)</h4>
+<ul>
+<li>Subtitle "{400+} teachers across {13} departments — browse, search, and find a supervisor." Search field.</li>
+<li>"FIND A SUPERVISOR BY RESEARCH AREA" chip cloud — rounded chips with count bubbles, active chip = solid indigo.</li>
+<li>Default view: departments grouped by branch (sections) as dept cards; search/filter view: results count + faculty card grid (photo, name, title, dept badge, research areas, bookmark toggle).</li>
+<li>Dept page: all teachers of one department. Profile: large photo, name, designation, dept, contact rows (email/phone/room), research interest chips, links, save button. Saved Teachers: bookmarked shortlist.</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Faculty Directory in app shell. Subtitle "412 teachers across 13 departments — browse, search, and find a supervisor." Search field "Search by name, title, or research area…". Below: label "FIND A SUPERVISOR BY RESEARCH AREA" with a wrapping cloud of small rounded chips each with a count bubble (Machine Learning 24, IoT 11, NLP 9…), active chip solid indigo. Main area: department sections grouped under branch headings, each dept as a card with teal icon tile, dept name, teacher count, arrow. Also design a faculty profile page: big photo or initials avatar, name + designation, department badge, contact card (email, phone, room), research interest chips, publications links, bookmark "Save" button.</div></div>
+
+<div class="page"><h4>Study Hub <span class="route">/study-hub</span><span class="role stu">Student</span> (+ browse / dept / intake / section / course / manage)</h4>
+<ul>
+<li>Home: student's own section overview — subtitle "{CSE} · Intake {50} · Section {2}"; course cards; link "Browse departments".</li>
+<li>Browse: "Pick a department to open its intakes and sections." — dept card grid. Dept: "Pick an intake…" — intake list. Intake: "Study Materials — {dept} — notes, questions &amp; books shared across the intake" — open department-wide library (juniors ↔ seniors read across intakes).</li>
+<li>Course page: tabs Notes / Question Bank / Books; upload (own section only); file rows with uploader, date, votes (upvote), download.</li>
+<li>Manage (CR only): "Manage Section {n}" — courses CRUD, member list.</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Study Hub in app shell, sky-blue accent. Home: header "Study Hub" with subtitle "CSE · Intake 50 · Section 2", grid of course cards (course code + title, file counts), secondary button "Browse departments". Course page: title "CSE 207 — Data Structures", pill tabs "Notes / Question Bank / Books", each tab a list of file rows: file-type icon, bold filename, uploader name + section, date, upvote count with arrow, download icon; primary "Upload" button (own section only). Browse page: grid of department cards ("Pick a department to open its intakes and sections"). Also a CR management page "Manage Section 2" listing courses with add/edit/delete and a member list.</div></div>
+
+<div class="page"><h4>Cover Page Generator <span class="route">/cover-page</span><span class="role stu">Student</span></h4>
+<ul>
+<li>Teal accent. Back link to Dashboard. Subtitle "BUBT assignment, lab, project, index &amp; internship cover pages — print or save as PDF."</li>
+<li>Two-column: left form cards — Document type (teal pill chips: Assignment / Lab Report / Project / Index / Internship), Template style picker (2–3-col mini cards with check), Course code + title, student info, teacher info; right column: live A4 cover-page preview (440px), "Print / Save as PDF" button.</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Cover Page Generator in app shell, teal accent. Muted back link "&larr; Dashboard". Subtitle "BUBT assignment, lab, project, index &amp; internship cover pages — print or save as PDF." Two-column layout: LEFT — card "Document type" with teal selectable pill chips (Assignment, Lab Report, Project, Index, Internship) and a "Template style" grid of small selectable cards with corner checkmarks; card "Course details" with Course code + Course title; card with Student info (name, ID, intake, section) and Teacher info (name, designation, department). RIGHT — sticky live preview of an A4 university cover page (BUBT logo, university name, doc title, course, submitted-by / submitted-to blocks, date) plus primary "Print / Save PDF" button.</div></div>
+
+<div class="page"><h4>Bus Schedule <span class="route">/bus</span><span class="role all">All roles</span> (+ detail / admin form)</h4>
+<ul>
+<li>Hero sky CountdownBanner: eyebrow "NEXT BUS TO CAMPUS", route name 21–24px bold, departure time, live countdown, meta "{bus no} · from {first stop}".</li>
+<li>SegmentToggle "To Campus / From Campus" + "{n} routes". Route card grid (2–3 col): route name, bus number, stops line, next departure + countdown, star to save (saved sort first). Detail: full timetable table (uppercase muted header). Admin: add/edit route form.</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Bus Schedule in app shell, orange/sky accent. Subtitle "Campus shuttle routes, live departures, and timetables." Hero banner: soft sky-tinted rounded panel with 48px bus icon tile, uppercase eyebrow "NEXT BUS TO CAMPUS", bold route name "Mirpur – BUBT", big time "5:40 PM" with live countdown "in 22m", meta "Bus 07 · from Mirpur 10". Below: segmented toggle "To Campus / From Campus" left, "6 routes" right. Grid of route cards: route name, bus number badge, stops summary line, next departure time + wait, bookmark star (saved routes sort first). Route detail page: header + full timetable table with To/From columns.</div></div>
+
+<div class="page"><h4>Prayer Times <span class="route">/prayer</span><span class="role all">All roles</span></h4>
+<ul>
+<li>Emerald CountdownBanner: "NEXT PRAYER" — "{Asr} · Azan {4:45 PM}" + countdown + Gregorian & Hijri dates. Optional Ramadan strip: Sehri ends / Iftar cards.</li>
+<li>SegmentToggle Today / This month; "Jummah today" badge on Fridays. Left (2/3): prayer rows — current highlighted, passed muted, next marked; Friday note strip. Right: "Campus musallah" locations card with map pins (admin inline edit).</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Prayer Times in app shell, emerald accent. Subtitle "Daily salah schedule for the campus musallah, Dhaka." Hero: emerald-tinted rounded banner with moon icon tile, eyebrow "NEXT PRAYER", bold "Asr · Azan 4:45 PM", live countdown "in 1h 12m", meta line with Gregorian + Hijri date. Segmented toggle "Today / This month" with a green "Jummah today" badge. Two columns: left 2/3 — five prayer rows (Fajr, Dhuhr, Asr, Maghrib, Isha) showing Azan and Jamaat times; the current prayer row highlighted green, passed rows muted, next flagged; dashed note "Every Friday, Jummah replaces Dhuhr." Right 1/3 — "Campus musallah" card listing locations with map-pin icons and floor descriptions.</div></div>
+
+<div class="page"><h4>Events <span class="route">/events</span><span class="role all">All roles</span> (+ detail / create)</h4>
+<ul><li>Subtitle "What's happening around campus." + "Create event". Upcoming/past tabs; event cards: date block, title, club/organizer, venue, time, RSVP count + Going button. Detail: banner, description, meta card, RSVP list. Create: form (title, date/time, venue, description, banner).</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Events page in app shell, pink accent. Subtitle "What's happening around campus." with primary "Create event" button. Tabs "Upcoming / Past". Event cards in a grid: left square date block (month + big day number), bold event title, organizer/club name, venue with pin icon, time, RSVP count and a "Going" toggle button. Detail page: wide banner image, title, meta sidebar (date, time, venue, organizer), description, attendee avatar stack. Create form: Title, Date, Time, Venue, Description, banner upload.</div></div>
+
+<div class="page"><h4>Academic Calendar <span class="route">/calendar</span> · Class Routines <span class="route">/routines</span><span class="role all">All roles</span></h4>
+<ul><li>Calendar: "University holidays, exams and semester dates." — month-grouped list/table of dated entries with category badges (holiday/exam/semester). Routines: "Class and exam schedules posted by faculty and staff." — routine cards/files by dept-intake-section with view/download; staff/admin upload.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Academic Calendar in app shell, red-orange accent. Subtitle "University holidays, exams and semester dates." Entries grouped under month headings: each row a card with date block, bold entry title, category badge (Holiday green / Exam red / Semester blue), optional duration. Sibling page "Routines" (indigo accent): subtitle "Class and exam schedules posted by faculty and staff." — cards per routine: icon tile, title "CSE Intake 50 Sec 2 — Class Routine", posted-by + date, View / Download actions, admin upload button.</div></div>
+
+<div class="page"><h4>Jobs &amp; Internships <span class="route">/jobs</span><span class="role all">All roles</span> (+ detail / post / saved / moderate)</h4>
+<ul><li>Subtitle "Opportunities shared across campus — newest first." Search + type filters (Job/Internship/Part-time); job cards: company logo tile, bold title, company, type + salary badges, deadline chip, bookmark. Saved Jobs: "your shortlist, soonest deadline first." Detail: full description, meta sidebar, apply link, report. Form: "Share an opportunity with the whole campus." Moderate (admin): reported listings review.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Jobs &amp; Internships board in app shell, teal accent. Subtitle "Opportunities shared across campus — newest first." with "Post a Job" and "Saved" buttons. Search + pill filters (All / Job / Internship / Part-time). Job cards stacked: rounded company logo tile, bold job title, company name, badges for type and salary, deadline chip ("Apply by Jul 30", urgent = red), bookmark icon. Detail page: title + company header, meta sidebar (type, salary, location, deadline, posted by), rich description, primary "Apply" link button, small "Report listing" link. Admin moderation page: reported listings with reporter reason and Remove / Dismiss actions.</div></div>
+
+<div class="page"><h4>Announcements <span class="route">/announcements</span><span class="role all">All (post: Admin)</span></h4>
+<ul><li>Subtitle: "{n} unread on the campus notice board." / "you're all caught up." List of notice rows: unread dot/bold, title, snippet, author + date, category badge; detail page with full body; admin "Post a notice" form (title, body, category, pin).</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Announcements (campus notice board) in app shell, blue accent. Subtitle "3 unread on the campus notice board." List of notice rows in a card: unread rows bold with a small blue dot, title, one-line snippet, author + date right-aligned, category badge. Detail: full notice with author, date, body. Admin compose page "Post a notice — Publish to the campus notice board": Title, Category select, Body textarea, Pin toggle, primary "Publish".</div></div>
+
+<div class="page"><h4>Clubs <span class="route">/clubs</span><span class="role stu">Student</span> (+ club home / members / post / settings)</h4>
+<ul><li>My Clubs: "Your student club memberships." — club cards (logo, name, role badge President/VP/Member, member count). Club home: cover header, tabs/feed of posts (author, date, body, image), officer "New post" button. Members: "{n} members" list with role badges + manage (officers). Post form. Club Settings (President/VP only).</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Clubs in app shell, purple accent. "My Clubs" page: subtitle "Your student club memberships.", grid of club cards with circular club logo, bold name, role badge (President amber / VP blue / Member neutral), member count. Club home: cover banner with logo + club name + "Members" and "Manage" buttons for officers, below a feed of post cards (author avatar + name + role, date, text body, optional image, edit menu for authors). Members page: subtitle "24 members", searchable list rows with avatar, name, student ID, role badge, promote/remove menu for officers. New Post form and a Club Settings form (name, description, logo upload) for President/VP.</div></div>
+
+<!-- ================================================================ -->
+<h2 id="community">11. Pages — Community &amp; Services</h2>
+
+<div class="page"><h4>Marketplace <span class="route">/marketplace</span><span class="role all">All roles</span> (+ detail / form / mine)</h4>
+<ul><li>Subtitle "Buy and sell with fellow students on campus." + "Post an Item" + "My Listings". Search + category filter; listing card grid: photo, bold title, ৳ price (bold), condition badge, seller, date. Detail: photo gallery, price, description, seller card with contact. Form: "Sell something to fellow students." My Listings: own items + mark-sold/delete.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Marketplace in app shell, green accent. Subtitle "Buy and sell with fellow students on campus." with "My Listings" secondary and "Post an Item" primary buttons. Search + category select. Grid of listing cards (3–4 col): square photo, bold title, prominent bold price in Bangladeshi taka "৳12,500", condition badge (New / Like new / Used), seller name, date. Detail: large photo, price header, description card, seller sidebar card with avatar + contact button. Post form: Title, Category, Price (taka), Condition, Description, photo dropzone. "My Listings" page with own items and Mark as sold / Edit / Delete.</div></div>
+
+<div class="page"><h4>Ride Share <span class="route">/rides</span><span class="role all">All roles</span> (+ detail / offer)</h4>
+<ul><li>Subtitle "Share rides to and from campus with fellow students." + "Offer a Ride". Ride cards: from → to with arrow, date/time, seats left, fare share, driver. Detail: route, riders, join/contact. Offer form: "Share your commute and split the fare." (from, to, date, time, seats, fare).</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Ride Share in app shell, olive-green accent. Subtitle "Share rides to and from campus with fellow students." with primary "Offer a Ride". Ride cards stacked: bold route "Uttara → BUBT" with arrow, date + departure time, seats-left badge ("2 seats"), fare share "৳80 / person", driver avatar + name. Detail page: route header, meta card, joined riders avatars, primary "Join ride". Offer form: From, To, Date, Time, Seats available, Fare per person, Note.</div></div>
+
+<div class="page"><h4>Blood Donation <span class="route">/blood</span><span class="role all">All roles</span> (+ register / request)</h4>
+<ul>
+<li>Subtitle "Find donors and respond to urgent blood requests on campus." + buttons "Register as donor" (secondary) and "Request blood" (primary).</li>
+<li>FilterTabs Requests / Donors (+ counts) + blood-group select. Requests: card grid, most urgent first — group badge, hospital/location, needed-by, requester, "Donate" pledge button (modal reveals requester contact). Donors: 8-cell "Donors by group" tally card (A+…O−, red counts) + donor cards (name, group, last-donated, eligible badge).</li>
+<li>Register donor: "Join the campus donor registry so others can reach you." Request: "Post a request so eligible donors can respond quickly."</li>
+</ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Blood Donation in app shell, deep-red accent. Subtitle "Find donors and respond to urgent blood requests on campus." with secondary "Register as donor" and primary "Request blood" buttons. Pill tabs "Requests / Donors" with counts, plus an "All blood groups" select. Requests view: grid of request cards, most urgent first — big red blood-group badge "B+", patient/hospital line, location, needed-by date chip, requester name, primary "Donate" button. Donors view: first a summary card "DONORS BY GROUP" with 8 small tiles (A+, A−, B+, B−, AB+, AB−, O+, O−) each showing a bold red group and count; then donor cards with avatar, name, blood group badge, last-donated date, eligibility badge. Also: Register-as-donor form (blood group, phone, last donation date, availability toggle) and Request-blood form (group, bags, hospital, location, needed-by, contact).</div></div>
+
+<div class="page"><h4>Medical Center <span class="route">/medical</span><span class="role all">All roles</span></h4>
+<ul><li>Subtitle "Campus doctors, schedules, and consultation rooms." Teal info banner: stethoscope tile + "BUBT Medical Center — Ground floor, Student Welfare Building · Open Sat–Wed, 9:00 AM – 5:00 PM". Doctor card grid (2–3 col): photo/avatar, name, specialty, visiting days/hours, room. (Directory only — no appointment booking.)</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Medical Center in app shell, teal accent. Subtitle "Campus doctors, schedules, and consultation rooms." A teal-tinted info banner with stethoscope icon tile: "BUBT Medical Center — Ground floor, Student Welfare Building · Open Sat–Wed, 9:00 AM – 5:00 PM". Grid of doctor cards (3 columns): avatar photo, doctor name, specialty line, visiting days + hours, consultation room badge. Directory only, no booking flow.</div></div>
+
+<div class="page"><h4>Student Directory <span class="route">/students</span><span class="role stu">Student</span></h4>
+<ul><li>Subtitle "Find classmates, seniors and juniors — connect to share contact details." Search + dept/intake filters; student cards: avatar, name, ID, dept · intake · section; "Connect" flow — contact shared only after both connect.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Student Directory in app shell, slate accent. Subtitle "Find classmates, seniors and juniors — connect to share contact details." Search field + Department and Intake selects. Grid of student cards: avatar or initials, bold name, student ID, muted "CSE · Intake 50 · Section 2", and a "Connect" button (states: Connect / Pending / Connected — contact details shown only when connected).</div></div>
+
+<!-- ================================================================ -->
+<h2 id="adminpages">12. Pages — Admin tools <span class="role adm">Admin</span></h2>
+
+<div class="page"><h4>Manage Users <span class="route">/admin/users</span></h4>
+<ul><li>Subtitle "{n} people in the FixIt directory." Search + role FilterTabs; user table/rows: avatar, name, email, student ID, role badge, role-change select (Student/Staff/Admin), delete. Self-demote guarded.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Admin "Manage Users" in app shell. Subtitle "148 people in the FixIt directory." Search + role pill tabs (All / Student / Staff / Admin with counts). User table rows: avatar + name, email, student ID, colored role badge, an inline role select to change role, and a delete icon with confirm modal.</div></div>
+
+<div class="page"><h4>Faculty Profiles <span class="route">/admin/faculty</span></h4>
+<ul><li>Subtitle "{n} teachers · manage photos." Search; teacher rows with photo/initials, name, dept; upload/replace photo action.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Admin "Faculty Profiles" in app shell. Subtitle "412 teachers · manage photos." Search field, then table rows: current photo or initials avatar, teacher name, department, designation, and an "Upload photo" button per row.</div></div>
+
+<div class="page"><h4>Study Hub admin <span class="route">/admin/study-hub</span> · Manage Clubs <span class="route">/admin/clubs</span></h4>
+<ul><li>Study Hub: "Manage intakes, sections, CRs, and student section requests." — dept/intake/section tree, CR assignment, pending section-change requests. Clubs: "{n} clubs" — club rows with logo, name, member count, officers; create club.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Admin "Study Hub" management in app shell. Subtitle "Manage intakes, sections, CRs, and student section requests." Left: expandable tree of Department → Intake → Section with add buttons. Right: selected section panel showing members, a "Class Representative" assignment row with student picker, and a "Pending requests" list with Approve/Reject. Sibling page "Manage Clubs": subtitle "12 clubs", rows with club logo, name, member count, officer names, Edit/Delete, and a "Create club" primary button opening a form (name, description, logo, president picker).</div></div>
+
+<!-- ================================================================ -->
+<h2 id="shared">13. Pages — Notifications / Profile / 404</h2>
+
+<div class="page"><h4>Notifications <span class="route">/notifications</span><span class="role all">All roles</span> · Settings <span class="route">/notifications/settings</span></h4>
+<ul><li>Subtitle "{n} unread" / "You're all caught up". Row list: feature-accent icon tile, title, message snippet, relative time, unread highlight; "Mark all read"; gear → Settings page with per-category toggles.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>Notifications page in app shell. Subtitle "4 unread" with a "Mark all read" secondary button and settings gear icon. A card of notification rows: feature-colored icon tile (announcement, event, report, blood…), bold title, one-line message, relative time; unread rows have a light blue tint + dot. Empty state "You're all caught up". Settings page: card with labeled toggle switches per category (Announcements, Events, Report updates, Blood requests, Jobs…).</div></div>
+
+<div class="page"><h4>My Profile <span class="route">/profile</span><span class="role all">All roles</span></h4>
+<ul><li>Subtitle "Update your photo and contact details." Avatar with upload; name, email (read-only), phone, student ID / dept / intake-section (students); save; theme note; change-password.</li></ul>
+<div class="prompt"><button onclick="cp(this)">Copy</button>My Profile page in app shell. Subtitle "Update your photo and contact details." Card with a large circular avatar + "Change photo" upload button; fields: Full name, Email (read-only, muted), Phone, Student ID, Department, Intake &amp; Section; primary "Save changes". A second card for password change (current, new, confirm).</div></div>
+
+<div class="page"><h4>404 Not Found</h4>
+<div class="prompt"><button onclick="cp(this)">Copy</button>404 page: centered on page background — big muted "404", bold "Page not found", one-line muted message, primary button "Back to dashboard".</div></div>
+
+<p class="muted" style="margin-top:40px">End of snapshot · FixIt Campus · generated from source on 2026-07-18. Pair each prompt with a real screenshot from the running app for best Stitch fidelity.</p>
+</div>
+<script>
+function cp(btn){
+  const t = btn.parentElement.innerText.replace(/^Copy\n?/, "");
+  navigator.clipboard.writeText(t).then(()=>{ btn.textContent="Copied!"; setTimeout(()=>btn.textContent="Copy",1200); });
+}
+</script>
+</body>
+</html>

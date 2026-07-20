@@ -1579,12 +1579,13 @@ function MembersTab({ section, members, onAct, actBusy }) {
 // Settings tab — join code, section privacy, intake vote
 // ============================================================================
 function SettingsTab({ section, intake, onTogglePublic, toggleBusy }) {
-  const { intakeVoteFor, intakeBallotsFor, myBallotFor, initiateIntakeVote, castIntakeVote } = useApp();
+  const { intakeVoteFor, lastIntakeVoteFor, intakeBallotsFor, myBallotFor, initiateIntakeVote, castIntakeVote } = useApp();
   const toast = useToast();
   const [copied, setCopied] = React.useState(false);
   const [voteLoading, setVoteLoading] = React.useState(false);
 
   const vote = intakeVoteFor(intake.id);
+  const lastVote = vote ? null : lastIntakeVoteFor(intake.id);
   const ballots = vote ? intakeBallotsFor(vote.id) : [];
   const myBallot = vote ? myBallotFor(vote.id) : null;
 
@@ -1692,7 +1693,12 @@ function SettingsTab({ section, intake, onTogglePublic, toggleBusy }) {
               )}
             </>
           ) : (
-            <div>
+            <div className="space-y-2">
+              {lastVote && (
+                <p className="text-xs text-ink-3">
+                  Last vote ({lastVote.targetPublic ? "make public" : "make private"}) closed · result: <strong>{lastVote.result ?? "no quorum"}</strong>
+                </p>
+              )}
               {intake.isPublic
                 ? <Button size="sm" variant="secondary" icon="Lock" onClick={() => startVote(false)} disabled={voteLoading}>Vote to make private</Button>
                 : <Button size="sm" icon="Globe" onClick={() => startVote(true)} disabled={voteLoading}>Vote to make public</Button>}

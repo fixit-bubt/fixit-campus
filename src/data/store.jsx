@@ -396,7 +396,6 @@ export function AppProvider({ children }) {
 
   // ---- ride share (LIVE Supabase) ----
   const [rides, setRides] = useState([]);
-  const [ridesPosted, setRidesPosted] = useState(0);
 
   // ---- blood donation (LIVE Supabase) ----
   const [bloodRequests, setBloodRequests] = useState([]);
@@ -505,8 +504,13 @@ export function AppProvider({ children }) {
   const refreshUsers = useCallback(async () => {
     if (!currentUser) { setUsers([]); return; }
     const uid = currentUser.id;
-    const src = currentUser.role === "Admin" ? "profiles" : "public_profiles";
-    const { data, error } = await supabase.from(src).select("*").order("full_name");
+    // Admins read profiles directly. Non-admins use the directory_profiles()
+    // SECURITY DEFINER RPC (0078): public_profiles was flipped to
+    // security_invoker (0062/0066), so reading it directly returns only the
+    // caller's own row under profiles RLS — blanking every cross-user name.
+    const { data, error } = currentUser.role === "Admin"
+      ? await supabase.from("profiles").select("*").order("full_name")
+      : await supabase.rpc("directory_profiles");
     if (!stillCurrent(uid)) return;
     if (error) { setDataError(true); return; }
     setUsers((data || []).map(toUser));
@@ -648,10 +652,9 @@ export function AppProvider({ children }) {
     const { error: expErr } = await supabase.rpc("delete_expired_rides");
     if (expErr) console.warn("[loadRides] delete_expired_rides:", expErr.message);
     const now = new Date().toISOString();
-    const [{ data: rows, error: e1 }, { data: reqs, error: e2 }, { data: stat }] = await Promise.all([
+    const [{ data: rows, error: e1 }, { data: reqs, error: e2 }] = await Promise.all([
       supabase.from("rides").select("*").order("date", { ascending: true }),
       supabase.from("ride_requests").select("ride_id, requester_id"),
-      supabase.from("app_stats").select("value").eq("key", "rides_posted").maybeSingle(),
     ]);
     if (!stillCurrent(uid)) return;
     if (e1 || e2) { setDataError(true); return; }
@@ -659,7 +662,6 @@ export function AppProvider({ children }) {
     (reqs || []).forEach((r) => { (byRide[r.ride_id] ||= []).push(r.requester_id); });
     const mapped = (rows || []).map((r) => toRide(r, byRide[r.id]));
     setRides(mapped.filter((r) => !r.expiresAt || r.expiresAt > now));
-    if (stat) setRidesPosted(Number(stat.value) || 0);
   }, [currentUser?.id]);
 
   // Blood requests (+ pledges aggregated into each request's `pledges` array)
@@ -985,7 +987,7 @@ export function AppProvider({ children }) {
       setCurrentUser(null);
       setUsers([]); setReports([]); setItems([]); setClaims([]);
       setAnnouncements([]); setListings([]); setEvents([]); setEventOrganizers([]);
-      setRides([]); setRidesPosted(0); setBloodRequests([]); setDonors([]);
+      setRides([]); setBloodRequests([]); setDonors([]);
       setDoctors([]); setBusRoutes([]); setSavedBusRoutes([]);
       setPrayerTimes([]); setMusallahLocations([]); setDepartments([]); setFaculty([]);
       setFacultyBookmarks([]); setStudyIntakes([]); setStudySections([]); setStudyMembers([]);
@@ -1031,10 +1033,13 @@ export function AppProvider({ children }) {
     await tmp.auth.signOut();
     if (e2) return { ok: false, error: e2.message };
     if (!updated || updated.length !== 1) {
-      return { ok: false, error: "Account created, but assigning the role failed — set it from the Users list." };
+      return { ok: false, error: `Account created as a Student, but upgrading it to ${role} failed. Delete the account and try creating it again.` };
     }
     await refreshUsers();
-    return { ok: true };
+    // Under email-confirmation, signUp returns a user but no session — the new
+    // account can't sign in until it confirms its email. Surface that so the
+    // success toast doesn't wrongly promise immediate login.
+    return { ok: true, needsConfirm: !data.session };
   }
 
   // ---- lookups ----
@@ -1189,7 +1194,7 @@ export function AppProvider({ children }) {
     } catch (e) {
       return { ok: false, error: "Photo upload failed: " + e.message };
     }
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("reports")
       .update({
         category: form.category,
@@ -1198,15 +1203,18 @@ export function AppProvider({ children }) {
         room: form.room?.trim() || null,
         photo_url,
       })
-      .eq("code", id);
+      .eq("code", id)
+      .select("code");
     if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) { await loadReports(); return { ok: false, error: "This report can no longer be edited — it may have been moved out of Open." }; }
     await loadReports();
     return { ok: true };
   }
 
   async function setReportStatus(id, status) {
-    const { error } = await supabase.from("reports").update({ status }).eq("code", id);
+    const { data, error } = await supabase.from("reports").update({ status }).eq("code", id).select("code");
     if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) { await loadReports(); return { ok: false, error: "This report no longer exists." }; }
     await loadReports();
     return { ok: true };
   }
@@ -1225,9 +1233,10 @@ export function AppProvider({ children }) {
   }
 
   async function deleteReport(id) {
-    const { error } = await supabase
-      .from("reports").update({ deleted_at: new Date().toISOString() }).eq("code", id);
+    const { data, error } = await supabase
+      .from("reports").update({ deleted_at: new Date().toISOString() }).eq("code", id).select("code");
     if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) { await loadReports(); return { ok: false, error: "This report can no longer be deleted — it may have been moved out of Open." }; }
     await loadReports();
     return { ok: true };
   }
@@ -1761,8 +1770,9 @@ export function AppProvider({ children }) {
     return { ok: true, going: true };
   }
   async function deleteEvent(id) {
-    const { error } = await supabase.from("events").delete().eq("code", id);
+    const { data, error } = await supabase.from("events").delete().eq("code", id).select("code");
     if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) { await loadEvents(); return { ok: false, error: "This event no longer exists, or you no longer have permission to delete it." }; }
     await loadEvents();
     return { ok: true };
   }
@@ -1937,8 +1947,9 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
   async function deleteRide(id) {
-    const { error } = await supabase.from("rides").delete().eq("code", id);
+    const { data, error } = await supabase.from("rides").delete().eq("code", id).select("code");
     if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) { await loadRides(); return { ok: false, error: "This ride no longer exists, or it isn't yours to delete." }; }
     await loadRides();
     return { ok: true };
   }
@@ -1946,7 +1957,9 @@ export function AppProvider({ children }) {
   // requester only if they opted in via show_whatsapp — enforced in the
   // ride_contact RPC). Returns null whatsapp when not shared.
   async function getRideContact(code, targetId) {
-    const { data } = await supabase.rpc("ride_contact", { p_code: code, p_target: targetId });
+    const { data, error } = await supabase.rpc("ride_contact", { p_code: code, p_target: targetId });
+    // Distinguish RPC/network failure from "no number shared" so the UI can retry.
+    if (error) return { error: error.message };
     const row = Array.isArray(data) ? data[0] : data;
     return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
   }
@@ -1991,11 +2004,18 @@ export function AppProvider({ children }) {
   // donor enters is saved to their profile (donor contact = profiles.whatsapp).
   async function registerDonor(data) {
     if (!currentUser) return { ok: false, error: "Not signed in." };
-    if (data.phone && data.phone !== currentUser.whatsapp) {
+    // Registering as a donor = consent to be reached for donation. donor_contact()
+    // only returns the number when show_whatsapp is true, so enable it here (and
+    // save the number if it changed) — otherwise the registry shows "no number
+    // shared" for every donor and is unreachable.
+    const phone = data.phone?.trim();
+    if (phone) {
+      const patch = { show_whatsapp: true };
+      if (phone !== currentUser.whatsapp) patch.whatsapp = phone;
       const { error: pErr } = await supabase
-        .from("profiles").update({ whatsapp: data.phone }).eq("id", currentUser.id);
+        .from("profiles").update(patch).eq("id", currentUser.id);
       if (pErr) return { ok: false, error: pErr.message };
-      setCurrentUser((c) => ({ ...c, whatsapp: data.phone }));
+      setCurrentUser((c) => ({ ...c, whatsapp: phone, showWhatsapp: true }));
     }
     const { error } = await supabase
       .from("donors")
@@ -2121,16 +2141,22 @@ export function AppProvider({ children }) {
   // Admin-only: upload a photo file to storage and set photo_url on the faculty row.
   async function uploadFacultyPhoto(facultyId, file) {
     const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
-    const path = `faculty/${facultyId}.${ext}`;
+    // Unique path per upload (not a deterministic filename). A deterministic name
+    // needs upsert, and overwriting a storage object requires owner=auth.uid() —
+    // so a second admin couldn't replace a photo uploaded by another admin (or by
+    // the service-role re-host pipeline). A fresh path is always a clean insert.
+    const prevPhoto = faculty.find((f) => f.id === facultyId)?.photo || "";
+    const path = `faculty/${facultyId}-${crypto.randomUUID()}.${ext}`;
     const { error: upErr } = await supabase.storage
       .from("photos")
-      .upload(path, file, { cacheControl: "3600", upsert: true });
+      .upload(path, file, { cacheControl: "3600", upsert: false });
     if (upErr) return { ok: false, error: upErr.message };
-    // Deterministic path + upsert overwrites the object, so add a cache-buster —
-    // otherwise a re-uploaded same-name photo keeps showing the old cached image.
-    const publicUrl = `${supabase.storage.from("photos").getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
+    const publicUrl = supabase.storage.from("photos").getPublicUrl(path).data.publicUrl;
     const { error: dbErr } = await supabase.from("faculty").update({ photo_url: publicUrl }).eq("id", facultyId);
     if (dbErr) return { ok: false, error: dbErr.message };
+    // Best-effort cleanup of the previous photos-bucket object (skips external URLs).
+    const m = prevPhoto.match(/\/photos\/(faculty\/[^?]+)/);
+    if (m) { try { await supabase.storage.from("photos").remove([m[1]]); } catch { /* best-effort */ } }
     setFaculty((prev) => prev.map((f) => f.id === facultyId ? { ...f, photo: publicUrl } : f));
     return { ok: true, url: publicUrl };
   }
@@ -2291,6 +2317,12 @@ export function AppProvider({ children }) {
   // Open vote for a given intake, or null.
   const intakeVoteFor = (intakeId) =>
     studyIntakeVotes.find((v) => v.intakeId === intakeId && v.status === "open") || null;
+  // Most recent CLOSED vote for an intake — so a failed/no-quorum result can be
+  // shown (the open-only selector above hides it, making votes silently vanish).
+  const lastIntakeVoteFor = (intakeId) =>
+    studyIntakeVotes
+      .filter((v) => v.intakeId === intakeId && v.status !== "open")
+      .sort((a, b) => (b.closesAt || "").localeCompare(a.closesAt || ""))[0] || null;
   // Ballots cast for a given vote.
   const intakeBallotsFor = (voteId) => studyIntakeBallots.filter((b) => b.voteId === voteId);
   // Whether the current user has already voted in a given vote.
@@ -2396,7 +2428,7 @@ export function AppProvider({ children }) {
     if (error) return { ok: false, error: error.message };
     if (!data?.ok) return { ok: false, error: data?.error || "Could not start vote." };
     await loadStudyHub();
-    return { ok: true, voteId: data.vote_id };
+    return { ok: true, voteId: data.voteId };
   }
   // CR: cast their ballot in an intake vote.
   async function castIntakeVote(voteId, inFavor) {
@@ -2885,7 +2917,7 @@ export function AppProvider({ children }) {
     listings, addListing, updateListing, deleteListing, markListingSold, getListingContact,
     events, canCreateEvents, addEvent, toggleRSVP, deleteEvent,
     jobs, jobReports, jobBookmarks, canPostJobs, addJob, updateJob, withdrawJob, removeJob, restoreJob, reportJob, toggleJobBookmark,
-    rides, ridesPosted, addRide, requestSeat, deleteRide, getRideContact,
+    rides, addRide, requestSeat, deleteRide, getRideContact,
     bloodRequests, donors, addBloodRequest, pledgeBlood, registerDonor, getDonorContact, getBloodRequesterContact,
     markDonatedToday, getBloodResponders, confirmBloodDonation, markBloodRequestFulfilled,
     doctors, doctorById,
@@ -2908,7 +2940,7 @@ export function AppProvider({ children }) {
     getStudyBookmarks, toggleStudyBookmark,
     addStudyIntake, addStudySection, assignSectionCR,
     requestCreateSection, joinByCode, approveSectionRequest, rejectSectionRequest,
-    toggleSectionPublic, initiateIntakeVote, castIntakeVote, checkExpiredVotes,
+    toggleSectionPublic, initiateIntakeVote, castIntakeVote, checkExpiredVotes, lastIntakeVoteFor,
     // club hub (data)
     clubs, clubMembers, clubPosts, clubJoinRequests,
     // club hub (selectors)

@@ -86,6 +86,7 @@ function targetFor(sector, role) {
     case "announce": return "/announcements";
     case "events": return "/events";
     case "jobs": return "/jobs";
+    case "clubs": return "/clubs";
     default: return null;
   }
 }
@@ -312,22 +313,11 @@ export function NotifSettings() {
                 </div>
 
                 {open && p.enabled && !paused && (
-                  <div className="flex flex-wrap gap-2 px-4 pb-4 pl-16">
-                    {CHANNELS.map((ch) => {
-                      const ChIcon = ch.icon;
-                      const on = p[ch.id];
-                      return (
-                        <button
-                          key={ch.id}
-                          onClick={() => saveNotifPref(s.id, { [ch.id]: !on })}
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                            on ? "border-brand bg-brand text-white" : "border-brd bg-surface text-ink-3 hover:bg-surface-2"
-                          }`}
-                        >
-                          <ChIcon size={14} /> {ch.label}
-                        </button>
-                      );
-                    })}
+                  <div className="px-4 pb-4 pl-16">
+                    {/* Per-channel toggles were removed: only in-app delivery is
+                        wired, and the center ignored the flags — showing them as
+                        working switches was misleading. */}
+                    <p className="text-xs text-ink-3">Delivered in-app. Push and email delivery aren't available yet.</p>
                   </div>
                 )}
               </div>

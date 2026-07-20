@@ -153,7 +153,7 @@ export function Marketplace() {
       ) : listings.length === 0 ? (
         <EmptyState icon="Store" title="Nothing for sale yet" message="Be the first to list an item." action={<Button icon="Plus" onClick={() => navigate("/marketplace/new")}>Post an Item</Button>} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon="SearchX" title="No matching listings" message="Try a different search or filter." action={<Button variant="secondary" onClick={() => { setQuery(""); setCategory("All"); setStatus("All"); }}>Clear filters</Button>} />
+        <EmptyState icon="SearchX" title="No matching listings" message="Try a different search or filter." action={<Button variant="secondary" onClick={() => { setQuery(""); setCategory("All"); setStatus("All"); setMinPrice(""); setMaxPrice(""); setSortBy("newest"); }}>Clear filters</Button>} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((l) => <ListingCard key={l.id} listing={l} seller={userById(l.sellerId)} onOpen={() => navigate(`/marketplace/${l.id}`)} />)}
