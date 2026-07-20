@@ -225,7 +225,11 @@ export default function ItemDetail({ id }) {
 
   const poster = userById(item.posterId);
   const isPoster = item.posterId === currentUser?.id;
-  const myClaim = claims.find((c) => c.itemId === item.id && c.claimantId === currentUser?.id);
+  // Active claim gates the button; a Rejected claim doesn't — the DB's partial
+  // unique index (0026) deliberately allows a rejected claimant to re-submit.
+  const myClaims = claims.filter((c) => c.itemId === item.id && c.claimantId === currentUser?.id);
+  const myClaim = myClaims.find((c) => c.status !== "Rejected");
+  const myRejectedClaim = myClaim ? null : myClaims.find((c) => c.status === "Rejected");
   const itemClaims = isPoster
     ? claims
         .filter((c) => c.itemId === item.id)
@@ -243,7 +247,7 @@ export default function ItemDetail({ id }) {
 
   const ClaimStatusIcon = myClaim
     ? myClaim.status === "Approved" ? CircleCheck : myClaim.status === "Rejected" ? CircleX : Clock
-    : Clock;
+    : myRejectedClaim ? CircleX : Clock;
 
   async function doDelete() {
     if (deleting) return;
@@ -335,9 +339,20 @@ export default function ItemDetail({ id }) {
                   </div>
                 </div>
               ) : (
-                <Button icon={isFound ? Hand : PackageCheck} onClick={() => setClaimOpen(true)}>
-                  {isFound ? "This is mine — Claim" : "I found this — Notify owner"}
-                </Button>
+                <div className="space-y-3">
+                  {myRejectedClaim && (
+                    <div className="flex items-center gap-3 rounded-md border border-brd bg-surface-2 px-4 py-3">
+                      <ClaimStatusIcon size={18} className="text-danger" />
+                      <div className="text-base">
+                        <p className="font-semibold text-ink">Not approved</p>
+                        <p className="text-xs text-ink-3">Your earlier {myRejectedClaim.kind === "claim" ? "claim" : "notification"} wasn't approved — you can submit a new one with better details.</p>
+                      </div>
+                    </div>
+                  )}
+                  <Button icon={isFound ? Hand : PackageCheck} onClick={() => setClaimOpen(true)}>
+                    {isFound ? "This is mine — Claim" : "I found this — Notify owner"}
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -415,7 +430,7 @@ export default function ItemDetail({ id }) {
         icon={Trash2}
         tone="red"
         title="Delete this item?"
-        description={`"${item.title}" and any claims on it will be permanently removed.`}
+        description={`"${item.title}" will be removed from the board. Claims already submitted are kept for record-keeping.`}
         footer={
           <>
             <Button variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>

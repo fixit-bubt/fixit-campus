@@ -143,6 +143,9 @@ export function findItemMatches(target, items, { excludePosterId, limit = 4 } = 
       for (const t of descTokens) if (iAll.has(t)) score += 1;
       return { item: i, score };
     })
+    // Only genuine keyword overlaps — score 0 means "same category" alone, which
+    // reads as a false match under the "similar words" copy.
+    .filter((m) => m.score > 0)
     .sort((a, b) => b.score - a.score || (b.item.createdAt || "").localeCompare(a.item.createdAt || ""))
     .slice(0, limit);
 }

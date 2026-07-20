@@ -328,7 +328,8 @@ function StudyHubSetup() {
   async function submitCode(e) {
     if (e) e.preventDefault();
     const trimmed = code.trim().toUpperCase();
-    if (trimmed.length !== 6) { setCodeError("Enter the 6-character code from your CR."); return; }
+    // Legacy codes are 6 chars (0057); sections approved after 0061 get 8-char codes.
+    if (trimmed.length < 6 || trimmed.length > 8) { setCodeError("Enter the 6–8 character code from your CR."); return; }
     if (codeSaving) return;
     setCodeSaving(true); setCodeError("");
     try {
@@ -394,16 +395,16 @@ function StudyHubSetup() {
 
               {joinMode === "code" && (
                 <form onSubmit={submitCode} className="space-y-4">
-                  <Field label="Join code" htmlFor="su-code" error={codeError} hint="6-character code from your CR.">
+                  <Field label="Join code" htmlFor="su-code" error={codeError} hint="6–8 character code from your CR.">
                     <Input
-                      id="su-code" value={code} error={!!codeError} maxLength={6}
+                      id="su-code" value={code} error={!!codeError} maxLength={8}
                       onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "")); setCodeError(""); }}
                       placeholder="e.g. A3B7C2"
                       className="tracking-widest font-mono text-center text-2xl"
                     />
                   </Field>
                   <div className="flex justify-end">
-                    <Button type="submit" icon="LogIn" disabled={codeSaving || code.length !== 6}>
+                    <Button type="submit" icon="LogIn" disabled={codeSaving || code.length < 6}>
                       {codeSaving ? <Spinner size={16} /> : "Join now"}
                     </Button>
                   </div>

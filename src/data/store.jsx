@@ -1310,6 +1310,11 @@ export function AppProvider({ children }) {
       proof_url,
     });
     if (error) {
+      // The proof was uploaded before the insert — don't leave an orphan object
+      // in the private bucket when the claim itself is rejected. Best-effort.
+      if (proof_url && !/^https?:\/\//.test(proof_url)) {
+        try { await supabase.storage.from("proofs").remove([proof_url]); } catch { /* best-effort */ }
+      }
       const dup = error.code === "23505" || /duplicate|unique/i.test(error.message);
       return { ok: false, error: dup ? "You've already submitted a claim on this item." : error.message };
     }
@@ -1652,8 +1657,11 @@ export function AppProvider({ children }) {
     let cols;
     try { cols = await listingCols(data); }
     catch (e) { return { ok: false, error: "Photo upload failed: " + e.message }; }
-    const { error } = await supabase.from("listings").update(cols).eq("code", id);
+    // .select("id") + row check: a 0-row update (listing deleted meanwhile, or
+    // RLS filtered it) must not read as success — same guard as setRole.
+    const { data: rows, error } = await supabase.from("listings").update(cols).eq("code", id).select("id");
     if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) { await loadListings(); return { ok: false, error: "This listing no longer exists." }; }
     await loadListings();
     return { ok: true };
   }
@@ -1664,15 +1672,19 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
   async function markListingSold(id) {
-    const { error } = await supabase.from("listings").update({ status: "Sold" }).eq("code", id);
+    const { data: rows, error } = await supabase.from("listings").update({ status: "Sold" }).eq("code", id).select("id");
     if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) { await loadListings(); return { ok: false, error: "This listing no longer exists." }; }
     await loadListings();
     return { ok: true };
   }
   // Seller name + WhatsApp for a listing (whatsapp only if the seller opted in
   // via show_whatsapp — enforced inside the listing_contact RPC).
   async function getListingContact(code) {
-    const { data } = await supabase.rpc("listing_contact", { p_code: code });
+    const { data, error } = await supabase.rpc("listing_contact", { p_code: code });
+    // Distinguish "RPC failed" from "seller hasn't shared WhatsApp" — otherwise a
+    // network blip renders as the seller opting out, with no way to retry.
+    if (error) return { error: error.message };
     const row = Array.isArray(data) ? data[0] : data;
     return row ? { name: row.name, whatsapp: row.whatsapp || "" } : null;
   }
@@ -2353,7 +2365,7 @@ export function AppProvider({ children }) {
     if (error) return { ok: false, error: error.message };
     if (!data?.ok) return { ok: false, error: data?.error || "Invalid code." };
     await loadStudyHub();
-    return { ok: true, sectionId: data.section_id };
+    return { ok: true, sectionId: data.sectionId };
   }
   // Admin: approve a pending section-creation request (RPC creates section + assigns CR + sets join_code).
   async function approveSectionRequest(reqId) {
