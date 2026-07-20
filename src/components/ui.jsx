@@ -375,17 +375,23 @@ export function Modal({ open, onClose, title, description, icon, tone = "blue", 
   const descId = useId();
 
   // Close on Escape; move focus into the dialog on open and restore it on close.
+  // onClose lives in a ref so the effect depends only on `open` — parents pass
+  // inline arrows, and re-running this on every parent render would re-focus the
+  // dialog and steal focus from inputs mid-typing (the "can't type a full name
+  // in Create account" bug).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; });
   useEffect(() => {
     if (!open) return;
     const prevFocused = document.activeElement;
-    const onKey = (e) => { if (e.key === "Escape") onClose && onClose(); };
+    const onKey = (e) => { if (e.key === "Escape") onCloseRef.current && onCloseRef.current(); };
     document.addEventListener("keydown", onKey);
     if (dialogRef.current) dialogRef.current.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       if (prevFocused && typeof prevFocused.focus === "function") prevFocused.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   const widths = { sm: "max-w-sm", md: "max-w-md", lg: "max-w-lg" };
