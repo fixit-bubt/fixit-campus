@@ -319,7 +319,10 @@ export function BloodDonation() {
       <PageHeader title="Blood Donation"
         subtitle={isAdmin ? "View all donors and active blood requests on campus." : "Find donors and respond to urgent blood requests on campus."}
         action={isAdmin ? null : (
-          <Button variant="secondary" icon="UserPlus" onClick={() => navigate("/blood/register")}>{myDonor ? "Update donor info" : "Register as donor"}</Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" icon="UserPlus" onClick={() => navigate("/blood/register")}>{myDonor ? "Update donor info" : "Register as donor"}</Button>
+            <Button icon="Plus" onClick={() => navigate("/blood/request")}>Request blood</Button>
+          </div>
         )} />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -334,7 +337,7 @@ export function BloodDonation() {
         <Loading />
       ) : tab === "Requests" ? (
         requests.length === 0 ? (
-          <EmptyState icon="Droplet" title="No requests right now" message="Urgent blood requests will appear here, most urgent first." action={<Button icon="Plus" onClick={() => navigate("/blood/request")}>Request blood</Button>} />
+          <EmptyState icon="Droplet" title="No requests right now" message="Urgent blood requests will appear here, most urgent first. Use “Request blood” at the top to post one." />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {requests.map((r) => (
