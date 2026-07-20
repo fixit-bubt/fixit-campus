@@ -352,12 +352,14 @@ function StudyHubSetup() {
   async function submitCreate(e) {
     if (e) e.preventDefault();
     const num = parseInt(crNumber, 10);
-    if (!crActiveIntakeId) { setCrError("Select an intake."); return; }
+    // The request row is keyed by intake NUMBER, not id (schema: intake_number int).
+    const crIntakeNumber = crIntakes.find((i) => i.id === crActiveIntakeId)?.number;
+    if (!crActiveIntakeId || !crIntakeNumber) { setCrError("Select an intake."); return; }
     if (!num || num < 1 || num > 99) { setCrError("Enter a valid section number (1–99)."); return; }
     if (crSaving) return;
     setCrSaving(true); setCrError("");
     try {
-      const r = await requestCreateSection(crActiveDeptId, crActiveIntakeId, num);
+      const r = await requestCreateSection(crActiveDeptId, crIntakeNumber, num);
       if (!r.ok) { setCrError(r.error || "Couldn't send request."); return; }
       toast({ type: "success", title: "Request sent", message: "Admin will review and create your section." });
     } finally { setCrSaving(false); }

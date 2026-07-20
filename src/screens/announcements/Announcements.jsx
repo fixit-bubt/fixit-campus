@@ -190,6 +190,7 @@ export function AnnouncementForm() {
     if (saving) return;
     const er = {};
     if (!form.title.trim()) er.title = "Enter a title.";
+    else if (form.title.trim().length < 3) er.title = "Title must be at least 3 characters."; // DB check: char_length(title) >= 3
     if (!form.department) er.department = "Choose a department.";
     if (!form.body.trim()) er.body = "Write the notice body.";
     setErrors(er);

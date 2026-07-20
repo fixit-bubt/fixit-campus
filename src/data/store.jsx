@@ -345,7 +345,7 @@ function deptAcronym(name) {
 const toStudyIntake  = (r) => ({ id: r.id, deptId: r.department_id, number: r.number, years: r.years || "", isPublic: r.is_public !== false });
 const toStudySection = (r) => ({ id: r.id, intakeId: r.intake_id, number: r.number, joinCode: r.join_code || null, isPublic: r.is_public !== false });
 const toStudyMember  = (r) => ({ id: r.id, sectionId: r.section_id, userId: r.user_id, role: r.role, status: r.status, joinedVia: r.joined_via || null });
-const toStudySectionRequest = (r) => ({ id: r.id, deptId: r.department_id, intakeId: r.intake_id, sectionNumber: r.section_number, requestedBy: r.requested_by, status: r.status, adminNote: r.admin_note || null, createdAt: day(r.created_at) });
+const toStudySectionRequest = (r) => ({ id: r.id, deptId: r.department_id, intakeNumber: r.intake_number, sectionNumber: r.section_number, requestedBy: r.requester_id, status: r.status, adminNote: r.admin_note || null, createdAt: day(r.created_at) });
 const toStudyIntakeVote   = (r) => ({ id: r.id, intakeId: r.intake_id, proposedBy: r.initiated_by, targetPublic: r.proposal === "public", closesAt: r.closes_at, status: r.status, result: r.result || null });
 const toStudyIntakeBallot = (r) => ({ id: r.id, voteId: r.vote_id, userId: r.cr_id, inFavor: r.ballot === "yes" });
 const toStudyCourse  = (r) => ({ id: r.id, sectionId: r.section_id, code: r.code, name: r.name, createdBy: r.created_by, createdAt: day(r.created_at) });
@@ -2272,9 +2272,8 @@ export function AppProvider({ children }) {
     studySectionRequests.filter((r) => r.status === "pending").map((r) => ({
       ...r,
       intakeLabel: (() => {
-        const intake = studyIntakes.find((i) => i.id === r.intakeId);
-        const dept   = intake && departments.find((d) => d.id === intake.deptId);
-        return dept ? `${deptAcronym(dept.name)} — Intake ${intake.number}` : "Unknown Intake";
+        const dept = departments.find((d) => d.id === r.deptId);
+        return dept ? `${deptAcronym(dept.name)} — Intake ${r.intakeNumber}` : "Unknown Intake";
       })(),
     }));
   // Open vote for a given intake, or null.
@@ -2337,10 +2336,12 @@ export function AppProvider({ children }) {
 
   // --- 0057 actions ---
   // Student requests admin to create a new section for them (they become CR on approval).
-  async function requestCreateSection(deptId, intakeId, sectionNumber) {
+  // Takes the intake NUMBER (int), not an intake id — the schema keys requests by
+  // (department_id, intake_number) so admins can approve into a not-yet-created intake.
+  async function requestCreateSection(deptId, intakeNumber, sectionNumber) {
     if (!currentUser) return { ok: false, error: "Not signed in." };
     const { error } = await supabase.from("study_section_requests")
-      .insert({ department_id: deptId, intake_id: intakeId, section_number: sectionNumber, requested_by: currentUser.id });
+      .insert({ department_id: deptId, intake_number: intakeNumber, section_number: sectionNumber, requester_id: currentUser.id });
     if (error) return { ok: false, error: error.code === "23505" ? "You already have a pending request." : error.message };
     await loadStudyHub();
     return { ok: true };
@@ -2356,15 +2357,15 @@ export function AppProvider({ children }) {
   }
   // Admin: approve a pending section-creation request (RPC creates section + assigns CR + sets join_code).
   async function approveSectionRequest(reqId) {
-    const { data, error } = await supabase.rpc("approve_section_request", { p_req_id: reqId });
+    const { data, error } = await supabase.rpc("approve_section_request", { p_request_id: reqId });
     if (error) return { ok: false, error: error.message };
     if (!data?.ok) return { ok: false, error: data?.error || "Approval failed." };
     await loadStudyHub();
-    return { ok: true, sectionId: data.section_id, joinCode: data.join_code };
+    return { ok: true, sectionId: data.sectionId, joinCode: data.joinCode };
   }
   // Admin: reject a pending section-creation request.
   async function rejectSectionRequest(reqId, note = "") {
-    const { data, error } = await supabase.rpc("reject_section_request", { p_req_id: reqId, p_note: note.trim() || null });
+    const { data, error } = await supabase.rpc("reject_section_request", { p_request_id: reqId, p_note: note.trim() || null });
     if (error) return { ok: false, error: error.message };
     if (!data?.ok) return { ok: false, error: data?.error || "Rejection failed." };
     await loadStudyHub();
@@ -2678,18 +2679,24 @@ export function AppProvider({ children }) {
   // Officer decision. Approve = add the member FIRST, then mark the request,
   // so a failure can't strand an approved request without a membership.
   async function decideClubJoinRequest(request, approve) {
-    if (approve) {
-      const { error: memErr } = await supabase.from("club_members")
-        .insert({ club_id: request.clubId, user_id: request.userId, role: "member", added_by: currentUser.id });
-      // 23505 = already a member (e.g. added manually meanwhile) — fine, still mark the request.
-      if (memErr && memErr.code !== "23505") return { ok: false, error: memErr.message };
-    }
+    // Claim the request FIRST — a 0-row update means it was already decided (race,
+    // double-click) or we're not an officer; either way don't touch the roster.
+    // (The old order inserted the member before this check, so a lost race still
+    // added the member while the UI reported a failure.)
     const { data: rows, error } = await supabase.from("club_join_requests")
       .update({ status: approve ? "approved" : "denied", decided_by: currentUser.id, decided_at: new Date().toISOString() })
       .eq("id", request.id)
+      .eq("status", "pending")
       .select("id");
     if (error) return { ok: false, error: error.message };
-    if (!rows || rows.length === 0) return { ok: false, error: "Only this club's officers can decide requests." };
+    if (!rows || rows.length === 0) return { ok: false, error: "This request was already decided, or only this club's officers can decide it." };
+    if (approve) {
+      const { error: memErr } = await supabase.from("club_members")
+        .insert({ club_id: request.clubId, user_id: request.userId, role: "member", added_by: currentUser.id });
+      // 23505 = already a member (e.g. added manually meanwhile) — fine, request is marked.
+      if (memErr && memErr.code !== "23505")
+        return { ok: false, error: `Request approved, but adding the member failed: ${memErr.message}. Add them from the club's member manager.` };
+    }
     await loadClubs();
     return { ok: true };
   }
