@@ -4,7 +4,7 @@ import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { Avatar, Badge, EmptyState, Loading, Modal, Button, useToast } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
-import { waHref } from "../../components/featureKit.jsx";
+import { waHref, mailHref } from "../../components/featureKit.jsx";
 
 // Read-only label like "Intake 49 · Section 5"
 function metaLine(s, full = false) {
@@ -216,7 +216,7 @@ export default function StudentDirectory() {
                   <Check size={14} /> You're connected — contact unlocked
                 </p>
                 {selected.email && (
-                  <a href={`mailto:${selected.email}`} className="flex min-w-0 items-center gap-2 rounded-md border border-brd bg-surface-2 p-3 text-base text-brand hover:bg-surface-3">
+                  <a href={mailHref(selected.email) || `mailto:${selected.email}`} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2 rounded-md border border-brd bg-surface-2 p-3 text-base text-brand hover:bg-surface-3">
                     <Mail size={15} className="shrink-0" /> <span className="truncate">{selected.email}</span>
                   </a>
                 )}

@@ -4,7 +4,7 @@ import {
   Button, Card, Badge, EmptyState, Avatar, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
-import { AccentTile, waHref } from "../../components/featureKit.jsx";
+import { AccentTile, waHref, mailHref } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 
@@ -132,7 +132,9 @@ function FacultyCard({ f, dept, saved, onToggleSave }) {
       <div className="mt-4 flex items-center justify-between border-t border-brd pt-3">
         {f.email ? (
           <a
-            href={`mailto:${f.email}`}
+            href={mailHref(f.email) || `mailto:${f.email}`}
+            target="_blank"
+            rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
             title={f.email}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-3 hover:text-indigo-700 dark:hover:text-indigo-300"
@@ -570,7 +572,9 @@ export function FacultyProfile({ id }) {
               <div className="mt-3 space-y-2.5">
                 {f.email ? (
                   <a
-                    href={`mailto:${f.email}`}
+                    href={mailHref(f.email) || `mailto:${f.email}`}
+                    target="_blank"
+                    rel="noreferrer"
                     className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-brand px-4 text-base font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
                   >
                     <Icon name="Mail" size={16} /> Email

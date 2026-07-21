@@ -9,7 +9,7 @@ import { Card, Button, Field, Textarea, FileUpload, Modal, Avatar, Badge, EmptyS
 import { AppShell } from "../../components/AppShell.jsx";
 import { ItemPhoto, ItemTypeBadge } from "../../components/ItemBits.jsx";
 import { ITEM_CATEGORY_ICON, fmtDate, findItemMatches } from "../../lib/helpers.js";
-import { waHref } from "../../components/featureKit.jsx";
+import { waHref, mailHref } from "../../components/featureKit.jsx";
 
 function ClaimModal({ open, item, onClose, onSubmitted }) {
   const { addClaim } = useApp();
@@ -131,7 +131,7 @@ function ContactCard({ user, label }) {
           <Avatar name={user.name} src={user.avatar} />
           <p className="truncate text-base font-semibold text-ink">{user.name}</p>
         </div>
-        <a href={`mailto:${user.email}`} className="flex min-w-0 items-center gap-1.5 text-xs text-brand hover:text-brand-700">
+        <a href={mailHref(user.email) || `mailto:${user.email}`} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-xs text-brand hover:text-brand-700">
           <Mail size={13} className="shrink-0" /> <span className="truncate">{user.email}</span>
         </a>
         {wa && (
