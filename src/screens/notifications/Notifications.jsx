@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
-import { Card, Badge, EmptyState, Button } from "../../components/ui.jsx";
+import { Card, Badge, EmptyState, Button, useToast } from "../../components/ui.jsx";
 import { Icon } from "../../components/Icon.jsx";
 import {
   CheckCheck, SlidersHorizontal, Bell, BellOff, Clock, ChevronLeft, X,
@@ -97,8 +97,12 @@ function targetFor(sector, role) {
 // Notifications center
 // ---------------------------------------------------------------------------
 export function Notifications() {
-  const { currentUser, notifications, unreadNotifCount, markNotifRead, markAllNotifsRead, deleteNotification } = useApp();
+  const { currentUser, notifications, unreadNotifCount, markNotifRead, markAllNotifsRead, deleteNotification,
+    respondConnection, reloadMessages } = useApp();
+  const toast = useToast();
   const [filter, setFilter] = useState("all"); // all | unread
+  const [acting, setActing] = useState(null);   // notification id currently being acted on
+  const [handled, setHandled] = useState({});    // { [notifId]: 'accepted' | 'declined' }
 
   const list = filter === "unread" ? notifications.filter((n) => !n.read) : notifications;
   const BUCKET_LABEL = { new: "New", today: "Today", earlier: "Earlier" };
@@ -112,6 +116,23 @@ export function Notifications() {
     if (n.refType === "dm" && n.refId) { navigate(`/messages/dm/${n.refId}`); return; }
     const to = targetFor(n.sector, currentUser?.role);
     if (to) navigate(to);
+  }
+
+  // Accept / decline a connection request straight from the notification
+  // (refId = the requester's id). respondConnection accepts or deletes the row.
+  async function respondToRequest(n, accept) {
+    if (!n.refId) return;
+    setActing(n.id);
+    const res = await respondConnection(n.refId, accept);
+    setActing(null);
+    if (!n.read) markNotifRead(n.id);
+    setHandled((h) => ({ ...h, [n.id]: accept ? "accepted" : "declined" }));
+    if (res.ok) {
+      if (accept) { reloadMessages(); toast?.({ type: "success", title: "Connection accepted", message: "You can now message each other." }); }
+      else toast?.({ type: "success", title: "Request declined" });
+    } else {
+      toast?.({ type: "info", title: res.error || "This request was already handled." });
+    }
   }
 
   return (
@@ -179,16 +200,30 @@ export function Notifications() {
                       <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${TONE_BG[meta.tone] || TONE_BG.slate}`}>
                         <Icon name={meta.icon} size={17} />
                       </span>
-                      <button onClick={() => openNotif(n)} className="min-w-0 flex-1 text-left">
-                        <div className="flex items-start justify-between gap-3">
-                          <p className={`truncate text-base ${n.read ? "font-semibold text-ink" : "font-semibold text-ink"}`}>
-                            {!n.read && <span className="mr-1.5 inline-block h-1.5 w-1.5 -translate-y-0.5 rounded-full bg-brand align-middle" />}
-                            {n.title}
-                          </p>
-                          <span className="shrink-0 text-xs text-ink-3">{timeAgo(n.createdAt)}</span>
-                        </div>
-                        {n.body && <p className="mt-0.5 line-clamp-2 text-base text-ink-3">{n.body}</p>}
-                      </button>
+                      <div className="min-w-0 flex-1">
+                        <button onClick={() => openNotif(n)} className="block w-full text-left">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="truncate text-base font-semibold text-ink">
+                              {!n.read && <span className="mr-1.5 inline-block h-1.5 w-1.5 -translate-y-0.5 rounded-full bg-brand align-middle" />}
+                              {n.title}
+                            </p>
+                            <span className="shrink-0 text-xs text-ink-3">{timeAgo(n.createdAt)}</span>
+                          </div>
+                          {n.body && <p className="mt-0.5 line-clamp-2 text-base text-ink-3">{n.body}</p>}
+                        </button>
+                        {n.refType === "connection_request" && (
+                          handled[n.id] ? (
+                            <p className="mt-2 text-sm font-semibold text-ink-3">
+                              {handled[n.id] === "accepted" ? "✓ Connection accepted" : "Request declined"}
+                            </p>
+                          ) : (
+                            <div className="mt-2 flex gap-2">
+                              <Button size="sm" loading={acting === n.id} onClick={() => respondToRequest(n, true)}>Accept</Button>
+                              <Button size="sm" variant="secondary" disabled={acting === n.id} onClick={() => respondToRequest(n, false)}>Decline</Button>
+                            </div>
+                          )
+                        )}
+                      </div>
                       <button
                         onClick={() => deleteNotification(n.id)}
                         title="Dismiss"
