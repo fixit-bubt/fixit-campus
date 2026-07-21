@@ -9,6 +9,7 @@ import { Card, Button, Field, Textarea, FileUpload, Modal, Avatar, Badge, EmptyS
 import { AppShell } from "../../components/AppShell.jsx";
 import { ItemPhoto, ItemTypeBadge } from "../../components/ItemBits.jsx";
 import { ITEM_CATEGORY_ICON, fmtDate, findItemMatches } from "../../lib/helpers.js";
+import { waHref } from "../../components/featureKit.jsx";
 
 function ClaimModal({ open, item, onClose, onSubmitted }) {
   const { addClaim } = useApp();
@@ -118,7 +119,7 @@ function ClaimModal({ open, item, onClose, onSubmitted }) {
 }
 
 function ContactCard({ user, label }) {
-  const wa = user.whatsapp ? user.whatsapp.replace(/[^0-9]/g, "") : "";
+  const wa = waHref(user.whatsapp);
   return (
     <Card className="p-5">
       <div className="flex items-center gap-1.5 text-base font-semibold text-success">
@@ -135,7 +136,7 @@ function ContactCard({ user, label }) {
         </a>
         {wa && (
           <a
-            href={`https://wa.me/${wa}`}
+            href={wa}
             target="_blank"
             rel="noreferrer"
             className="flex min-w-0 items-center gap-1.5 text-xs text-success hover:text-success"

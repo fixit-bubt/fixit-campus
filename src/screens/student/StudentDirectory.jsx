@@ -4,6 +4,7 @@ import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { Avatar, Badge, EmptyState, Loading, Modal, Button, useToast } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
+import { waHref } from "../../components/featureKit.jsx";
 
 // Read-only label like "Intake 49 · Section 5"
 function metaLine(s, full = false) {
@@ -219,8 +220,8 @@ export default function StudentDirectory() {
                     <Mail size={15} className="shrink-0" /> <span className="truncate">{selected.email}</span>
                   </a>
                 )}
-                {selected.whatsapp && selected.whatsapp.replace(/[^0-9]/g, "") ? (
-                  <a href={`https://wa.me/${selected.whatsapp.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2 rounded-md border border-brd bg-surface-2 p-3 text-base text-success hover:bg-surface-3">
+                {waHref(selected.whatsapp) ? (
+                  <a href={waHref(selected.whatsapp)} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2 rounded-md border border-brd bg-surface-2 p-3 text-base text-success hover:bg-surface-3">
                     <MessageCircle size={15} className="shrink-0" /> <span className="truncate">{selected.whatsapp}</span>
                   </a>
                 ) : (
