@@ -238,7 +238,7 @@ export function PublicFaculty() {
           <select
             value={deptId}
             onChange={(e) => setDeptId(e.target.value)}
-            className="h-11 rounded-md border border-brd bg-surface px-3 text-base text-ink focus:border-brand focus:outline-none sm:w-72"
+            className="h-11 w-full min-w-0 rounded-md border border-brd bg-surface px-3 text-base text-ink focus:border-brand focus:outline-none sm:w-72"
           >
             <option value="all">All departments</option>
             {(q.data?.depts || []).map((d) => (
@@ -560,7 +560,7 @@ export function PublicRoutines() {
             <select
               value={dept}
               onChange={(e) => setDept(e.target.value)}
-              className="h-10 rounded-md border border-brd bg-surface px-3 text-base text-ink focus:border-brand focus:outline-none"
+              className="h-10 w-full min-w-0 rounded-md border border-brd bg-surface px-3 text-base text-ink focus:border-brand focus:outline-none sm:w-64"
             >
               <option value="all">All departments</option>
               {depts.map((d) => <option key={d} value={d}>{d}</option>)}
