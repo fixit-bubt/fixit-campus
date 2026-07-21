@@ -143,6 +143,16 @@ export function waHref(phone) {
   return `https://wa.me/${d}`;
 }
 
+// Open a compose window for an email address. Plain mailto: silently does
+// nothing on desktop browsers with no configured mail app, so we use Gmail's
+// web compose (opens for any Google session — this user base is Gmail-based).
+// Returns null for a missing/invalid address so the caller can hide the button.
+export function mailHref(email) {
+  const e = String(email || "").trim();
+  if (!e || !e.includes("@")) return null;
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(e)}`;
+}
+
 export function useTick(ms = 30000) {
   const [, setN] = React.useState(0);
   React.useEffect(() => {
