@@ -1,12 +1,12 @@
 import React from "react";
-import { CircleHelp, UserCheck } from "lucide-react";
+import { CircleHelp, UserCheck, ThumbsUp } from "lucide-react";
 import { Card, Button, StatusBadge, Avatar } from "./ui.jsx";
 import { useApp } from "../data/store.jsx";
 import { CATEGORY_ICON, fmtDate } from "../lib/helpers.js";
 
 // Reports table with a per-row Assign/Reassign action (admin).
 export function ReportsTable({ rows = [], onAssign, onOpen }) {
-  const { userById } = useApp();
+  const { userById, reportVoteCounts = {} } = useApp();
   return (
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
@@ -16,6 +16,7 @@ export function ReportsTable({ rows = [], onAssign, onOpen }) {
               <th className="px-4 py-3 font-medium">Report</th>
               <th className="px-4 py-3 font-medium">Location</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Me too</th>
               <th className="px-4 py-3 font-medium">Assigned</th>
               <th className="px-4 py-3 font-medium">Date</th>
               <th className="px-4 py-3 font-medium text-right">Action</th>
@@ -44,6 +45,16 @@ export function ReportsTable({ rows = [], onAssign, onOpen }) {
                     {r.room ? `, ${r.room}` : ""}
                   </td>
                   <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {(reportVoteCounts[r.uuid] || 0) > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-ink-2">
+                        <ThumbsUp size={14} className="text-brand" />
+                        {reportVoteCounts[r.uuid]}
+                      </span>
+                    ) : (
+                      <span className="text-ink-3">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {staff ? (
                       <span className="inline-flex items-center gap-2">
