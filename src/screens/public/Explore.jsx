@@ -260,7 +260,7 @@ export function PublicFaculty() {
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(f); } }}
-                className="flex cursor-pointer items-start gap-4 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:border-brd-2 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="flex min-w-0 cursor-pointer items-start gap-4 p-5 transition-all duration-150 hover:-translate-y-0.5 hover:border-brd-2 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Avatar name={f.name} src={f.photo_url} size={52} />
                 <div className="min-w-0">
