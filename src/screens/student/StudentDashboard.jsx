@@ -21,7 +21,7 @@ export default function StudentDashboard() {
         subtitle="Here's what's happening with your campus reports."
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <StatCard label="My Open" value={count("Open")} icon={CircleDot} tone="amber" />
         <StatCard label="In Progress" value={count("In Progress")} icon={Loader} tone="blue" />
         <StatCard label="Resolved" value={count("Resolved")} icon={CircleCheck} tone="emerald" />

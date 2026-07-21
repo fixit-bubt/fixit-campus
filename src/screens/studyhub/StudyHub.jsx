@@ -214,7 +214,7 @@ export function StudyHub() {
 
       {isCR(myRole) && <CRBanner section={section} sectionNumber={sectionNumber} />}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Courses" value={stats.courses} icon="BookOpen" tone={ACCENT} />
         <StatCard label="Materials" value={stats.files} icon="FileText" tone="slate" />
         <StatCard label="Question papers" value={stats.questions} icon="FileQuestion" tone="slate" />
@@ -1627,8 +1627,8 @@ function SettingsTab({ section, intake, onTogglePublic, toggleBusy }) {
         <Card className="p-4">
           {section.joinCode ? (
             <div className="flex items-center gap-3">
-              <span className="flex-1 rounded-md bg-surface-3 px-4 py-2.5 font-mono text-3xl font-bold tracking-[0.25em] text-ink text-center">{section.joinCode}</span>
-              <Button variant="secondary" icon={copied ? "Check" : "Copy"} onClick={copyCode}>{copied ? "Copied!" : "Copy"}</Button>
+              <span className="min-w-0 flex-1 break-all rounded-md bg-surface-3 px-4 py-2.5 text-center font-mono text-2xl font-bold tracking-[0.15em] text-ink sm:text-3xl sm:tracking-[0.25em]">{section.joinCode}</span>
+              <Button variant="secondary" className="shrink-0" icon={copied ? "Check" : "Copy"} onClick={copyCode}>{copied ? "Copied!" : "Copy"}</Button>
             </div>
           ) : (
             <p className="text-base text-ink-3">No join code assigned yet — contact admin.</p>
