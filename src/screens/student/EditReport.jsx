@@ -43,7 +43,7 @@ export default function EditReport({ id }) {
         <PageHeader title="Edit Report" subtitle={`Editing ${id} · you can edit while it's still Open.`} />
         <ReportForm
           mode="edit"
-          initial={{ category: report.category, description: report.description, building: report.building, room: report.room, photo: report.photo }}
+          initial={{ category: report.category, description: report.description, building: report.building, room: report.room, photo: report.photo, showOnBoard: report.showOnBoard }}
           onSubmit={handleSubmit}
           onCancel={() => navigate(`/reports/${id}`)}
         />

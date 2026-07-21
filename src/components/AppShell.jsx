@@ -44,6 +44,7 @@ const NAV_BY_ROLE = {
     { section: null, items: [
       { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/dashboard" },
       { key: "reports", label: "My Reports", icon: "FileText", path: "/reports" },
+      { key: "campus-issues", label: "Campus Issues", icon: "Megaphone", path: "/campus-issues" },
     ]},
     { section: "Campus Life", items: [STUDY_HUB, COVER_PAGE, ...CAMPUS_LIFE] },
     { section: "Services", items: [
