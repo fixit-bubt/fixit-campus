@@ -55,11 +55,30 @@ function toReport(r, timeline) {
     status: r.status,
     studentId: r.reporter_id,
     assignedStaffId: r.assigned_staff_id,
+    showOnBoard: r.show_on_board !== false, // opt-in flag for the Campus Issues board
     createdAt: day(r.created_at),
     timeline:
       timeline && timeline.length
         ? timeline
         : [{ status: r.status, date: day(r.created_at) }],
+  };
+}
+
+// campus_issues_feed() row -> board card shape. The row carries NO reporter
+// identity (the RPC never selects reporter_id / assigned_staff_id) — the board
+// is anonymous by construction. See migration 0079.
+function toCampusIssue(r) {
+  return {
+    uuid: r.id,
+    id: r.code,
+    category: r.category,
+    description: r.description,
+    building: r.building,
+    room: r.room || "",
+    status: r.status,
+    createdAt: day(r.created_at),
+    voteCount: Number(r.vote_count) || 0,
+    voted: !!r.voted,
   };
 }
 
@@ -377,6 +396,8 @@ export function AppProvider({ children }) {
 
   // ---- reports (real Supabase) ----
   const [reports, setReports] = useState([]);
+  // ---- campus issues board: anonymous, campus-wide report feed (0079) ----
+  const [campusIssues, setCampusIssues] = useState([]);
 
   // ---- items / claims (real Supabase) ----
   const [items, setItems] = useState([]);
@@ -538,6 +559,19 @@ export function AppProvider({ children }) {
     }
     if (!stillCurrent(uid)) return;
     setReports((rows || []).map((r) => toReport(r, byReport[r.id])));
+  }, [currentUser?.id]);
+
+  // ---- campus issues board: anonymous, campus-wide feed via a SECURITY
+  // DEFINER RPC (reporter identity is stripped in the DB; see 0079). Non-
+  // critical: if the RPC isn't deployed yet, show an empty board rather than
+  // failing the whole data load.
+  const loadCampusIssues = useCallback(async () => {
+    if (!currentUser) { setCampusIssues([]); return; }
+    const uid = currentUser.id;
+    const { data, error } = await supabase.rpc("campus_issues_feed");
+    if (!stillCurrent(uid)) return;
+    if (error) { setCampusIssues([]); return; }
+    setCampusIssues((data || []).map(toCampusIssue));
   }, [currentUser?.id]);
 
   const loadItems = useCallback(async () => {
@@ -905,11 +939,11 @@ export function AppProvider({ children }) {
   useEffect(() => {
     let active = true;
     if (currentUser?.id) { setDataLoading(true); setDataError(false); }
-    Promise.all([refreshUsers(), loadReports(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs(), loadJobs(), loadNotifications(), loadCalendar(), loadRoutines()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadCampusIssues(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs(), loadJobs(), loadNotifications(), loadCalendar(), loadRoutines()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs, loadJobs, loadNotifications, loadCalendar, loadRoutines]);
+  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadCampusIssues, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs, loadJobs, loadNotifications, loadCalendar, loadRoutines]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -1179,11 +1213,12 @@ export function AppProvider({ children }) {
         room: form.room?.trim() || null,
         photo_url,
         reporter_id: currentUser.id,
+        show_on_board: form.showOnBoard !== false,
       })
       .select("code")
       .single();
     if (error) return { ok: false, error: error.message };
-    await loadReports();
+    await Promise.all([loadReports(), loadCampusIssues()]);
     return { ok: true, id: data.code };
   }
 
@@ -1202,12 +1237,13 @@ export function AppProvider({ children }) {
         building: form.building.trim(),
         room: form.room?.trim() || null,
         photo_url,
+        show_on_board: form.showOnBoard !== false,
       })
       .eq("code", id)
       .select("code");
     if (error) return { ok: false, error: error.message };
     if (!data || data.length === 0) { await loadReports(); return { ok: false, error: "This report can no longer be edited — it may have been moved out of Open." }; }
-    await loadReports();
+    await Promise.all([loadReports(), loadCampusIssues()]);
     return { ok: true };
   }
 
@@ -1237,7 +1273,32 @@ export function AppProvider({ children }) {
       .from("reports").update({ deleted_at: new Date().toISOString() }).eq("code", id).select("code");
     if (error) return { ok: false, error: error.message };
     if (!data || data.length === 0) { await loadReports(); return { ok: false, error: "This report can no longer be deleted — it may have been moved out of Open." }; }
-    await loadReports();
+    await Promise.all([loadReports(), loadCampusIssues()]);
+    return { ok: true };
+  }
+
+  // Reporter opts their own report onto / off the Campus Issues board at any
+  // status (server RPC bypasses the Open-only reports_update policy; Safety is
+  // always kept private). Refreshes both the private list and the board cache.
+  async function setReportBoardVisibility(uuid, visible) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const { error } = await supabase.rpc("set_report_board_visibility", { p_report_id: uuid, p_visible: visible });
+    if (error) return { ok: false, error: error.message };
+    await Promise.all([loadReports(), loadCampusIssues()]);
+    return { ok: true };
+  }
+
+  // Add/remove this user's "me too" on a board report. The server (0079)
+  // enforces board-eligibility and is the count of record; we patch the cached
+  // board from the returned fresh count + state.
+  async function toggleReportVote(uuid) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const { data, error } = await supabase.rpc("toggle_report_vote", { p_report_id: uuid });
+    if (error) return { ok: false, error: error.message };
+    const row = Array.isArray(data) ? data[0] : data;
+    const voteCount = Number(row?.vote_count) || 0;
+    const voted = !!row?.voted;
+    setCampusIssues((s) => s.map((r) => (r.uuid === uuid ? { ...r, voteCount, voted } : r)));
     return { ok: true };
   }
 
@@ -2957,6 +3018,7 @@ export function AppProvider({ children }) {
     requestPasswordReset, resetPasswordWithCode, verifySignupCode, resendSignupCode,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
+    campusIssues, reloadCampusIssues: loadCampusIssues, toggleReportVote, setReportBoardVisibility,
     setRole, updateProfile, changePassword, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact, getProofUrl,
     getStudentDirectory, sendConnectionRequest, respondConnection, cancelConnectionRequest,
   };

@@ -6,7 +6,7 @@ import { CATEGORIES } from "../../lib/helpers.js";
 // Shared by "Report an Issue" (create) and "Edit Report" (edit).
 export function ReportForm({ initial, mode = "create", onSubmit, onCancel }) {
   const [form, setForm] = useState(
-    initial || { category: "", description: "", building: "", room: "", photo: null }
+    initial || { category: "", description: "", building: "", room: "", photo: null, showOnBoard: true }
   );
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -28,7 +28,10 @@ export function ReportForm({ initial, mode = "create", onSubmit, onCancel }) {
     if (Object.keys(er).length) return;
     setSaving(true);
     try {
-      await onSubmit(form);
+      // Safety / Security reports are never shown on the Campus Issues board,
+      // whatever the checkbox held before the category was chosen.
+      const boardable = form.category !== "Safety / Security";
+      await onSubmit({ ...form, showOnBoard: boardable && form.showOnBoard !== false });
     } finally {
       setSaving(false);
     }
@@ -72,6 +75,29 @@ export function ReportForm({ initial, mode = "create", onSubmit, onCancel }) {
             onChange={(url, file) => setForm((f) => ({ ...f, photo: url, photoFile: file }))}
           />
         </Field>
+
+        {/* Campus Issues board opt-in — Safety / Security is always private. */}
+        {form.category === "Safety / Security" ? (
+          <p className="rounded-md border border-brd bg-surface-2 p-3 text-xs text-ink-3">
+            Safety &amp; Security reports are always private — they are never shown on the Campus Issues board.
+          </p>
+        ) : (
+          <label htmlFor="rf-board" className="flex cursor-pointer items-start gap-3 rounded-md border border-brd bg-surface-2 p-3">
+            <input
+              id="rf-board"
+              type="checkbox"
+              checked={form.showOnBoard !== false}
+              onChange={(e) => set("showOnBoard", e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
+            />
+            <span className="text-base text-ink-2">
+              <span className="font-semibold text-ink">Show this on the Campus Issues board</span>
+              <span className="mt-0.5 block text-xs text-ink-3">
+                Lets other students see the issue and add a “Me too” instead of reporting it again. Your name is never shown.
+              </span>
+            </span>
+          </label>
+        )}
       </Card>
 
       <div className="flex justify-end gap-3">

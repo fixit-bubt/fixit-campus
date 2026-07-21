@@ -14,6 +14,7 @@ import VerifyEmail from "./screens/public/VerifyEmail.jsx";
 import StudentDashboard from "./screens/student/StudentDashboard.jsx";
 import StudentDirectory from "./screens/student/StudentDirectory.jsx";
 import MyReports from "./screens/student/MyReports.jsx";
+import CampusIssues from "./screens/student/CampusIssues.jsx";
 import ReportIssue from "./screens/student/ReportIssue.jsx";
 import EditReport from "./screens/student/EditReport.jsx";
 import ReportDetail from "./screens/ReportDetail.jsx";
@@ -160,6 +161,7 @@ function AuthedRoutes({ path }) {
   if (path === "/dashboard") return <RequireRole role="Student"><StudentDashboard /></RequireRole>;
   if (path === "/students") return <RequireRole role="Student"><StudentDirectory /></RequireRole>;
   if (path === "/reports") return <RequireRole role="Student"><MyReports /></RequireRole>;
+  if (path === "/campus-issues") return <RequireRole role="Student"><CampusIssues /></RequireRole>;
   if (path === "/reports/new") return <RequireRole role="Student"><ReportIssue /></RequireRole>;
   if ((m = matchRoute("/reports/:id/edit", path))) return <RequireRole role="Student"><EditReport id={m.id} /></RequireRole>;
   // Report Detail is shared by the reporter (student), the assigned staff, and admins.

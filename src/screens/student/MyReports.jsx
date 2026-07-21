@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CirclePlus, Search, CircleHelp, Pencil, Trash2, ArrowRight, MapPin, Calendar, FileText, SearchX } from "lucide-react";
+import { CirclePlus, Search, CircleHelp, Pencil, Trash2, ArrowRight, MapPin, Calendar, FileText, SearchX, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { Card, Button, Modal, EmptyState, StatusBadge, Loading, useToast } from "../../components/ui.jsx";
@@ -7,8 +7,9 @@ import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import { CATEGORY_ICON, fmtDate } from "../../lib/helpers.js";
 
-function MyReportCard({ report, onView, onEdit, onDelete }) {
+function MyReportCard({ report, onView, onEdit, onDelete, onToggleBoard, boardBusy }) {
   const editable = report.status === "Open";
+  const boardable = report.category !== "Safety / Security";
   const CatIcon = CATEGORY_ICON[report.category] || CircleHelp;
   return (
     <Card className="p-5">
@@ -29,26 +30,45 @@ function MyReportCard({ report, onView, onEdit, onDelete }) {
           </div>
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-end gap-2 border-t border-brd pt-3">
-        {editable && (
-          <>
-            <Button size="sm" variant="ghost" icon={Pencil} onClick={onEdit}>Edit</Button>
-            <Button size="sm" variant="ghost" icon={Trash2} className="text-danger hover:bg-danger-bg" onClick={onDelete}>Delete</Button>
-          </>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-brd pt-3">
+        {boardable ? (
+          <button
+            type="button"
+            onClick={onToggleBoard}
+            disabled={boardBusy}
+            title={report.showOnBoard ? "Shown on Campus Issues — click to hide" : "Hidden from Campus Issues — click to show other students"}
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-ink-3 transition-colors hover:bg-surface-2 disabled:opacity-60"
+          >
+            {report.showOnBoard ? <Eye size={13} className="text-brand" /> : <EyeOff size={13} />}
+            {report.showOnBoard ? "On Campus Issues" : "Hidden from board"}
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-ink-3">
+            <EyeOff size={13} /> Private report
+          </span>
         )}
-        <Button size="sm" variant="secondary" iconRight={ArrowRight} onClick={onView}>View</Button>
+        <div className="flex items-center gap-2">
+          {editable && (
+            <>
+              <Button size="sm" variant="ghost" icon={Pencil} onClick={onEdit}>Edit</Button>
+              <Button size="sm" variant="ghost" icon={Trash2} className="text-danger hover:bg-danger-bg" onClick={onDelete}>Delete</Button>
+            </>
+          )}
+          <Button size="sm" variant="secondary" iconRight={ArrowRight} onClick={onView}>View</Button>
+        </div>
       </div>
     </Card>
   );
 }
 
 export default function MyReports() {
-  const { currentUser, reports, deleteReport, dataLoading } = useApp();
+  const { currentUser, reports, deleteReport, setReportBoardVisibility, dataLoading } = useApp();
   const toast = useToast();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [toDelete, setToDelete] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [boardBusyId, setBoardBusyId] = useState(null);
   if (!currentUser) return null;
 
   const mine = reports.filter((r) => r.studentId === currentUser.id);
@@ -71,6 +91,28 @@ export default function MyReports() {
       );
     })
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "") || (b.id ?? "").localeCompare(a.id ?? ""));
+
+  async function toggleBoard(r) {
+    if (boardBusyId) return;
+    setBoardBusyId(r.uuid);
+    const wasShown = r.showOnBoard;
+    try {
+      const res = await setReportBoardVisibility(r.uuid, !wasShown);
+      if (res.ok) {
+        toast({
+          type: "success",
+          title: wasShown ? "Hidden from Campus Issues" : "Shown on Campus Issues",
+          message: wasShown
+            ? `${r.id} is no longer on the board.`
+            : `${r.id} is now visible to other students — anonymously.`,
+        });
+      } else {
+        toast({ type: "error", title: "Couldn't update", message: res.error });
+      }
+    } finally {
+      setBoardBusyId(null);
+    }
+  }
 
   async function confirmDelete() {
     if (busy) return;
@@ -131,6 +173,8 @@ export default function MyReports() {
               onView={() => navigate(`/reports/${r.id}`)}
               onEdit={() => navigate(`/reports/${r.id}/edit`)}
               onDelete={() => setToDelete(r)}
+              onToggleBoard={() => toggleBoard(r)}
+              boardBusy={boardBusyId === r.uuid}
             />
           ))}
         </div>
