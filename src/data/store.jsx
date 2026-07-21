@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase.js";
 import { navigate } from "../lib/router.jsx";
@@ -148,6 +148,57 @@ function toNotification(r) {
     refType: r.reference_type || null,
     createdAt: r.created_at,
   };
+}
+
+// DB message row -> screen shape (migration 0081). createdAt kept raw ISO.
+function toMessage(r) {
+  return {
+    id: r.id,
+    kind: r.kind,                 // 'dm' | 'club' | 'section'
+    clubId: r.club_id || null,
+    sectionId: r.section_id || null,
+    peerLow: r.peer_low || null,
+    peerHigh: r.peer_high || null,
+    senderId: r.sender_id || null, // null = deleted account -> "Unknown"
+    body: r.body ?? "",
+    editedAt: r.edited_at || null,
+    deletedAt: r.deleted_at || null,
+    deletedBy: r.deleted_by || null,
+    createdAt: r.created_at,
+  };
+}
+
+// Canonical DM pair (lowercase, sorted) — matches the DB peer_low < peer_high
+// check (uuid bytewise order == JS string order on lowercase hex).
+function dmPair(a, b) {
+  const x = String(a).toLowerCase();
+  const y = String(b).toLowerCase();
+  return x < y ? { low: x, high: y } : { low: y, high: x };
+}
+
+// The realtime broadcast topic a message belongs to.
+function topicOf(m) {
+  if (m.kind === "dm") return `chat:dm:${m.peerLow}:${m.peerHigh}`;
+  if (m.kind === "club") return `chat:club:${m.clubId}`;
+  return `chat:section:${m.sectionId}`;
+}
+
+// The per-viewer conversation key (used for read markers + unread grouping).
+// For a DM this is the OTHER participant's id, so both people key the same thread
+// from their own side.
+function convKeyOf(m, myId) {
+  if (m.kind === "dm") return `dm:${m.peerLow === myId ? m.peerHigh : m.peerLow}`;
+  if (m.kind === "club") return `club:${m.clubId}`;
+  return `section:${m.sectionId}`;
+}
+
+// Merge incoming message rows into an existing array, de-duped by id (incoming
+// wins). Optional dropId removes an optimistic temp row once its real row lands.
+function mergeMessages(prev, incoming, dropId) {
+  const byId = new Map();
+  for (const m of prev) if (m.id !== dropId) byId.set(m.id, m);
+  for (const m of incoming) byId.set(m.id, m);
+  return Array.from(byId.values());
 }
 
 // DB academic_calendar row -> screen shape.
@@ -471,6 +522,12 @@ export function AppProvider({ children }) {
   const [notifications, setNotifications] = useState([]); // this user's rows, newest first
   const [notifPrefs, setNotifPrefs] = useState({});       // { [sector]: {enabled,push,email,inapp}, _paused:{enabled}, _quiet:{enabled} }
 
+  // ---- messaging (migration 0081, Student-only) ----
+  const [messages, setMessages] = useState([]);       // flat, de-duped by id; screens filter+sort
+  const [messageReads, setMessageReads] = useState({}); // { [convKey]: last_read_at ISO }
+  const [blockedUsers, setBlockedUsers] = useState([]); // user ids I have blocked
+  const [dmPartners, setDmPartners] = useState([]);     // user ids I have an accepted connection with
+
   // ---- academic calendar + routines ----
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [routines, setRoutines] = useState([]);
@@ -657,6 +714,33 @@ export function AppProvider({ children }) {
     });
     setNotifPrefs(map);
   }, [currentUser?.id]);
+
+  // Messaging (Student-only, migration 0081). Fetches the newest slice of
+  // RLS-visible messages + own read markers + own blocks + accepted-connection
+  // partner ids. Messages MERGE into existing state so paged-in older history
+  // isn't clobbered; the other three slices replace wholesale.
+  const loadMessages = useCallback(async () => {
+    const clear = () => { setMessages([]); setMessageReads({}); setBlockedUsers([]); setDmPartners([]); };
+    // Role gate: DMs need connections, group chats need club/section membership —
+    // all student-domain. Staff/Admin have no conversations (and Admin's full-club
+    // roster would otherwise derive every club's topic). Matches loadStudyHub.
+    if (!currentUser || currentUser.role !== "Student") { clear(); return; }
+    const uid = currentUser.id;
+    const [msgs, reads, blocks, conns] = await Promise.all([
+      supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(300),
+      supabase.from("message_reads").select("*"),
+      supabase.from("user_blocks").select("blocked_id").eq("blocker_id", uid),
+      supabase.from("connections").select("requester_id, addressee_id").eq("status", "accepted"),
+    ]);
+    if (!stillCurrent(uid)) return;
+    if (msgs.error || reads.error || blocks.error || conns.error) { setDataError(true); return; }
+    setMessages((prev) => mergeMessages(prev, (msgs.data || []).map(toMessage)));
+    const rmap = {};
+    (reads.data || []).forEach((r) => { rmap[r.conv_key] = r.last_read_at; });
+    setMessageReads(rmap);
+    setBlockedUsers((blocks.data || []).map((b) => b.blocked_id));
+    setDmPartners((conns.data || []).map((c) => (c.requester_id === uid ? c.addressee_id : c.requester_id)));
+  }, [currentUser?.id, currentUser?.role]);
 
   // Academic calendar (read by all; admin curates) + class/exam routines.
   const loadCalendar = useCallback(async () => {
@@ -958,11 +1042,94 @@ export function AppProvider({ children }) {
   useEffect(() => {
     let active = true;
     if (currentUser?.id) { setDataLoading(true); setDataError(false); }
-    Promise.all([refreshUsers(), loadReports(), loadCampusIssues(), loadReportVoteCounts(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs(), loadJobs(), loadNotifications(), loadCalendar(), loadRoutines()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadCampusIssues(), loadReportVoteCounts(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs(), loadJobs(), loadNotifications(), loadMessages(), loadCalendar(), loadRoutines()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadCampusIssues, loadReportVoteCounts, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs, loadJobs, loadNotifications, loadCalendar, loadRoutines]);
+  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadCampusIssues, loadReportVoteCounts, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs, loadJobs, loadNotifications, loadMessages, loadCalendar, loadRoutines]);
+
+  // ---- messaging realtime + derived (migration 0081) ----
+  // Keep the newest loadMessages in a ref so the debounced reconnect catch-up
+  // never fires a stale closure.
+  const loadMessagesRef = useRef(loadMessages);
+  useEffect(() => { loadMessagesRef.current = loadMessages; }, [loadMessages]);
+  const catchupTimer = useRef(null);
+  const debouncedLoadMessages = useCallback(() => {
+    if (catchupTimer.current) clearTimeout(catchupTimer.current);
+    catchupTimer.current = setTimeout(() => { loadMessagesRef.current?.(); }, 800);
+  }, []);
+
+  // The set of realtime topics I should be subscribed to: my DMs + my clubs + my
+  // approved sections. Sorted so the derived key is order-stable (an unordered
+  // fetch must not churn the subscription).
+  const myTopics = useMemo(() => {
+    if (!currentUser || currentUser.role !== "Student") return [];
+    const uid = currentUser.id;
+    const t = [];
+    for (const pid of dmPartners) { const { low, high } = dmPair(uid, pid); t.push(`chat:dm:${low}:${high}`); }
+    for (const m of clubMembers) if (m.userId === uid && m.clubId) t.push(`chat:club:${m.clubId}`);
+    for (const m of studyMembers) if (m.userId === uid && m.status === "approved" && m.sectionId) t.push(`chat:section:${m.sectionId}`);
+    return Array.from(new Set(t)).sort();
+  }, [currentUser?.id, currentUser?.role, dmPartners, clubMembers, studyMembers]);
+  const myTopicsRef = useRef(myTopics);
+  myTopicsRef.current = myTopics;
+  const topicKey = myTopics.join("|"); // effect depends on this string, not the array ref
+
+  useEffect(() => {
+    if (!currentUser?.id || !topicKey) return;
+    const uid = currentUser.id;
+    let channels = [];
+    let cancelled = false;
+    (async () => {
+      // Private channels authorize against the JWT at JOIN — attach it first so
+      // the first subscribe doesn't race an empty token and get rejected.
+      try { await supabase.realtime.setAuth(); } catch { /* token also attaches on connect */ }
+      if (cancelled || !stillCurrent(uid)) return;
+      channels = myTopicsRef.current.map((topic) => {
+        const onRow = ({ payload }) => {
+          if (!stillCurrent(uid)) return;
+          const rec = payload?.record;
+          if (rec) setMessages((ms) => mergeMessages(ms, [toMessage(rec)]));
+        };
+        const ch = supabase.channel(topic, { config: { private: true } });
+        ch.on("broadcast", { event: "INSERT" }, onRow)
+          .on("broadcast", { event: "UPDATE" }, onRow)
+          .subscribe((status) => {
+            if (status === "SUBSCRIBED") debouncedLoadMessages();     // catch up on (re)connect
+            else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") console.warn("[messages] channel", topic, status);
+          });
+        return ch;
+      });
+    })();
+    return () => { cancelled = true; channels.forEach((ch) => supabase.removeChannel(ch)); };
+  }, [currentUser?.id, topicKey, debouncedLoadMessages]);
+
+  // Unread per conversation. A missing read-marker means the whole thread is
+  // unread (epoch 0), NOT zero. Dates parsed, never string-compared (server and
+  // client ISO offsets differ lexically).
+  const unreadByConv = useMemo(() => {
+    const me = currentUser?.id;
+    if (!me) return {};
+    // Only count conversations the user can actually OPEN. A deactivated club is
+    // still SELECT-able via RLS (club_is_member ignores is_active) but has no
+    // nav row / thread — counting it would leave a permanent, unclearable badge.
+    const reachable = new Set();
+    for (const pid of dmPartners) reachable.add(`dm:${pid}`);
+    for (const m of clubMembers) if (m.userId === me) reachable.add(`club:${m.clubId}`);
+    for (const m of studyMembers) if (m.userId === me && m.status === "approved") reachable.add(`section:${m.sectionId}`);
+    const out = {};
+    for (const m of messages) {
+      if (m.senderId === me || m.deletedAt) continue;
+      const key = convKeyOf(m, me);
+      if (!reachable.has(key)) continue;
+      if (new Date(m.createdAt) > new Date(messageReads[key] ?? 0)) out[key] = (out[key] || 0) + 1;
+    }
+    return out;
+  }, [messages, messageReads, dmPartners, clubMembers, studyMembers, currentUser?.id]);
+  const totalUnreadMessages = useMemo(
+    () => Object.values(unreadByConv).reduce((a, b) => a + b, 0),
+    [unreadByConv]
+  );
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -1049,6 +1216,7 @@ export function AppProvider({ children }) {
       setStudyIntakeBallots([]); setClubs([]); setClubMembers([]); setClubPosts([]);
       setJobs([]); setJobReports([]); setJobBookmarks([]);
       setNotifications([]); setNotifPrefs({}); setCalendarEvents([]); setRoutines([]);
+      setMessages([]); setMessageReads({}); setBlockedUsers([]); setDmPartners([]);
       navigate("/");
     }
   }
@@ -2982,6 +3150,147 @@ export function AppProvider({ children }) {
     return { ok: true };
   }
 
+  // ---- messaging mutators + selectors (migration 0081) ----
+  // conv key from a thread's (kind, id): for a DM `id` IS the other user's id.
+  const messageConvKey = (kind, id) => `${kind}:${id}`;
+
+  // Messages for one thread, oldest-first (screens render bottom-anchored).
+  const messageThread = useCallback((kind, id) => {
+    const me = currentUser?.id;
+    const rows = messages.filter((m) => {
+      if (m.kind !== kind) return false;
+      if (kind === "dm") { const { low, high } = dmPair(me, id); return m.peerLow === low && m.peerHigh === high; }
+      if (kind === "club") return m.clubId === id;
+      return m.sectionId === id;
+    });
+    return rows.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  }, [messages, currentUser?.id]);
+
+  const isBlocked = (id) => blockedUsers.includes(id);
+
+  async function sendMessage(kind, id, body) {
+    const text = (body || "").trim();
+    if (!currentUser || !text) return { ok: false };
+    const me = currentUser.id;
+    const tempId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `tmp-${Date.now()}-${Math.random()}`;
+    const row = { kind, sender_id: me, body: text };
+    const optimistic = {
+      id: tempId, kind, senderId: me, body: text, createdAt: new Date().toISOString(), pending: true,
+      clubId: null, sectionId: null, peerLow: null, peerHigh: null, editedAt: null, deletedAt: null, deletedBy: null,
+    };
+    if (kind === "dm") { const { low, high } = dmPair(me, id); row.peer_low = low; row.peer_high = high; optimistic.peerLow = low; optimistic.peerHigh = high; }
+    else if (kind === "club") { row.club_id = id; optimistic.clubId = id; }
+    else { row.section_id = id; optimistic.sectionId = id; }
+    setMessages((ms) => [optimistic, ...ms]);
+    const { data, error } = await supabase.from("messages").insert(row).select("*").single();
+    if (error) {
+      setMessages((ms) => ms.filter((m) => m.id !== tempId));
+      return { ok: false, error: kind === "dm"
+        ? "You can only message connected students who haven't blocked you."
+        : "Couldn't send — you may no longer have access to this chat." };
+    }
+    setMessages((ms) => mergeMessages(ms, [toMessage(data)], tempId)); // drop temp, add real (broadcast echo dedups by id)
+    return { ok: true };
+  }
+
+  async function editMessage(msgId, body) {
+    const text = (body || "").trim();
+    if (!text) return { ok: false, error: "Message can't be empty." };
+    const prev = messages.find((m) => m.id === msgId);
+    setMessages((ms) => ms.map((m) => (m.id === msgId ? { ...m, body: text, editedAt: new Date().toISOString() } : m)));
+    const { data, error } = await supabase.from("messages").update({ body: text }).eq("id", msgId).select("*").single();
+    if (error) { if (prev) setMessages((ms) => ms.map((m) => (m.id === msgId ? prev : m))); return { ok: false, error: error.message }; }
+    setMessages((ms) => mergeMessages(ms, [toMessage(data)]));
+    return { ok: true };
+  }
+
+  async function removeMessage(msgId) {
+    const prev = messages.find((m) => m.id === msgId);
+    const now = new Date().toISOString();
+    setMessages((ms) => ms.map((m) => (m.id === msgId ? { ...m, deletedAt: now, deletedBy: currentUser?.id, body: "" } : m)));
+    const { data, error } = await supabase.from("messages").update({ deleted_at: now }).eq("id", msgId).select("*").single();
+    if (error) { if (prev) setMessages((ms) => ms.map((m) => (m.id === msgId ? prev : m))); return { ok: false, error: error.message }; }
+    setMessages((ms) => mergeMessages(ms, [toMessage(data)]));
+    return { ok: true };
+  }
+
+  // Fetch one conversation's newest page (a thread can't rely on the global
+  // newest-300 slice — a busy group chat would push a quiet DM out of it and the
+  // thread would render empty). Merges into `messages`; returns rows fetched so
+  // the screen can seed "has older history".
+  async function loadConversation(kind, id) {
+    if (!currentUser) return { ok: false, count: 0 };
+    let q = supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(50);
+    if (kind === "dm") { const { low, high } = dmPair(currentUser.id, id); q = q.eq("peer_low", low).eq("peer_high", high); }
+    else if (kind === "club") q = q.eq("club_id", id);
+    else q = q.eq("section_id", id);
+    const { data, error } = await q;
+    if (error) return { ok: false, count: 0 };
+    const rows = (data || []).map(toMessage);
+    setMessages((ms) => mergeMessages(ms, rows));
+    return { ok: true, count: rows.length };
+  }
+
+  // Immediate (not debounced) upsert so a marker is never lost on unmount/logout.
+  // `atIso` should be a SERVER timestamp (the newest loaded message's createdAt)
+  // so the unread comparison stays in one clock domain — a client-clock marker
+  // behind the DB clock would leave the badge stuck. Skips a redundant write when
+  // the stored marker is already caught up.
+  async function markConversationRead(convKey, atIso) {
+    if (!currentUser || !convKey) return;
+    const at = atIso || new Date().toISOString();
+    const cur = messageReads[convKey];
+    if (cur && new Date(cur) >= new Date(at)) return;
+    setMessageReads((r) => ({ ...r, [convKey]: at }));
+    await supabase.from("message_reads").upsert(
+      { user_id: currentUser.id, conv_key: convKey, last_read_at: at },
+      { onConflict: "user_id,conv_key" }
+    );
+  }
+
+  async function blockUser(id) {
+    if (!currentUser || !id) return { ok: false };
+    setBlockedUsers((b) => (b.includes(id) ? b : [...b, id]));
+    const { error } = await supabase.from("user_blocks").insert({ blocker_id: currentUser.id, blocked_id: id });
+    if (error) { setBlockedUsers((b) => b.filter((x) => x !== id)); return { ok: false, error: error.message }; }
+    return { ok: true };
+  }
+
+  async function unblockUser(id) {
+    if (!currentUser || !id) return { ok: false };
+    setBlockedUsers((b) => b.filter((x) => x !== id));
+    const { error } = await supabase.from("user_blocks").delete().eq("blocker_id", currentUser.id).eq("blocked_id", id);
+    if (error) { setBlockedUsers((b) => (b.includes(id) ? b : [...b, id])); return { ok: false, error: error.message }; }
+    return { ok: true };
+  }
+
+  async function fetchOlderMessages(kind, id, beforeIso) {
+    if (!currentUser) return { ok: false, count: 0 };
+    let q = supabase.from("messages").select("*").lt("created_at", beforeIso).order("created_at", { ascending: false }).limit(50);
+    if (kind === "dm") { const { low, high } = dmPair(currentUser.id, id); q = q.eq("peer_low", low).eq("peer_high", high); }
+    else if (kind === "club") q = q.eq("club_id", id);
+    else q = q.eq("section_id", id);
+    const { data, error } = await q;
+    if (error) return { ok: false, count: 0 };
+    const rows = (data || []).map(toMessage);
+    setMessages((ms) => mergeMessages(ms, rows));
+    return { ok: true, count: rows.length };
+  }
+
+  async function searchConversation(kind, id, term) {
+    const t = (term || "").trim();
+    if (!currentUser || !t) return [];
+    const esc = t.replace(/[\\%_]/g, (c) => "\\" + c); // escape LIKE metacharacters
+    let q = supabase.from("messages").select("*").is("deleted_at", null).ilike("body", `%${esc}%`)
+      .order("created_at", { ascending: false }).limit(30);
+    if (kind === "dm") { const { low, high } = dmPair(currentUser.id, id); q = q.eq("peer_low", low).eq("peer_high", high); }
+    else if (kind === "club") q = q.eq("club_id", id);
+    else q = q.eq("section_id", id);
+    const { data, error } = await q;
+    if (error) return [];
+    return (data || []).map(toMessage);
+  }
+
   const value = {
     users, reports, items, claims,
     announcements, addAnnouncement, markAnnouncementRead, deleteAnnouncement,
@@ -2989,6 +3298,12 @@ export function AppProvider({ children }) {
     notifications, notifPrefs, unreadNotifCount: notifications.filter((n) => !n.read).length,
     reloadNotifications: loadNotifications, markNotifRead, markAllNotifsRead, deleteNotification,
     saveNotifPref, saveNotifMaster, setAllNotifSectors,
+    // messaging (migration 0081)
+    messages, dmPartners, blockedUsers, unreadByConv, totalUnreadMessages,
+    messageThread, messageConvKey, isBlocked,
+    sendMessage, editMessage, removeMessage, markConversationRead,
+    blockUser, unblockUser, fetchOlderMessages, searchConversation, loadConversation,
+    reloadMessages: loadMessages,
     // academic calendar + routines
     calendarEvents, canManageCalendar: currentUser?.role === "Admin",
     addCalendarEvent, updateCalendarEvent, deleteCalendarEvent,

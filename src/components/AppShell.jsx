@@ -45,6 +45,7 @@ const NAV_BY_ROLE = {
       { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/dashboard" },
       { key: "reports", label: "My Reports", icon: "FileText", path: "/reports" },
       { key: "campus-issues", label: "Campus Issues", icon: "Megaphone", path: "/campus-issues" },
+      { key: "messages", label: "Messages", icon: "MessagesSquare", path: "/messages" },
     ]},
     { section: "Campus Life", items: [STUDY_HUB, COVER_PAGE, ...CAMPUS_LIFE] },
     { section: "Services", items: [
@@ -112,7 +113,7 @@ export function navKeysForRole(role) {
 // so clicking a nav item never snaps the list back to the top.
 let navScrollStore = 0;
 
-function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
+function SidebarContent({ nav, activeKey, onNavigate, onLogout, badges = {} }) {
   const navRef = React.useRef(null);
   // Restore after every render (route change re-renders this); a no-op when the
   // position is already correct, but reasserts it if anything reset the scroll.
@@ -162,6 +163,11 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout }) {
                 >
                   <Icon name={item.icon} size={18} className={active ? "text-brand" : "text-ink-3"} />
                   {item.label}
+                  {badges[item.key] > 0 && (
+                    <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-bold leading-none text-white">
+                      {badges[item.key] > 9 ? "9+" : badges[item.key]}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -204,7 +210,7 @@ export function useLayout() { return React.useContext(LayoutContext); }
 // survive navigation instead of remounting per screen. Active nav is derived
 // from the route, so screens don't pass activeKey to keep the sidebar in sync.
 export function AppLayout({ children }) {
-  const { currentUser, logout } = useApp();
+  const { currentUser, logout, totalUnreadMessages = 0 } = useApp();
   const path = useHashRoute();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -223,13 +229,14 @@ export function AppLayout({ children }) {
   const nav = NAV_BY_ROLE[currentUser.role] || [];
   const activeKey = activeKeyForPath(path, currentUser.role);
   const go = (p) => { setDrawerOpen(false); navigate(p); };
+  const navBadges = { messages: totalUnreadMessages };
 
   return (
     <LayoutContext.Provider value={{ openDrawer: () => setDrawerOpen(true) }}>
       <div className="min-h-screen bg-bg">
         {/* Desktop sidebar — mounts once, persists across navigation */}
         <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-brd bg-surface lg:block">
-          <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} />
+          <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} badges={navBadges} />
         </aside>
 
         {/* Mobile drawer */}
@@ -244,7 +251,7 @@ export function AppLayout({ children }) {
               >
                 <X size={18} />
               </button>
-              <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} />
+              <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} badges={navBadges} />
             </div>
           </div>
         )}
