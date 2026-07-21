@@ -398,6 +398,9 @@ export function AppProvider({ children }) {
   const [reports, setReports] = useState([]);
   // ---- campus issues board: anonymous, campus-wide report feed (0079) ----
   const [campusIssues, setCampusIssues] = useState([]);
+  // Per-report "me too" counts for the admin All Reports triage view, keyed by
+  // report uuid. Staff/admin only (0080 RPC returns nothing to students).
+  const [reportVoteCounts, setReportVoteCounts] = useState({});
 
   // ---- items / claims (real Supabase) ----
   const [items, setItems] = useState([]);
@@ -573,6 +576,22 @@ export function AppProvider({ children }) {
     if (error) { setCampusIssues([]); return; }
     setCampusIssues((data || []).map(toCampusIssue));
   }, [currentUser?.id]);
+
+  // ---- me-too counts per report (admin/staff triage). Non-critical: the RPC
+  // returns nothing for students, and any failure just shows no counts.
+  const loadReportVoteCounts = useCallback(async () => {
+    if (!currentUser || (currentUser.role !== "Admin" && currentUser.role !== "Staff")) {
+      setReportVoteCounts({});
+      return;
+    }
+    const uid = currentUser.id;
+    const { data, error } = await supabase.rpc("report_vote_counts");
+    if (!stillCurrent(uid)) return;
+    if (error) { setReportVoteCounts({}); return; }
+    const map = {};
+    (data || []).forEach((row) => { map[row.report_id] = Number(row.vote_count) || 0; });
+    setReportVoteCounts(map);
+  }, [currentUser?.id, currentUser?.role]);
 
   const loadItems = useCallback(async () => {
     if (!currentUser) { setItems([]); return; }
@@ -939,11 +958,11 @@ export function AppProvider({ children }) {
   useEffect(() => {
     let active = true;
     if (currentUser?.id) { setDataLoading(true); setDataError(false); }
-    Promise.all([refreshUsers(), loadReports(), loadCampusIssues(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs(), loadJobs(), loadNotifications(), loadCalendar(), loadRoutines()]).finally(() => {
+    Promise.all([refreshUsers(), loadReports(), loadCampusIssues(), loadReportVoteCounts(), loadItems(), loadClaims(), loadAnnouncements(), loadListings(), loadEvents(), loadRides(), loadBlood(), loadMedical(), loadBus(), loadPrayer(), loadFaculty(), loadStudyHub(), loadClubs(), loadJobs(), loadNotifications(), loadCalendar(), loadRoutines()]).finally(() => {
       if (active) setDataLoading(false);
     });
     return () => { active = false; };
-  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadCampusIssues, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs, loadJobs, loadNotifications, loadCalendar, loadRoutines]);
+  }, [currentUser?.id, dataTry, refreshUsers, loadReports, loadCampusIssues, loadReportVoteCounts, loadItems, loadClaims, loadAnnouncements, loadListings, loadEvents, loadRides, loadBlood, loadMedical, loadBus, loadPrayer, loadFaculty, loadStudyHub, loadClubs, loadJobs, loadNotifications, loadCalendar, loadRoutines]);
 
   // ---- auth actions ----
   async function login(email, password) {
@@ -3018,7 +3037,7 @@ export function AppProvider({ children }) {
     requestPasswordReset, resetPasswordWithCode, verifySignupCode, resendSignupCode,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,
-    campusIssues, reloadCampusIssues: loadCampusIssues, toggleReportVote, setReportBoardVisibility,
+    campusIssues, reloadCampusIssues: loadCampusIssues, toggleReportVote, setReportBoardVisibility, reportVoteCounts,
     setRole, updateProfile, changePassword, addItem, updateItem, deleteItem, addClaim, setClaimStatus, getContact, getProofUrl,
     getStudentDirectory, sendConnectionRequest, respondConnection, cancelConnectionRequest,
   };
