@@ -100,6 +100,14 @@ const NAV_BY_ROLE = {
 
 export const ROLE_TONE = { Student: "blue", Staff: "amber", Admin: "emerald" };
 
+// Set of feature nav keys visible to a role. CampusToday uses this so its cards
+// only ever show features the role can actually open from the sidebar — the card
+// grid can't drift from the nav (e.g. Staff has no Events/Jobs/Clubs nav item, so
+// it gets no Events/Jobs/Clubs card either).
+export function navKeysForRole(role) {
+  return new Set((NAV_BY_ROLE[role] || []).flatMap((g) => g.items).map((i) => i.key));
+}
+
 // Remembers the sidebar's scroll offset across navigations (and even a remount),
 // so clicking a nav item never snaps the list back to the top.
 let navScrollStore = 0;
