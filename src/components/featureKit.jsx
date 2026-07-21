@@ -150,7 +150,9 @@ export function waHref(phone) {
 export function mailHref(email) {
   const e = String(email || "").trim();
   if (!e || !e.includes("@")) return null;
-  return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(e)}`;
+  // view=cm opens the normal Gmail inbox with a compose popup (no fs=1, which
+  // would be the bare full-screen compose window).
+  return `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(e)}`;
 }
 
 export function useTick(ms = 30000) {
