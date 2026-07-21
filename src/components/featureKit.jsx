@@ -128,6 +128,21 @@ export function taka(n) {
   return "\u09F3" + Number(n).toLocaleString("en-US");
 }
 
+// Build a wa.me link from a phone number. wa.me needs the number in FULL
+// international form, digits only, no plus. Bangladeshi numbers are usually
+// stored locally (01XXXXXXXXX) \u2014 that must become 8801XXXXXXXXX or WhatsApp
+// shows an "invalid number" page. Returns null when there aren't enough digits.
+export function waHref(phone) {
+  let d = String(phone || "").replace(/[^0-9]/g, "");
+  if (!d) return null;
+  if (d.startsWith("00")) d = d.slice(2);                 // 00-prefixed intl
+  if (d.startsWith("880")) { /* already international */ }
+  else if (d.startsWith("0")) d = "880" + d.slice(1);     // BD local 01... -> 8801...
+  else if (d.length === 10 && d.startsWith("1")) d = "880" + d; // 1XXXXXXXXX (missing 0)
+  if (d.length < 11) return null;                          // too short to be real
+  return `https://wa.me/${d}`;
+}
+
 export function useTick(ms = 30000) {
   const [, setN] = React.useState(0);
   React.useEffect(() => {

@@ -9,7 +9,7 @@ import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
   AccentTile, CountdownBanner, SegmentToggle,
   taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
-  nowDhakaMinutes, dhakaParts, useTick,
+  nowDhakaMinutes, dhakaParts, useTick, waHref,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
@@ -284,8 +284,8 @@ export function BusDetail({ id }) {
                       <p className="truncate text-xs text-ink-3">{route.helperPhone || "No number listed"}</p>
                     </div>
                   </div>
-                  {route.helperPhone && (
-                    <a href={`https://wa.me/${route.helperPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95">
+                  {waHref(route.helperPhone) && (
+                    <a href={waHref(route.helperPhone)} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95">
                       <Icon name="MessageCircle" size={15} /> Chat
                     </a>
                   )}

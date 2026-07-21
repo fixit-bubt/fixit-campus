@@ -4,7 +4,7 @@ import {
   Button, Card, Badge, EmptyState, Avatar, Loading, useToast,
 } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
-import { AccentTile } from "../../components/featureKit.jsx";
+import { AccentTile, waHref } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 
@@ -472,6 +472,7 @@ export function FacultyProfile({ id }) {
   const saved = facultyBookmarks.includes(f.id);
   const links = Object.keys(LINK_META).filter((k) => f.links[k]);
   const phoneDigits = (f.phone || "").replace(/[^0-9]/g, "");
+  const waLink = waHref(f.phone);
 
   async function toggleSave() {
     const r = await toggleFacultyBookmark(f.id);
@@ -580,12 +581,14 @@ export function FacultyProfile({ id }) {
                 {f.email && <p className="break-all text-center text-xs text-ink-3">{f.email}</p>}
                 {phoneDigits && (
                   <div className="flex gap-2">
-                    <a href={`tel:${f.phone}`} className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-brd bg-surface text-base font-semibold text-ink-2 hover:bg-surface-2">
+                    <a href={`tel:${f.phone}`} className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-brd bg-surface text-base font-semibold text-ink-2 hover:bg-surface-2 ${waLink ? "flex-1" : "w-full"}`}>
                       <Icon name="Phone" size={15} /> Call
                     </a>
-                    <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noreferrer" className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md bg-success text-base font-semibold text-white hover:brightness-95">
-                      <Icon name="MessageCircle" size={15} /> WhatsApp
-                    </a>
+                    {waLink && (
+                      <a href={waLink} target="_blank" rel="noreferrer" className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md bg-success text-base font-semibold text-white hover:brightness-95">
+                        <Icon name="MessageCircle" size={15} /> WhatsApp
+                      </a>
+                    )}
                   </div>
                 )}
               </div>

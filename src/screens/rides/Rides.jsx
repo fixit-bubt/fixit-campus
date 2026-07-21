@@ -9,7 +9,7 @@ import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
   AccentTile, CountdownBanner, SegmentToggle,
   taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
-  nowDhakaMinutes, dhakaParts, useTick,
+  nowDhakaMinutes, dhakaParts, useTick, waHref,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
@@ -181,7 +181,7 @@ function DriverContact({ code, driverId, driverName }) {
     );
   }
 
-  const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
+  const wa = waHref(contact?.whatsapp);
   return (
     <div className="rounded-md border border-success-bg bg-success-bg p-4">
       <div className="flex items-center gap-1.5 text-base font-semibold text-success">
@@ -219,7 +219,7 @@ function RequesterContact({ code, requesterId }) {
   }
 
   if (phase === "done") {
-    const wa = contact?.whatsapp ? `https://wa.me/${contact.whatsapp.replace(/[^0-9]/g, "")}` : null;
+    const wa = waHref(contact?.whatsapp);
     return wa ? (
       <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-success px-2.5 text-xs font-semibold text-white hover:brightness-95">
         <Icon name="MessageCircle" size={14} /> Chat
