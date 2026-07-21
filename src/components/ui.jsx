@@ -550,14 +550,14 @@ export function StatCard({ label, value, icon, tone = "blue" }) {
     slate: "bg-surface-3 text-ink-2",
   };
   return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between">
-        <span className={`flex h-10 w-10 items-center justify-center rounded-md ${toneBg[tone]}`}>
-          {StatIcon && <StatIcon size={20} />}
-        </span>
+    <Card className="flex items-center gap-4 p-5">
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md ${toneBg[tone]}`}>
+        {StatIcon && <StatIcon size={20} />}
+      </span>
+      <div className="min-w-0">
+        <p className="text-3xl font-bold leading-none text-ink">{value}</p>
+        <p className="mt-1 text-md text-ink-3">{label}</p>
       </div>
-      <p className="mt-4 text-3xl font-bold text-ink">{value}</p>
-      <p className="mt-0.5 text-md text-ink-3">{label}</p>
     </Card>
   );
 }
