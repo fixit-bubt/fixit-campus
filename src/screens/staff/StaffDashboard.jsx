@@ -23,7 +23,7 @@ export default function StaffDashboard() {
         subtitle={`Your maintenance queue${currentUser?.dept ? ` · ${currentUser.dept}` : ""}.`}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <StatCard label="Assigned to Me" value={mine.length} icon={ClipboardCheck} tone="blue" />
         <StatCard label="In Progress" value={count("In Progress")} icon={Loader} tone="amber" />
         <StatCard label="Resolved by Me" value={count("Resolved")} icon={CircleCheck} tone="emerald" />

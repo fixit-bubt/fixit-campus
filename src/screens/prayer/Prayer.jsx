@@ -77,13 +77,13 @@ export function PrayerRow({ prayer, state, isNext }) {
   const passed = state === "passed";
   const current = state === "current";
   return (
-    <div className={`flex items-center gap-4 rounded-md border px-4 py-3 transition-colors ${
+    <div className={`flex items-center gap-2 rounded-md border px-3 py-3 transition-colors sm:gap-4 sm:px-4 ${
       current ? "border-success bg-success-bg" : "border-brd bg-surface"
     }`}>
       <AccentTile icon={prayer.icon} tone={current ? "emerald" : "slate"} size={38} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className={`text-base font-semibold ${passed ? "text-ink-3" : "text-ink"}`}>{prayer.en}</p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className={`truncate text-base font-semibold ${passed ? "text-ink-3" : "text-ink"}`}>{prayer.en}</p>
           <span className={`text-base ${passed ? "text-ink-3" : "text-ink-3"}`} dir="rtl">{prayer.ar}</span>
           {current && <Badge tone="emerald">Now</Badge>}
           {isNext && !current && <Badge tone="slate">Next</Badge>}

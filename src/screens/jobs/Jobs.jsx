@@ -226,7 +226,7 @@ export function Jobs() {
         title="Jobs & Internships"
         subtitle="Opportunities shared across campus — newest first."
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             {jobBookmarks.length > 0 && (
               <Button variant="secondary" icon="Bookmark" onClick={() => navigate("/jobs/saved")}>Saved ({jobBookmarks.length})</Button>
             )}

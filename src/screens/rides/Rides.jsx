@@ -265,10 +265,10 @@ export function RideDetail({ id }) {
           <Icon name="ArrowLeft" size={16} /> Back to Ride Share
         </button>
 
-        <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <AccentTile icon={VEHICLE_ICON[ride.vehicle]} tone="indigo" size={48} />
-            <div>
+            <div className="min-w-0">
               <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{ride.origin} → {ride.destination}</h2>
               <p className="text-base text-ink-3">{ride.direction} · {ride.vehicle}</p>
             </div>
