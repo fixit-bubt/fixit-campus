@@ -32,6 +32,7 @@ const SECTORS = [
   { id: "ride",      label: "Ride Share",       desc: "New ride offers",            icon: "Car",           tone: "emerald" },
   { id: "blood",     label: "Blood",            desc: "Urgent blood requests",      icon: "Droplet",       tone: "red"     },
   { id: "directory", label: "Directory",        desc: "Connection requests",        icon: "Users",         tone: "indigo"  },
+  { id: "messages",  label: "Messages",         desc: "New direct messages",        icon: "MessagesSquare",tone: "sky"     },
   { id: "prayer",    label: "Prayer Times",     desc: "Daily prayer time updates",  icon: "Moon",          tone: "emerald" },
   { id: "faculty",   label: "Faculty",          desc: "Faculty announcements",      icon: "GraduationCap", tone: "teal"    },
   { id: "calendar",  label: "Academic Calendar",desc: "Academic dates and holidays",icon: "CalendarRange", tone: "rose"    },
@@ -87,6 +88,7 @@ function targetFor(sector, role) {
     case "events": return "/events";
     case "jobs": return "/jobs";
     case "clubs": return "/clubs";
+    case "messages": return "/messages";
     default: return null;
   }
 }
@@ -106,6 +108,8 @@ export function Notifications() {
 
   function openNotif(n) {
     if (!n.read) markNotifRead(n.id);
+    // DM notifications deep-link straight into the thread (refId = sender id).
+    if (n.refType === "dm" && n.refId) { navigate(`/messages/dm/${n.refId}`); return; }
     const to = targetFor(n.sector, currentUser?.role);
     if (to) navigate(to);
   }

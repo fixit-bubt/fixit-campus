@@ -50,6 +50,7 @@ import { StudyHub, StudyHubBrowse, StudyHubDept, StudyHubIntake, StudyHubSection
 import { ClubsHome, ClubHome, ClubMembers, ClubPostForm, ClubManage, AdminManageClubs } from "./screens/clubs/Clubs.jsx";
 import { Jobs, JobDetail, JobForm, ModerateJobs, SavedJobs } from "./screens/jobs/Jobs.jsx";
 import { Notifications, NotifSettings } from "./screens/notifications/Notifications.jsx";
+import { MessagesHome, MessageThread } from "./screens/messages/Messages.jsx";
 import CoverPage from "./screens/coverpage/CoverPage.jsx";
 import { AcademicCalendar } from "./screens/calendar/Calendar.jsx";
 import { Routines } from "./screens/routines/Routines.jsx";
@@ -178,6 +179,13 @@ function AuthedRoutes({ path }) {
   if (path === "/admin/faculty") return <RequireRole role="Admin"><ManageFaculty /></RequireRole>;
   if (path === "/admin/study-hub") return <RequireRole role="Admin"><ManageStudyHub /></RequireRole>;
   if (path === "/admin/clubs") return <RequireRole role="Admin"><AdminManageClubs /></RequireRole>;
+
+  // ---- Messages (students only; DMs need connections, group chats need
+  // club/section membership). Literal before :param. ----
+  if (path === "/messages") return <RequireRole role="Student"><MessagesHome /></RequireRole>;
+  if ((m = matchRoute("/messages/dm/:userId", path))) return <RequireRole role="Student"><MessageThread kind="dm" id={m.userId} /></RequireRole>;
+  if ((m = matchRoute("/messages/club/:clubId", path))) return <RequireRole role="Student"><MessageThread kind="club" id={m.clubId} /></RequireRole>;
+  if ((m = matchRoute("/messages/section/:sectionId", path))) return <RequireRole role="Student"><MessageThread kind="section" id={m.sectionId} /></RequireRole>;
 
   // ---- Notifications (any signed-in user) ----
   if (path === "/notifications") return <RequireAuth><Notifications /></RequireAuth>;
