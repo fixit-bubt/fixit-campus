@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { LogOut, Menu, X, Bell } from "lucide-react";
+import { LogOut, Menu, X, Bell, ChevronDown } from "lucide-react";
 import { useApp } from "../data/store.jsx";
 import { navigate, Link, useHashRoute } from "../lib/router.jsx";
 import { Avatar, Badge } from "./ui.jsx";
@@ -20,18 +20,25 @@ const STUDY_HUB = { key: "study-hub", label: "Study Hub", icon: "BookMarked", pa
 // Cover Page Generator is also students-only (BUBT assignment/lab/report covers).
 const COVER_PAGE = { key: "cover-page", label: "Cover Page", icon: "FileBadge", path: "/cover-page" };
 
-// Shared "Campus Life" group (grows as features ship: prayer, events…).
-const CAMPUS_LIFE = [
-  { key: "faculty", label: "Faculty", icon: "GraduationCap", path: "/faculty" },
-  { key: "clubs", label: "Clubs", icon: "UsersRound", path: "/clubs" },
-  { key: "bus", label: "Bus Schedule", icon: "Bus", path: "/bus" },
-  { key: "prayer", label: "Prayer Times", icon: "Moon", path: "/prayer" },
-  { key: "events", label: "Events", icon: "CalendarDays", path: "/events" },
-  { key: "calendar", label: "Academic Calendar", icon: "CalendarRange", path: "/calendar" },
+// "Academics" — coursework tools: what you need to attend and pass classes.
+// Split out of Campus Life, which had grown to 11 items and stopped being a
+// meaningful grouping. Study Hub + Cover Page are students-only (see above).
+const ACADEMICS = [
   { key: "routines", label: "Class Routines", icon: "ClipboardList", path: "/routines" },
-  { key: "jobs", label: "Jobs & Internships", icon: "Briefcase", path: "/jobs" },
-  { key: "announcements", label: "Announcements", icon: "Megaphone", path: "/announcements" },
+  { key: "calendar", label: "Academic Calendar", icon: "CalendarRange", path: "/calendar" },
+  { key: "faculty", label: "Faculty", icon: "GraduationCap", path: "/faculty" },
 ];
+// Shared "Campus Life" group — things happening around campus, not coursework.
+const CAMPUS_LIFE = [
+  { key: "clubs", label: "Clubs", icon: "UsersRound", path: "/clubs" },
+  { key: "events", label: "Events", icon: "CalendarDays", path: "/events" },
+  { key: "announcements", label: "Announcements", icon: "Megaphone", path: "/announcements" },
+  { key: "prayer", label: "Prayer Times", icon: "Moon", path: "/prayer" },
+  { key: "jobs", label: "Jobs & Internships", icon: "Briefcase", path: "/jobs" },
+];
+// Bus lives in Services with Medical — it's campus logistics, not an activity.
+const BUS = { key: "bus", label: "Bus Schedule", icon: "Bus", path: "/bus" };
+const MEDICAL = { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" };
 // Shared "Community" group (grows as features ship: ride share, blood…).
 const COMMUNITY = [
   { key: "marketplace", label: "Marketplace", icon: "Store", path: "/marketplace" },
@@ -43,14 +50,18 @@ const NAV_BY_ROLE = {
   Student: [
     { section: null, items: [
       { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/dashboard" },
-      { key: "reports", label: "My Reports", icon: "FileText", path: "/reports" },
-      { key: "campus-issues", label: "Campus Issues", icon: "Megaphone", path: "/campus-issues" },
+      // One row for the whole report loop: My Reports / Campus Board tabs plus
+      // the "Report an Issue" button all live on this page, so /campus-issues
+      // and /reports/new have no sidebar row of their own. `match` keeps the
+      // row highlighted on the sibling route (see activeKeyForPath).
+      { key: "reports", label: "Reports", icon: "FileText", path: "/reports", match: ["/campus-issues"] },
       { key: "messages", label: "Messages", icon: "MessagesSquare", path: "/messages" },
     ]},
-    { section: "Campus Life", items: [STUDY_HUB, COVER_PAGE, ...CAMPUS_LIFE] },
+    { section: "Academics", items: [STUDY_HUB, ...ACADEMICS, COVER_PAGE] },
+    { section: "Campus Life", items: CAMPUS_LIFE },
     { section: "Services", items: [
-      { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
-      { key: "report-new", label: "Report an Issue", icon: "CirclePlus", path: "/reports/new" },
+      MEDICAL,
+      BUS,
       { key: "lost-found", label: "Lost & Found", icon: "PackageSearch", path: "/lost-found" },
     ]},
     { section: "Community", items: [
@@ -68,11 +79,10 @@ const NAV_BY_ROLE = {
     ]},
     // Staff are maintenance workers, not students — the student-academic items
     // (Faculty, Clubs, Events, Academic Calendar, Class Routines, Jobs) are
-    // dropped. Only the campus-worker-relevant slice of Campus Life stays.
-    { section: "Campus Life", items: CAMPUS_LIFE.filter((i) => ["bus", "prayer", "announcements"].includes(i.key)) },
-    { section: "Services", items: [
-      { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
-    ]},
+    // dropped, so Staff get no Academics group at all. Only the
+    // campus-worker-relevant slice of Campus Life stays.
+    { section: "Campus Life", items: CAMPUS_LIFE.filter((i) => ["prayer", "announcements"].includes(i.key)) },
+    { section: "Services", items: [MEDICAL, BUS] },
     // Community features are "any adult on campus" — kept in full.
     { section: "Community", items: COMMUNITY },
     { section: null, items: [
@@ -88,16 +98,19 @@ const NAV_BY_ROLE = {
       { key: "studyhub-admin", label: "Study Hub", icon: "BookMarked", path: "/admin/study-hub" },
       { key: "clubs-admin", label: "Clubs", icon: "UsersRound", path: "/admin/clubs" },
     ]},
+    { section: "Academics", items: ACADEMICS },
     { section: "Campus Life", items: CAMPUS_LIFE.filter((i) => i.key !== "clubs") },
-    { section: "Services", items: [
-      { key: "medical", label: "Medical Center", icon: "Stethoscope", path: "/medical" },
-    ]},
+    { section: "Services", items: [MEDICAL, BUS] },
     { section: "Community", items: COMMUNITY },
     { section: null, items: [
       { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
     ]},
   ],
 };
+
+// Stable empty fallback — a fresh [] each render would retrigger the accordion
+// effect, whose dep list includes `nav`.
+const EMPTY_NAV = [];
 
 export const ROLE_TONE = { Student: "blue", Staff: "amber", Admin: "emerald" };
 
@@ -113,8 +126,52 @@ export function navKeysForRole(role) {
 // so clicking a nav item never snaps the list back to the top.
 let navScrollStore = 0;
 
-function SidebarContent({ nav, activeKey, onNavigate, onLogout, badges = {} }) {
+// Named nav groups collapse into accordions so the sidebar isn't a 23-row wall.
+// Ungrouped items (section: null — Dashboard, Reports, Profile…) always show.
+// The accordion is EXCLUSIVE: opening a group closes the others. That caps the
+// expanded sidebar at (ungrouped + headers + largest group) instead of letting a
+// user who expanded everything once keep a full-height list forever.
+const NAV_OPEN_STORE = "fixit.navOpenSection";
+function readOpenSection() {
+  try {
+    const raw = localStorage.getItem(NAV_OPEN_STORE);
+    return typeof raw === "string" && raw ? raw : null;
+  } catch { return null; }
+}
+function writeOpenSection(name) {
+  try {
+    if (name) localStorage.setItem(NAV_OPEN_STORE, name);
+    else localStorage.removeItem(NAV_OPEN_STORE);
+  } catch { /* storage blocked — in-memory only */ }
+}
+// Section a nav key lives in, or null when it's an always-visible item.
+function sectionForKey(nav, key) {
+  for (const g of nav) if (g.section && g.items.some((i) => i.key === key)) return g.section;
+  return null;
+}
+
+// Open/close state for the nav accordion. Lives in AppLayout, NOT in
+// SidebarContent, because SidebarContent is mounted twice (desktop aside +
+// mobile drawer) — per-instance state would let the two copies disagree.
+function useNavAccordion(nav, activeKey) {
+  const [openSection, setOpenSection] = useState(() => readOpenSection());
+  // Navigating into a collapsed group reveals it (otherwise the active item
+  // sits highlighted inside a group the user can't see) — and persists, so the
+  // reveal survives a reload instead of silently snapping shut.
+  React.useEffect(() => {
+    const s = sectionForKey(nav, activeKey);
+    if (s) setOpenSection((prev) => { if (prev === s) return prev; writeOpenSection(s); return s; });
+  }, [activeKey, nav]);
+  const toggleSection = React.useCallback((name) => {
+    setOpenSection((prev) => { const next = prev === name ? null : name; writeOpenSection(next); return next; });
+  }, []);
+  return { openSection, toggleSection };
+}
+
+function SidebarContent({ nav, activeKey, onNavigate, onLogout, badges = {}, openSection, onToggleSection }) {
   const navRef = React.useRef(null);
+  // Badge count for a collapsed group, so unread messages etc. aren't hidden.
+  const groupBadge = (items) => items.reduce((n, i) => n + (badges[i.key] || 0), 0);
   // Restore after every render (route change re-renders this); a no-op when the
   // position is already correct, but reasserts it if anything reset the scroll.
   React.useLayoutEffect(() => {
@@ -124,6 +181,10 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout, badges = {} }) {
   // When the ACTIVE item changes (navigation / fresh load), make sure it's in
   // view — scrolls only this list, never the window. Scoped to activeKey so it
   // never fights the user's manual scrolling on unrelated re-renders.
+  // openSection is a dep too: navigating into a COLLAPSED group reveals it from
+  // a passive effect one commit later, so on the activeKey commit the row isn't
+  // in the DOM yet and the querySelector below bails. Without this dep the
+  // active row would silently never be scrolled into view on that path.
   React.useLayoutEffect(() => {
     const el = navRef.current;
     if (!el) return;
@@ -134,7 +195,7 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout, badges = {} }) {
     if (er.height > 0 && (ar.top < er.top || ar.bottom > er.bottom)) {
       el.scrollTop += ar.top - er.top - (er.height - ar.height) / 2;
     }
-  }, [activeKey]);
+  }, [activeKey, openSection]);
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 shrink-0 items-center px-5">
@@ -145,12 +206,28 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout, badges = {} }) {
         onScroll={(e) => { navScrollStore = e.currentTarget.scrollTop; }}
         className="flex-1 min-h-0 space-y-4 overflow-y-auto px-3 py-2"
       >
-        {nav.map((group, gi) => (
+        {nav.map((group, gi) => {
+          const collapsible = Boolean(group.section);
+          const open = !collapsible || openSection === group.section;
+          const hidden = collapsible && !open ? groupBadge(group.items) : 0;
+          return (
           <div key={group.section || `g${gi}`} className="space-y-1">
-            {group.section && (
-              <p className="px-3 pb-1 pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-3">{group.section}</p>
+            {collapsible && (
+              <button
+                onClick={() => onToggleSection(group.section)}
+                aria-expanded={open}
+                className="flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-3 hover:bg-surface-2 hover:text-ink-2"
+              >
+                <ChevronDown size={13} className={`transition-transform ${open ? "" : "-rotate-90"}`} />
+                {group.section}
+                {hidden > 0 && (
+                  <span className="ml-auto inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] leading-none text-white">
+                    {hidden > 9 ? "9+" : hidden}
+                  </span>
+                )}
+              </button>
             )}
-            {group.items.map((item) => {
+            {open && group.items.map((item) => {
               const active = item.key === activeKey;
               return (
                 <button
@@ -172,7 +249,8 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout, badges = {} }) {
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </nav>
       <div className="shrink-0 border-t border-brd p-3">
         <button
@@ -188,13 +266,17 @@ function SidebarContent({ nav, activeKey, onNavigate, onLogout, badges = {} }) {
 }
 
 // Maps the current route to the nav key to highlight, by longest matching item
-// path (so /clubs/123 → clubs, /reports/new → report-new).
+// path (so /clubs/123 → clubs, /reports/new → reports). An item may also list
+// extra `match` paths for routes it owns that aren't under its own path — e.g.
+// the Reports row owns /campus-issues, which is its Campus Board tab.
 function activeKeyForPath(path, role) {
   const items = (NAV_BY_ROLE[role] || []).flatMap((g) => g.items);
   let bestKey = null, bestLen = -1;
   for (const it of items) {
-    if ((path === it.path || path.startsWith(it.path + "/")) && it.path.length > bestLen) {
-      bestKey = it.key; bestLen = it.path.length;
+    for (const base of [it.path, ...(it.match || [])]) {
+      if ((path === base || path.startsWith(base + "/")) && base.length > bestLen) {
+        bestKey = it.key; bestLen = base.length;
+      }
     }
   }
   return bestKey;
@@ -225,9 +307,13 @@ export function AppLayout({ children }) {
   // Close the drawer whenever the route changes.
   React.useEffect(() => { setDrawerOpen(false); }, [path]);
 
+  // Derived before the signed-out early return — useNavAccordion is a hook, so
+  // it can't sit behind a conditional return.
+  const nav = NAV_BY_ROLE[currentUser?.role] || EMPTY_NAV;
+  const activeKey = activeKeyForPath(path, currentUser?.role);
+  const { openSection, toggleSection } = useNavAccordion(nav, activeKey);
+
   if (!currentUser) return <>{children}</>;
-  const nav = NAV_BY_ROLE[currentUser.role] || [];
-  const activeKey = activeKeyForPath(path, currentUser.role);
   const go = (p) => { setDrawerOpen(false); navigate(p); };
   const navBadges = { messages: totalUnreadMessages };
 
@@ -236,7 +322,7 @@ export function AppLayout({ children }) {
       <div className="min-h-screen bg-bg">
         {/* Desktop sidebar — mounts once, persists across navigation */}
         <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-brd bg-surface lg:block">
-          <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} badges={navBadges} />
+          <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} badges={navBadges} openSection={openSection} onToggleSection={toggleSection} />
         </aside>
 
         {/* Mobile drawer */}
@@ -251,7 +337,7 @@ export function AppLayout({ children }) {
               >
                 <X size={18} />
               </button>
-              <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} badges={navBadges} />
+              <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} badges={navBadges} openSection={openSection} onToggleSection={toggleSection} />
             </div>
           </div>
         )}

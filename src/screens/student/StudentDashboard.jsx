@@ -1,8 +1,8 @@
 import React from "react";
-import { PackageSearch, ArrowRight, CircleDot, Loader, CircleCheck, FileText } from "lucide-react";
+import { PackageSearch, ArrowRight, CircleDot, Loader, CircleCheck, FileText, CirclePlus } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
-import { Card, EmptyState, StatCard, Loading } from "../../components/ui.jsx";
+import { Button, Card, EmptyState, StatCard, Loading } from "../../components/ui.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { ReportListRow } from "../../components/ReportListRow.jsx";
 import { CampusToday } from "../../components/CampusToday.jsx";
@@ -56,7 +56,12 @@ export default function StudentDashboard() {
           <EmptyState
             icon={FileText}
             title="No reports yet"
-            message="When you report a campus issue, it'll show up here so you can track its progress. Use “Report an Issue” in the sidebar to file one."
+            message="When you report a campus issue, it'll show up here so you can track its progress."
+            // A button rather than a pointer at some other control: "View all"
+            // above is hidden while the student has no reports, so this is their
+            // only way into the report flow from the dashboard — and copy that
+            // names a nav row goes stale every time the sidebar is regrouped.
+            action={<Button icon={CirclePlus} onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
           />
         ) : (
           <Card className="divide-y divide-brd overflow-hidden">
