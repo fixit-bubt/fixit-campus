@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import { CirclePlus, Search, CircleHelp, Pencil, Trash2, ArrowRight, MapPin, Calendar, FileText, SearchX, Eye, EyeOff } from "lucide-react";
+import { Search, CircleHelp, Pencil, Trash2, ArrowRight, MapPin, Calendar, FileText, SearchX, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { Card, Button, Modal, EmptyState, StatusBadge, Loading, useToast } from "../../components/ui.jsx";
-import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import { CATEGORY_ICON, fmtDate } from "../../lib/helpers.js";
 
@@ -61,7 +60,10 @@ function MyReportCard({ report, onView, onEdit, onDelete, onToggleBoard, boardBu
   );
 }
 
-export default function MyReports() {
+// The "My Reports" tab of the Reports hub (src/screens/student/Reports.jsx).
+// Renders the panel only — the shell, page header and "Report an Issue" button
+// belong to the hub, which is shared with the Campus Board tab.
+export function MyReportsPanel() {
   const { currentUser, reports, deleteReport, setReportBoardVisibility, dataLoading } = useApp();
   const toast = useToast();
   const [query, setQuery] = useState("");
@@ -128,13 +130,7 @@ export default function MyReports() {
   }
 
   return (
-    <AppShell activeKey="reports" title="My Reports">
-      <PageHeader
-        title="My Reports"
-        subtitle="Track the campus issues you've reported."
-        action={<Button icon={CirclePlus} onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
-      />
-
+    <>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
@@ -194,6 +190,6 @@ export default function MyReports() {
           </>
         }
       />
-    </AppShell>
+    </>
   );
 }

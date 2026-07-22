@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { Search, CircleHelp, MapPin, Calendar, Megaphone, ThumbsUp, SearchX } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
-import { navigate } from "../../lib/router.jsx";
 import { Card, Button, EmptyState, StatusBadge, Loading, useToast } from "../../components/ui.jsx";
-import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { FilterTabs } from "../../components/FilterTabs.jsx";
 import { CATEGORY_ICON, fmtDate } from "../../lib/helpers.js";
 
@@ -57,7 +55,9 @@ function BoardCard({ report, onMeToo, busy }) {
   );
 }
 
-export default function CampusIssues() {
+// The "Campus Board" tab of the Reports hub (src/screens/student/Reports.jsx).
+// Panel only — the hub owns the shell, header and "Report an Issue" button.
+export function CampusIssuesPanel() {
   const { currentUser, campusIssues, toggleReportVote, dataLoading } = useApp();
   const toast = useToast();
   const [query, setQuery] = useState("");
@@ -98,13 +98,7 @@ export default function CampusIssues() {
   }
 
   return (
-    <AppShell activeKey="campus-issues" title="Campus Issues">
-      <PageHeader
-        title="Campus Issues"
-        subtitle="Issues students reported across campus. Already affected? Add a “Me too” instead of filing a duplicate — no names are shown."
-        action={<Button variant="secondary" onClick={() => navigate("/reports/new")}>Report an Issue</Button>}
-      />
-
+    <>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
@@ -141,6 +135,6 @@ export default function CampusIssues() {
           ))}
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

@@ -21,13 +21,15 @@ export default function ReportIssue() {
   }
 
   return (
-    <AppShell activeKey="report-new" title="Report an Issue">
+    <AppShell activeKey="reports" title="Report an Issue">
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate("/dashboard")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
+        {/* This form is reached from the Reports page's primary button, so Back
+            and Cancel return there rather than to the dashboard. */}
+        <button onClick={() => navigate("/reports")} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
           <ArrowLeft size={16} /> Back
         </button>
         <PageHeader title="Report an Issue" subtitle="Tell us what's wrong and where — we'll route it to the right staff." />
-        <ReportForm mode="create" onSubmit={handleSubmit} onCancel={() => navigate("/dashboard")} />
+        <ReportForm mode="create" onSubmit={handleSubmit} onCancel={() => navigate("/reports")} />
       </div>
     </AppShell>
   );
