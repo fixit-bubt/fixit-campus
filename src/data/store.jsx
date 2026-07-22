@@ -1138,6 +1138,9 @@ export function AppProvider({ children }) {
       // Unconfirmed account (confirm-email ON): send the caller to the
       // verification screen instead of a dead-end "wrong password".
       if (/email not confirmed/i.test(error.message)) return { ok: false, needsConfirm: true, error: "Your email isn't verified yet." };
+      // The generic message hides real causes (bad API key, rate limit, CORS),
+      // so surface the raw error in dev — never to end users in production.
+      if (import.meta.env.DEV) console.error("[login] auth error", error.status, error.code, error.message);
       return { ok: false, error: "Incorrect email or password. Try again." };
     }
     const { data: p } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
