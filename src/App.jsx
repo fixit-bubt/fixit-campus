@@ -54,6 +54,21 @@ import CoverPage from "./screens/coverpage/CoverPage.jsx";
 import { AcademicCalendar } from "./screens/calendar/Calendar.jsx";
 import { Routines } from "./screens/routines/Routines.jsx";
 
+// PDF Maker is the one lazily-loaded screen: it pulls in pdf-lib + pdf.js
+// (~500KB gzipped between them), which would otherwise sit in the main bundle
+// for every user on every page. Everything else is imported eagerly above.
+const PdfMaker = React.lazy(() => import("./screens/pdfmaker/PdfMaker.jsx"));
+
+// Suspense boundary for code-split screens. AppLayout stays mounted around it,
+// so only the content column flashes a spinner while the chunk downloads.
+function LazyScreen({ children }) {
+  return (
+    <React.Suspense fallback={<div className="flex justify-center py-16"><Spinner size={26} /></div>}>
+      {children}
+    </React.Suspense>
+  );
+}
+
 // Render-safe redirect (navigates in an effect, not during render).
 function Redirect({ to }) {
   useEffect(() => { navigate(to); }, [to]);
@@ -213,6 +228,10 @@ function AuthedRoutes({ path }) {
 
   // ---- Cover Page Generator (students only) ----
   if (path === "/cover-page") return <RequireRole role="Student"><CoverPage /></RequireRole>;
+
+  // ---- PDF Maker (students only; lazy — see the import at the top) ----
+  if (path === "/pdf-maker") return <RequireRole role="Student"><LazyScreen><PdfMaker /></LazyScreen></RequireRole>;
+  if ((m = matchRoute("/pdf-maker/:tool", path))) return <RequireRole role="Student"><LazyScreen><PdfMaker tool={m.tool} /></LazyScreen></RequireRole>;
 
   // ---- Academic Calendar + Routines (any signed-in user; admin/staff curate) ----
   if (path === "/calendar") return <RequireAuth><AcademicCalendar /></RequireAuth>;
