@@ -28,59 +28,77 @@ export const EXPLORE_NAV = [
 ];
 const NAV = EXPLORE_NAV;
 
-function ExploreShell({ active, children }) {
+// PublicNav — the floating capsule nav for the signed-out site (landing +
+// explore pages). Shared by both so the two can't drift; it used to be copied
+// into Landing.jsx verbatim. `active` highlights the current explore page and
+// is simply omitted on the landing page.
+// `overlay` takes the bar out of flow so the section beneath runs to the top of
+// the window — the landing hero is a full-bleed photo, and a bar in normal flow
+// leaves a strip of page background above it. `fixed`, not `absolute`, so the
+// capsule stays pinned while the page scrolls under it.
+export function PublicNav({ active, overlay = false }) {
   const { currentUser, dashboardPath } = useApp();
   return (
-    <div className="min-h-screen bg-bg">
-      <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur-md">
-        <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <button onClick={() => navigate("/")} aria-label="FixIt home">
-            <Logo />
-          </button>
-          <nav className="hidden flex-1 items-center justify-evenly px-8 xl:flex">
-            {NAV.map((l) => (
-              <button
-                key={l.path}
-                onClick={() => navigate(l.path)}
-                className={`rounded-md px-2.5 py-2 text-[15px] font-semibold transition-colors ${
-                  active === l.path ? "bg-brand-50 text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
-                }`}
-              >
-                {l.label}
-              </button>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            {currentUser ? (
-              <Button onClick={() => navigate(dashboardPath(currentUser.role))} iconRight={ArrowRight}>
-                Go to dashboard
-              </Button>
-            ) : (
-              <>
-                <Button variant="ghost" onClick={() => navigate("/login")}>Log In</Button>
-                <Button onClick={() => navigate("/register")}>Sign Up</Button>
-              </>
-            )}
-          </div>
-        </div>
-        {/* Mobile / tablet nav row */}
-        <div className="flex gap-1 overflow-x-auto px-4 pb-2 xl:hidden">
+    <div className={`${overlay ? "fixed inset-x-0 top-0" : "sticky top-0"} z-40 px-3 pb-2 pt-3 sm:px-6 sm:pt-4`}>
+      {/* Width matches the signed-in app's capsule so the two read as one system. */}
+      <div className="topbar-blur mx-auto flex w-full max-w-[110rem] items-center gap-3 rounded-full border border-brd px-3 py-2 shadow-lg backdrop-blur-md">
+        <button onClick={() => navigate("/")} aria-label="FixIt home" className="shrink-0 px-1">
+          <Logo />
+        </button>
+        {/* Centred cluster rather than justify-evenly: inside a capsule, links
+            spread to the edges read as a stretched toolbar, not a pill. */}
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 xl:flex">
           {NAV.map((l) => (
             <button
               key={l.path}
               onClick={() => navigate(l.path)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold ${
-                active === l.path ? "bg-brand-50 text-brand" : "text-ink-2 hover:bg-surface-2"
+              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[15px] font-semibold transition-colors ${
+                active === l.path ? "bg-brand-50 text-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
               }`}
             >
               {l.label}
             </button>
           ))}
+        </nav>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <ThemeToggle />
+          {currentUser ? (
+            <Button onClick={() => navigate(dashboardPath(currentUser.role))} iconRight={ArrowRight}>
+              Go to dashboard
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={() => navigate("/login")}>Log In</Button>
+              <Button onClick={() => navigate("/register")}>Sign Up</Button>
+            </>
+          )}
         </div>
-      </header>
+      </div>
+      {/* Mobile / tablet nav — its own scrolling capsule under the main one. */}
+      <div className="topbar-blur mx-auto mt-2 flex max-w-[110rem] gap-1 overflow-x-auto rounded-full border border-brd px-2 py-1.5 backdrop-blur-md xl:hidden">
+        {NAV.map((l) => (
+          <button
+            key={l.path}
+            onClick={() => navigate(l.path)}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold ${
+              active === l.path ? "bg-brand-50 text-brand" : "text-ink-2 hover:bg-surface-2"
+            }`}
+          >
+            {l.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 2xl:max-w-[96rem]">{children}</main>
+function ExploreShell({ active, children }) {
+  const { currentUser } = useApp();
+  return (
+    <div className="min-h-screen bg-bg">
+      <PublicNav active={active} />
+
+      <main className="mx-auto max-w-[110rem] px-4 py-8 sm:px-6">{children}</main>
 
       {!currentUser && (
         <div className="mx-auto max-w-7xl px-4 pb-10 sm:px-6 2xl:max-w-[96rem]">
@@ -870,7 +888,9 @@ export function PublicCGPA() {
           <Button variant="secondary" icon={Plus} onClick={addRow} className="mt-4">Add course</Button>
         </Card>
 
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        {/* Below xl the nav capsule is two rows (~140px), so the old top-24
+            offset parked this card's heading behind it. */}
+        <div className="lg:sticky lg:top-40 lg:self-start xl:top-28">
           <Card className="p-6 text-center">
             <p className="text-sm font-bold uppercase tracking-wider text-ink-3">Your GPA</p>
             <p className="mt-2 text-5xl font-extrabold tabular-nums text-brand">{gpa.toFixed(2)}</p>
