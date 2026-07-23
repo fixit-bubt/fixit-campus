@@ -19,6 +19,10 @@ import { ThemeToggle } from "./ThemeToggle.jsx";
 const STUDY_HUB = { key: "study-hub", label: "Study Hub", icon: "BookMarked", path: "/study-hub" };
 // Cover Page Generator is also students-only (BUBT assignment/lab/report covers).
 const COVER_PAGE = { key: "cover-page", label: "Cover Page", icon: "FileBadge", path: "/cover-page" };
+// PDF Maker (photos->PDF, merge, organize, compress) — students only, and
+// entirely client-side. Its /pdf-maker/:tool subroutes highlight this row via
+// activeKeyForPath's longest-prefix match.
+const PDF_MAKER = { key: "pdf-maker", label: "PDF Maker", icon: "FileStack", path: "/pdf-maker" };
 
 // "Academics" — coursework tools: what you need to attend and pass classes.
 // Split out of Campus Life, which had grown to 11 items and stopped being a
@@ -57,7 +61,7 @@ const NAV_BY_ROLE = {
       { key: "reports", label: "Reports", icon: "FileText", path: "/reports", match: ["/campus-issues"] },
       { key: "messages", label: "Messages", icon: "MessagesSquare", path: "/messages" },
     ]},
-    { section: "Academics", items: [STUDY_HUB, ...ACADEMICS, COVER_PAGE] },
+    { section: "Academics", items: [STUDY_HUB, ...ACADEMICS, COVER_PAGE, PDF_MAKER] },
     { section: "Campus Life", items: CAMPUS_LIFE },
     { section: "Services", items: [
       MEDICAL,
