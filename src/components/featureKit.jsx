@@ -41,6 +41,7 @@ export const ACCENT_TILE = {
   calendar: "bg-sector-calendar/15 text-sector-calendar dark:bg-sector-calendar/20 dark:brightness-125",
   routines: "bg-sector-routines/15 text-sector-routines dark:bg-sector-routines/20 dark:brightness-125",
   coverpage: "bg-sector-coverpage/15 text-sector-coverpage dark:bg-sector-coverpage/20 dark:brightness-125",
+  pdfmaker: "bg-sector-pdfmaker/15 text-sector-pdfmaker dark:bg-sector-pdfmaker/20 dark:brightness-125",
 };
 
 export const ACCENT_SOFT = {
