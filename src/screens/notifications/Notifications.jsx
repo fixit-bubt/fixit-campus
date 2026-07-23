@@ -136,26 +136,24 @@ export function Notifications() {
   }
 
   return (
-    <AppShell
-      activeKey="notifications"
-      title="Notifications"
-      actions={
-        <button
-          onClick={() => navigate("/notifications/settings")}
-          title="Notification settings"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2"
-        >
-          <SlidersHorizontal size={18} />
-        </button>
-      }
-    >
+    <AppShell activeKey="notifications" title="Notifications">
       <PageHeader
         title="Notifications"
         subtitle={unreadNotifCount > 0 ? `${unreadNotifCount} unread` : "You're all caught up"}
         action={
-          <Button variant="secondary" icon={CheckCheck} disabled={unreadNotifCount === 0} onClick={markAllNotifsRead}>
-            Mark all read
-          </Button>
+          <>
+            <Button variant="secondary" icon={CheckCheck} disabled={unreadNotifCount === 0} onClick={markAllNotifsRead}>
+              Mark all read
+            </Button>
+            <button
+              onClick={() => navigate("/notifications/settings")}
+              title="Notification settings"
+              aria-label="Notification settings"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2"
+            >
+              <SlidersHorizontal size={18} />
+            </button>
+          </>
         }
       />
 

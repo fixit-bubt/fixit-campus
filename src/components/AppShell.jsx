@@ -93,7 +93,12 @@ const NAV_BY_ROLE = {
     { section: null, items: [
       { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", path: "/admin" },
       { key: "all-reports", label: "All Reports", icon: "FileText", path: "/admin/reports" },
-      { key: "users", label: "Manage Users", icon: "Users", path: "/admin/users" },
+    ]},
+    // The four admin-only editors were a flat block competing with Dashboard and
+    // All Reports for attention. Grouped, so Admin's top level is the two things
+    // they open daily and every role now fits the same shape of nav.
+    { section: "Manage", items: [
+      { key: "users", label: "Users", icon: "Users", path: "/admin/users" },
       { key: "faculty-admin", label: "Faculty Profiles", icon: "GraduationCap", path: "/admin/faculty" },
       { key: "studyhub-admin", label: "Study Hub", icon: "BookMarked", path: "/admin/study-hub" },
       { key: "clubs-admin", label: "Clubs", icon: "UsersRound", path: "/admin/clubs" },
@@ -287,12 +292,79 @@ function activeKeyForPath(path, role) {
 const LayoutContext = React.createContext({ openDrawer: () => {} });
 export function useLayout() { return React.useContext(LayoutContext); }
 
+// One grouped nav entry in the capsule: a button that drops its items in a menu
+// panel underneath. Closes on outside click, Escape, or picking an item.
+function NavMenu({ group, activeKey, onNavigate, badges }) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef(null);
+  const hasActive = group.items.some((i) => i.key === activeKey);
+  const count = group.items.reduce((n, i) => n + (badges[i.key] || 0), 0);
+
+  React.useEffect(() => {
+    if (!open) return;
+    // `mousedown`, not `click`: closing on click would fire after the item's own
+    // handler and could swallow a selection made in a sibling menu.
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={`inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-full px-3 text-base font-semibold transition-colors ${
+          hasActive ? "bg-brand-50 text-brand-700" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+        }`}
+      >
+        {group.section}
+        {count > 0 && (
+          <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white">
+            {count > 9 ? "9+" : count}
+          </span>
+        )}
+        <ChevronDown size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div role="menu" aria-label={group.section} className="absolute left-0 top-full z-40 mt-2 w-56 rounded-2xl border border-brd bg-surface p-1.5 shadow-xl">
+          {group.items.map((item) => {
+            const active = item.key === activeKey;
+            return (
+              <button
+                key={item.key}
+                role="menuitem"
+                onClick={() => { setOpen(false); onNavigate(item.path); }}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-base font-semibold transition-colors ${
+                  active ? "bg-brand-50 text-brand-700" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+                }`}
+              >
+                <Icon name={item.icon} size={17} className={active ? "text-brand" : "text-ink-3"} />
+                {item.label}
+                {badges[item.key] > 0 && (
+                  <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-bold leading-none text-white">
+                    {badges[item.key] > 9 ? "9+" : badges[item.key]}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // AppLayout — persistent frame for all signed-in screens. Rendered ONCE around
 // the routed content (see App.jsx) so the sidebar and its scroll position
 // survive navigation instead of remounting per screen. Active nav is derived
 // from the route, so screens don't pass activeKey to keep the sidebar in sync.
 export function AppLayout({ children }) {
-  const { currentUser, logout, totalUnreadMessages = 0 } = useApp();
+  const { currentUser, logout, totalUnreadMessages = 0, unreadNotifCount = 0 } = useApp();
   const path = useHashRoute();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -320,14 +392,101 @@ export function AppLayout({ children }) {
   return (
     <LayoutContext.Provider value={{ openDrawer: () => setDrawerOpen(true) }}>
       <div className="min-h-screen bg-bg">
-        {/* Desktop sidebar — mounts once, persists across navigation */}
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-brd bg-surface lg:block">
-          <SidebarContent nav={nav} activeKey={activeKey} onNavigate={go} onLogout={logout} badges={navBadges} openSection={openSection} onToggleSection={toggleSection} />
-        </aside>
+        {/* Floating nav capsule — the app's primary navigation from lg up. Below
+            lg the nav collapses to the hamburger + the drawer underneath, which
+            still uses the accordion SidebarContent. Mounts once in AppLayout so
+            open menus and scroll position survive navigation. */}
+        <div className="sticky top-0 z-30 px-3 pb-2 pt-3 sm:px-6 sm:pt-4">
+          {/* Width cap is shared with <main> below so the capsule and the page
+              content line up on the same left/right edges at every size. */}
+          <div className="topbar-blur mx-auto flex h-16 w-full max-w-[110rem] items-center gap-1 rounded-full border border-brd px-3 shadow-lg backdrop-blur sm:px-4">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open menu"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-surface-2 xl:hidden"
+            >
+              <Menu size={20} />
+            </button>
+
+            <Link to="/" className="shrink-0 px-1"><Logo /></Link>
+
+            {/* xl, not lg: Admin's nav needs ~990px including logo and account
+                controls, and lg (1024px) doesn't leave room — the pills are
+                whitespace-nowrap, so an undersized box doesn't shrink them, it
+                lets them spill over the account controls and steal their
+                clicks. At xl the tightest role (Admin) still has ~210px slack.
+                Below xl the hamburger + drawer take over.
+                NB: no `overflow` here. Any overflow value makes this a clipping
+                container, and the dropdown panels hang BELOW the nav box — they
+                would be cut off and invisible. */}
+            <nav className="ml-2 hidden min-w-0 flex-1 items-center gap-0.5 xl:flex">
+              {nav.map((group, gi) =>
+                group.section ? (
+                  <NavMenu key={group.section} group={group} activeKey={activeKey} onNavigate={go} badges={navBadges} />
+                ) : (
+                  // Ungrouped items are direct links. `profile` is excluded — the
+                  // avatar on the right already opens it, and a duplicate row
+                  // would cost a slot the capsule can't spare.
+                  group.items
+                    .filter((i) => i.key !== "profile")
+                    .map((item) => {
+                      const active = item.key === activeKey;
+                      return (
+                        <button
+                          key={item.key}
+                          onClick={() => go(item.path)}
+                          className={`inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-base font-semibold transition-colors ${
+                            active ? "bg-brand-50 text-brand-700" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+                          }`}
+                        >
+                          {item.label}
+                          {navBadges[item.key] > 0 && (
+                            <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white">
+                              {navBadges[item.key] > 9 ? "9+" : navBadges[item.key]}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
+                )
+              )}
+            </nav>
+
+            <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
+              <ThemeToggle />
+              <button
+                onClick={() => navigate("/notifications")}
+                title="Notifications"
+                aria-label={unreadNotifCount > 0 ? `Notifications, ${unreadNotifCount} unread` : "Notifications"}
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-3 hover:bg-surface-2 hover:text-ink-2"
+              >
+                <Bell size={19} />
+                {unreadNotifCount > 0 && (
+                  <span className="absolute right-0.5 top-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+                  </span>
+                )}
+              </button>
+              {/* 2xl, not xl: at exactly xl the nav has only just gained room,
+                  so the badge waits until there is slack to spend. */}
+              <Badge tone={ROLE_TONE[currentUser.role]} className="hidden 2xl:inline-flex">{currentUser.role}</Badge>
+              <button onClick={() => navigate("/profile")} title="My profile" className="rounded-full">
+                <Avatar name={currentUser.name} src={currentUser.avatar} size={32} />
+              </button>
+              <button
+                onClick={logout}
+                title="Log out"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-3 hover:bg-surface-2 hover:text-ink-2"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Mobile drawer */}
         {drawerOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="fixed inset-0 z-50 xl:hidden">
             <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60" onClick={() => setDrawerOpen(false)} />
             <div role="dialog" aria-modal="true" aria-label="Menu" className="absolute inset-y-0 left-0 w-64 bg-surface shadow-xl">
               <button
@@ -342,81 +501,33 @@ export function AppLayout({ children }) {
           </div>
         )}
 
-        {/* Main column */}
-        <div className="lg:pl-60">{children}</div>
+        {/* Main column — full width now that the nav is overhead, not beside. */}
+        <div>{children}</div>
       </div>
     </LayoutContext.Provider>
   );
 }
 
-// AppShell — per-screen top bar + content, rendered inside AppLayout's main
-// column. `activeKey` is accepted for backward-compat but unused (active nav is
-// now route-derived in AppLayout).
-export function AppShell({ activeKey, title, actions, children }) {
-  const { currentUser, logout, dataError, retryData, unreadNotifCount = 0 } = useApp();
-  const { openDrawer } = useLayout();
+// AppShell — per-screen content frame, rendered inside AppLayout. Navigation
+// and account controls live in AppLayout's capsule, so this is now just the
+// page's h1, the data-error banner and the content column. `activeKey` is
+// accepted for backward-compat but unused (active nav is route-derived).
+export function AppShell({ activeKey, title, children }) {
+  const { currentUser, dataError, retryData } = useApp();
   if (!currentUser) return null;
 
   return (
     <>
-        {/* Top bar */}
-        <header className="topbar-blur sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-brd px-4 backdrop-blur sm:px-6">
-          <button
-            onClick={openDrawer}
-            aria-label="Open menu"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 lg:hidden"
-          >
-            <Menu size={20} />
-          </button>
-
-          <div className="min-w-0 flex-1">
-            {title && <h1 className="truncate text-xl font-bold text-ink sm:text-2xl">{title}</h1>}
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            {actions}
-            <ThemeToggle />
-            <button
-              onClick={() => navigate("/notifications")}
-              title="Notifications"
-              aria-label={unreadNotifCount > 0 ? `Notifications, ${unreadNotifCount} unread` : "Notifications"}
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink-2"
-            >
-              <Bell size={19} />
-              {unreadNotifCount > 0 && (
-                <span className="absolute right-1 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold leading-none text-white">
-                  {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => navigate("/profile")}
-              title="My profile"
-              className="hidden items-center gap-2.5 rounded-md p-1 pr-1.5 hover:bg-surface-2 sm:flex"
-            >
-              <div className="text-right">
-                <p className="text-base font-semibold leading-tight text-ink">{currentUser.name}</p>
-                <p className="text-xs leading-tight text-ink-3">{currentUser.email}</p>
-              </div>
-              <Avatar name={currentUser.name} src={currentUser.avatar} />
-            </button>
-            <button onClick={() => navigate("/profile")} title="My profile" className="sm:hidden">
-              <Avatar name={currentUser.name} src={currentUser.avatar} size={32} />
-            </button>
-            <Badge tone={ROLE_TONE[currentUser.role]} className="hidden sm:inline-flex">{currentUser.role}</Badge>
-            <button
-              onClick={logout}
-              title="Log out"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink-2"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </header>
+        {/* The nav capsule in AppLayout carries the account controls and the
+            hamburger now, so this renders no bar of its own. `title` stays the
+            document's h1 — visually hidden, because PageHeader already shows the
+            page name in the content. Page-level buttons belong to PageHeader's
+            own `action` slot; the old top-bar `actions` prop is gone. */}
+        {title && <h1 className="sr-only">{title}</h1>}
 
         {/* A background load failed — offer a retry instead of silently showing empty lists. */}
         {dataError && (
-          <div className="flex items-center justify-between gap-3 border-b border-brd bg-warn-bg px-4 py-2.5 text-base text-warn sm:px-6">
+          <div className="mx-3 mb-2 flex items-center justify-between gap-3 rounded-2xl border border-brd bg-warn-bg px-4 py-2.5 text-base text-warn sm:mx-6">
             <span>Some data couldn't be loaded. Check your connection and try again.</span>
             <button onClick={retryData} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-warn px-3 text-xs font-bold text-white hover:brightness-95">
               Retry
@@ -424,9 +535,9 @@ export function AppShell({ activeKey, title, actions, children }) {
           </div>
         )}
 
-        {/* Content — widen on large screens so feature pages fill the space
-            next to the sidebar instead of sitting in a narrow centered column. */}
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 xl:max-w-7xl 2xl:max-w-[100rem]">{children}</main>
+        {/* Content — matches the capsule's max width so page content lines up
+            with the nav above it rather than drifting wider. */}
+        <main className="mx-auto w-full max-w-[110rem] px-4 pb-6 pt-2 sm:px-6 sm:pb-8 sm:pt-3">{children}</main>
     </>
   );
 }
