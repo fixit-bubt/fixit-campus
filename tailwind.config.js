@@ -25,6 +25,7 @@ export default {
           jobs: "#0e9c8a", announce: "#3e7de0", study: "#2ba0c9", bus: "#e08a2b", medical: "#e2483d",
           market: "#2e9e63", ride: "#6e8b1f", blood: "#c7344a", directory: "#5b6b86", prayer: "#1f8a5b",
           faculty: "#0e9c8a", calendar: "#d4553a", routines: "#5c6bc0", coverpage: "#00838f",
+          pdfmaker: "#b12f8c",
         },
       },
       borderRadius: { xs: "8px", sm: "10px", md: "14px", lg: "18px", xl: "22px", "2xl": "26px", "3xl": "32px", full: "999px" },
