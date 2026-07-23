@@ -1,12 +1,10 @@
 import React from "react";
 import { ArrowRight, GraduationCap, ClipboardList, Search, CalendarDays, Store, Stethoscope } from "lucide-react";
-import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { Button, Badge, Card } from "../../components/ui.jsx";
 import { Logo } from "../../components/Brand.jsx";
-import { ThemeToggle } from "../../components/ThemeToggle.jsx";
 import { ACCENT_TILE } from "../../components/featureKit.jsx";
-import { EXPLORE_NAV } from "./Explore.jsx";
+import { PublicNav } from "./Explore.jsx";
 import campusPhoto from "../../assets/bubt-campus.jpg";
 
 // Landing cards reuse the in-app sector accents so each feature keeps its
@@ -27,61 +25,24 @@ const STATS = [
 ];
 
 export default function Landing() {
-  const { currentUser, dashboardPath } = useApp();
-
   return (
     <div className="min-h-screen bg-surface">
-      {/* Top nav */}
-      <header className="sticky top-0 z-40 border-b border-brd topbar-blur backdrop-blur-md">
-        <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Logo />
-          {/* Public explore pages — browsable without an account. Spread across
-              the bar so it reads as filled rather than a centered cluster. */}
-          <nav className="hidden flex-1 items-center justify-evenly px-8 xl:flex">
-            {EXPLORE_NAV.map((l) => (
-              <button
-                key={l.path}
-                onClick={() => navigate(l.path)}
-                className="rounded-md px-2.5 py-2 text-[15px] font-semibold text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
-              >
-                {l.label}
-              </button>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            {currentUser ? (
-              <Button onClick={() => navigate(dashboardPath(currentUser.role))} iconRight={ArrowRight}>
-                Go to dashboard
-              </Button>
-            ) : (
-              <>
-                <Button variant="ghost" onClick={() => navigate("/login")}>Log In</Button>
-                <Button onClick={() => navigate("/register")}>Sign Up</Button>
-              </>
-            )}
-          </div>
-        </div>
-        {/* Mobile / tablet explore row */}
-        <div className="flex gap-1 overflow-x-auto px-4 pb-2 xl:hidden">
-          {EXPLORE_NAV.map((l) => (
-            <button
-              key={l.path}
-              onClick={() => navigate(l.path)}
-              className="shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
-            >
-              {l.label}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      {/* Hero — BUBT campus photo under a theme-aware veil */}
+      {/* Hero — BUBT campus photo under a theme-aware veil, with the nav capsule
+          floating ON it. The nav is overlaid rather than stacked above so the
+          photo runs to the top of the window; in normal flow the nav's own
+          padding showed as a band of page background above the image. */}
       <section className="relative overflow-hidden">
         <img src={campusPhoto} alt="" aria-hidden="true" className="hero-photo absolute inset-0 h-full w-full object-cover object-[50%_30%]" />
         <div className="hero-photo-veil absolute inset-0" />
         <div className="hero-glow absolute inset-0" />
-        <div className="relative mx-auto max-w-7xl px-6 2xl:max-w-[96rem] pt-20 pb-16 sm:pt-24 sm:pb-20">
+
+        {/* Shared with the explore pages (see PublicNav) so the two can't drift;
+            this file used to carry a near-identical copy. */}
+        <PublicNav overlay />
+
+        {/* Top padding clears the overlaid capsule: ~80px of bar on desktop, plus
+            the second scrolling nav row that appears below xl. */}
+        <div className="relative mx-auto max-w-[110rem] px-6 pb-16 pt-44 sm:pb-20 sm:pt-40 xl:pt-32">
           <div className="mx-auto max-w-2xl text-center">
             <Badge tone="blue" icon={GraduationCap} className="mb-6">BUBT Campus</Badge>
             <h1 className="text-[40px] leading-[1.08] font-extrabold tracking-tight text-ink sm:text-[54px]">
