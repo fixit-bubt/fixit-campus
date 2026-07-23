@@ -347,7 +347,9 @@ export function CoverPageBody({ currentUser, faculty = [], departments = [] }) {
 
         {/* ---- Live preview ---- */}
         <div className="hidden lg:block">
-          <div className="sticky top-20">
+          {/* top-24 clears the floating nav capsule (12/16px inset + h-16 bar +
+              8px = 84-88px); the old top-20 was tuned to the flush header. */}
+          <div className="sticky top-24">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-3">Live preview</p>
             <div ref={previewRef} className="relative w-full overflow-hidden rounded-md border border-brd bg-surface-3 shadow-sm" style={{ aspectRatio: "210 / 297" }}>
               <iframe

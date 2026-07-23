@@ -53,12 +53,12 @@ export function Routines() {
   }
 
   return (
-    <AppShell
-      activeKey="routines"
-      title="Class & Exam Routines"
-      actions={canPostRoutines ? <Button size="sm" icon={Plus} onClick={openPost}>Post routine</Button> : null}
-    >
-      <PageHeader title="Routines" subtitle="Class and exam schedules posted by faculty and staff." />
+    <AppShell activeKey="routines" title="Class & Exam Routines">
+      <PageHeader
+        title="Routines"
+        subtitle="Class and exam schedules posted by faculty and staff."
+        action={canPostRoutines ? <Button size="sm" icon={Plus} onClick={openPost}>Post routine</Button> : null}
+      />
 
       {/* Tabs */}
       <div className="mb-4 flex gap-1 border-b border-brd">

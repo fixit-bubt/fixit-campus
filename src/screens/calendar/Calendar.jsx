@@ -91,22 +91,22 @@ export function AcademicCalendar() {
   }
 
   return (
-    <AppShell
-      activeKey="calendar"
-      title="Academic Calendar"
-      actions={<>
-        <a
-          href="/bubt-academic-calendar-summer-2026.pdf"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-brd px-3 text-sm font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
-        >
-          <FileText size={15} /> PDF
-        </a>
-        {canManageCalendar && <Button size="sm" icon={Plus} onClick={openAdd}>Add event</Button>}
-      </>}
-    >
-      <PageHeader title="Academic Calendar" subtitle="University holidays, exams and semester dates." />
+    <AppShell activeKey="calendar" title="Academic Calendar">
+      <PageHeader
+        title="Academic Calendar"
+        subtitle="University holidays, exams and semester dates."
+        action={<>
+          <a
+            href="/bubt-academic-calendar-summer-2026.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-brd px-3 text-sm font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink"
+          >
+            <FileText size={15} /> PDF
+          </a>
+          {canManageCalendar && <Button size="sm" icon={Plus} onClick={openAdd}>Add event</Button>}
+        </>}
+      />
 
       {/* Month nav */}
       <div className="mb-4 flex items-center justify-between">
