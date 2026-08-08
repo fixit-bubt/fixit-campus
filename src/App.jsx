@@ -51,6 +51,7 @@ import { Jobs, JobDetail, JobForm, ModerateJobs, SavedJobs } from "./screens/job
 import { Notifications, NotifSettings } from "./screens/notifications/Notifications.jsx";
 import { MessagesHome, MessageThread } from "./screens/messages/Messages.jsx";
 import CoverPage from "./screens/coverpage/CoverPage.jsx";
+import Cgpa from "./screens/cgpa/Cgpa.jsx";
 import { AcademicCalendar } from "./screens/calendar/Calendar.jsx";
 import { Routines } from "./screens/routines/Routines.jsx";
 
@@ -228,6 +229,7 @@ function AuthedRoutes({ path }) {
 
   // ---- Cover Page Generator (students only) ----
   if (path === "/cover-page") return <RequireRole role="Student"><CoverPage /></RequireRole>;
+  if (path === "/cgpa") return <RequireRole role="Student"><Cgpa /></RequireRole>;
 
   // ---- PDF Maker (students only; lazy — see the import at the top) ----
   if (path === "/pdf-maker") return <RequireRole role="Student"><LazyScreen><PdfMaker /></LazyScreen></RequireRole>;

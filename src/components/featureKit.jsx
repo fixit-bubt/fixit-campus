@@ -156,6 +156,31 @@ export function mailHref(email) {
   return `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(e)}`;
 }
 
+// ---------------------------------------------------------------------------
+// CGPA calculator — BUBT / UGC Bangladesh uniform grading scale. Shared by the
+// public preview (Explore.jsx PublicCGPA) and the authed page (screens/cgpa).
+// ---------------------------------------------------------------------------
+export const GRADE_POINTS = [
+  ["A+", 4.0], ["A", 3.75], ["A-", 3.5], ["B+", 3.25], ["B", 3.0],
+  ["B-", 2.75], ["C+", 2.5], ["C", 2.25], ["D", 2.0], ["F", 0.0],
+];
+export const GRADE_MAP = Object.fromEntries(GRADE_POINTS);
+
+// Credit-weighted GPA over `{ credit, grade }` rows; ignores rows with a
+// non-positive/invalid credit or an unrecognized grade.
+export function computeGpa(rows) {
+  let qp = 0, cr = 0;
+  for (const r of rows) {
+    const c = parseFloat(r.credit);
+    if (!Number.isFinite(c) || c <= 0) continue;
+    const p = GRADE_MAP[r.grade];
+    if (p === undefined) continue;
+    qp += c * p;
+    cr += c;
+  }
+  return { gpa: cr > 0 ? qp / cr : 0, totalCredits: cr };
+}
+
 export function useTick(ms = 30000) {
   const [, setN] = React.useState(0);
   React.useEffect(() => {

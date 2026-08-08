@@ -32,6 +32,9 @@ const ACADEMICS = [
   { key: "calendar", label: "Academic Calendar", icon: "CalendarRange", path: "/calendar" },
   { key: "faculty", label: "Faculty", icon: "GraduationCap", path: "/faculty" },
 ];
+// CGPA calculator is students-only (RequireRole below), like Cover Page/PDF
+// Maker — ACADEMICS itself is shared with Admin's nav, so it can't go there.
+const CGPA = { key: "cgpa", label: "CGPA", icon: "Calculator", path: "/cgpa" };
 // Shared "Campus Life" group — things happening around campus, not coursework.
 const CAMPUS_LIFE = [
   { key: "clubs", label: "Clubs", icon: "UsersRound", path: "/clubs" },
@@ -61,7 +64,7 @@ const NAV_BY_ROLE = {
       { key: "reports", label: "Reports", icon: "FileText", path: "/reports", match: ["/campus-issues"] },
       { key: "messages", label: "Messages", icon: "MessagesSquare", path: "/messages" },
     ]},
-    { section: "Academics", items: [STUDY_HUB, ...ACADEMICS, COVER_PAGE, PDF_MAKER] },
+    { section: "Academics", items: [STUDY_HUB, ...ACADEMICS, CGPA, COVER_PAGE, PDF_MAKER] },
     { section: "Campus Life", items: CAMPUS_LIFE },
     { section: "Services", items: [
       MEDICAL,
