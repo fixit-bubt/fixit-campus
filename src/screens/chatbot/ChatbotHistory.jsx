@@ -4,7 +4,7 @@ import { useApp } from "../../data/store.jsx";
 import { navigate } from "../../lib/router.jsx";
 import { supabase } from "../../lib/supabase.js";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
-import { Card, Button, EmptyState, Loading, useToast } from "../../components/ui.jsx";
+import { Card, Button, EmptyState, Loading, Modal, useToast } from "../../components/ui.jsx";
 
 function timeAgo(iso) {
   const ms = Date.now() - new Date(iso).getTime();
@@ -23,6 +23,7 @@ export default function ChatbotHistory() {
   const { currentUser } = useApp();
   const toast = useToast();
   const [rows, setRows] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null); // conversation being confirmed for delete
 
   useEffect(() => {
     let active = true;
@@ -36,11 +37,13 @@ export default function ChatbotHistory() {
     return () => { active = false; };
   }, [currentUser.id]);
 
-  async function remove(id, e) {
-    e.stopPropagation();
+  async function doDelete() {
+    const c = confirmDel;
+    if (!c) return;
+    setConfirmDel(null);
     const prev = rows;
-    setRows((r) => r.filter((c) => c.id !== id)); // optimistic — messages cascade-delete server-side
-    const { error } = await supabase.from("chatbot_conversations").delete().eq("id", id);
+    setRows((r) => r.filter((x) => x.id !== c.id)); // optimistic — messages cascade-delete server-side
+    const { error } = await supabase.from("chatbot_conversations").delete().eq("id", c.id);
     if (error) { setRows(prev); toast({ type: "error", title: "Couldn't delete", message: error.message }); }
   }
 
@@ -79,7 +82,7 @@ export default function ChatbotHistory() {
                   <p className="text-xs text-ink-3">{timeAgo(c.updated_at)}</p>
                 </div>
                 <button
-                  onClick={(e) => remove(c.id, e)}
+                  onClick={(e) => { e.stopPropagation(); setConfirmDel(c); }}
                   aria-label="Delete conversation"
                   className="shrink-0 rounded-md p-2 text-ink-3 hover:bg-danger-bg hover:text-danger"
                 >
@@ -90,6 +93,21 @@ export default function ChatbotHistory() {
           </Card>
         )}
       </div>
+
+      <Modal
+        open={!!confirmDel}
+        onClose={() => setConfirmDel(null)}
+        title="Delete this chat?"
+        description="This conversation and all its messages will be permanently deleted. This can't be undone."
+        icon={Trash2}
+        tone="red"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmDel(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={doDelete}>Delete</Button>
+          </>
+        }
+      />
     </AppShell>
   );
 }

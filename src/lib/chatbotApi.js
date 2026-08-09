@@ -14,7 +14,7 @@ import { supabase } from "./supabase.js";
 //                            tool instead — the preamble text was never real)
 //   {type:'done', text}   - final, complete reply
 //   {type:'error', message} - mid-stream failure
-export async function streamChat({ message, history, onChunk, onRetract, onDone, onError }) {
+export async function streamChat({ message, history, imageBase64, imageMimeType, onChunk, onRetract, onDone, onError }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) { onError("Not signed in."); return; }
 
@@ -28,7 +28,10 @@ export async function streamChat({ message, history, onChunk, onRetract, onDone,
         Authorization: `Bearer ${session.access_token}`,
         apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ message, history }),
+      // Only the CURRENT turn's image is ever sent — past images in `history`
+      // aren't re-fetched and re-attached on later messages (matches the
+      // server's own doc comment on this, keeps request size bounded).
+      body: JSON.stringify({ message, history, imageBase64, imageMimeType }),
     });
   } catch {
     onError("Couldn't reach the assistant. Check your connection.");

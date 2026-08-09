@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { LogOut, Menu, X, Bell, ChevronDown, ExternalLink } from "lucide-react";
+import { LogOut, Menu, X, Bell, ChevronDown } from "lucide-react";
 import { useApp } from "../data/store.jsx";
 import { navigate, Link, useHashRoute } from "../lib/router.jsx";
 import { Avatar, Badge } from "./ui.jsx";
@@ -24,6 +24,10 @@ const COVER_PAGE = { key: "cover-page", label: "Cover Page", icon: "FileBadge", 
 // entirely client-side. Its /pdf-maker/:tool subroutes highlight this row via
 // activeKeyForPath's longest-prefix match.
 const PDF_MAKER = { key: "pdf-maker", label: "PDF Maker", icon: "FileStack", path: "/pdf-maker" };
+// BUBT's own student portal (results/routine/attendance), embedded in-app —
+// all roles, like mobile's Annex tab. A real internal route (see Annex.jsx),
+// not an external link, so it needs no special-case in the nav renderer.
+const ANNEX = { key: "annex", label: "Annex Portal", icon: "ExternalLink", path: "/annex" };
 
 // "Academics" — coursework tools: what you need to attend and pass classes.
 // Split out of Campus Life, which had grown to 11 items and stopped being a
@@ -79,6 +83,7 @@ const NAV_BY_ROLE = {
     ]},
     { section: null, items: [
       { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
+      ANNEX,
     ]},
   ],
   Staff: [
@@ -96,6 +101,7 @@ const NAV_BY_ROLE = {
     { section: "Community", items: COMMUNITY },
     { section: null, items: [
       { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
+      ANNEX,
     ]},
   ],
   Admin: [
@@ -118,6 +124,7 @@ const NAV_BY_ROLE = {
     { section: "Community", items: COMMUNITY },
     { section: null, items: [
       { key: "profile", label: "My Profile", icon: "CircleUser", path: "/profile" },
+      ANNEX,
     ]},
   ],
 };
@@ -462,16 +469,6 @@ export function AppLayout({ children }) {
             </nav>
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
-              <a
-                href="https://annex.bubt.edu.bd"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Annex Portal (results, routine, attendance)"
-                aria-label="Open Annex Portal in a new tab"
-                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink-2 transition-colors"
-              >
-                <ExternalLink size={18} />
-              </a>
               <LanguageToggle />
               <ThemeToggle />
               <button

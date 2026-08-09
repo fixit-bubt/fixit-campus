@@ -53,6 +53,7 @@ import { Notifications, NotifSettings } from "./screens/notifications/Notificati
 import { MessagesHome, MessageThread } from "./screens/messages/Messages.jsx";
 import Chatbot from "./screens/chatbot/Chatbot.jsx";
 import ChatbotHistory from "./screens/chatbot/ChatbotHistory.jsx";
+import Annex from "./screens/annex/Annex.jsx";
 import CoverPage from "./screens/coverpage/CoverPage.jsx";
 import Cgpa from "./screens/cgpa/Cgpa.jsx";
 import { AcademicCalendar } from "./screens/calendar/Calendar.jsx";
@@ -214,6 +215,10 @@ function AuthedRoutes({ path }) {
   if (path === "/chatbot") return <RequireRole role="Student"><Chatbot /></RequireRole>;
   if (path === "/chatbot/history") return <RequireRole role="Student"><ChatbotHistory /></RequireRole>;
   if ((m = matchRoute("/chatbot/:conversationId", path))) return <RequireRole role="Student"><Chatbot conversationId={m.conversationId} /></RequireRole>;
+
+  // ---- Annex Portal (BUBT student portal, embedded — any signed-in role,
+  // matches mobile's Annex tab which is shown to Student/Staff/Admin alike) ----
+  if (path === "/annex") return <RequireAuth><Annex /></RequireAuth>;
 
   // ---- Notifications (any signed-in user) ----
   if (path === "/notifications") return <RequireAuth><Notifications /></RequireAuth>;
