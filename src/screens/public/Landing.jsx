@@ -6,6 +6,7 @@ import { Logo } from "../../components/Brand.jsx";
 import { ACCENT_TILE } from "../../components/featureKit.jsx";
 import { PublicNav } from "./Explore.jsx";
 import campusPhoto from "../../assets/bubt-campus.jpg";
+import { useT } from "../../i18n/index.js";
 
 // Landing cards reuse the in-app sector accents so each feature keeps its
 // signature color from the first impression on.
@@ -25,6 +26,7 @@ const STATS = [
 ];
 
 export default function Landing() {
+  const t = useT();
   return (
     <div className="min-h-screen bg-surface">
       {/* Hero — BUBT campus photo under a theme-aware veil, with the nav capsule
@@ -44,28 +46,27 @@ export default function Landing() {
             the second scrolling nav row that appears below xl. */}
         <div className="relative mx-auto max-w-[110rem] px-6 pb-16 pt-44 sm:pb-20 sm:pt-40 xl:pt-32">
           <div className="mx-auto max-w-2xl text-center">
-            <Badge tone="blue" icon={GraduationCap} className="mb-6">BUBT Campus</Badge>
+            <Badge tone="blue" icon={GraduationCap} className="mb-6">{t.landing.badge}</Badge>
             <h1 className="text-[40px] leading-[1.08] font-extrabold tracking-tight text-ink sm:text-[54px]">
-              Your whole campus,
+              {t.landing.heroTitle1}
               <br />
               <span className="bg-gradient-to-r from-brand to-sector-clubs bg-clip-text text-transparent">
-                in one app.
+                {t.landing.heroTitle2}
               </span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-xl leading-relaxed text-ink-2">
-              FixIt is the single place for the BUBT community — report issues, browse faculty,
-              catch the bus, buy and sell, find blood donors, and much more.
+              {t.landing.heroBody}
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button size="md" className="px-6" onClick={() => navigate("/register")} iconRight={ArrowRight}>
-                Get started
+                {t.landing.getStarted}
               </Button>
             </div>
             <button
               onClick={() => navigate("/explore/faculty")}
               className="mt-4 text-base font-semibold text-brand hover:underline"
             >
-              or browse the faculty directory without an account →
+              {t.landing.browseFaculty}
             </button>
             <div className="mt-12 flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
               {STATS.map((s) => (

@@ -435,7 +435,26 @@ function fileKindFromName(name) {
   return e || "file";
 }
 
+const LANG_KEY = "fixit-lang";
+
 export function AppProvider({ children }) {
+  // ---- language (EN / BN), same persistence pattern as src/lib/theme.js —
+  // lives in context (not a standalone hook like theme) because every screen
+  // that calls useT() needs to re-render together on toggle, not just the
+  // one component that clicked it. ----
+  const [lang, setLangState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LANG_KEY);
+      if (saved === "en" || saved === "bn") return saved;
+    } catch { /* storage blocked — default to en */ }
+    return "en";
+  });
+  const setLang = useCallback((next) => {
+    setLangState(next);
+    try { localStorage.setItem(LANG_KEY, next); } catch { /* fine — just won't persist */ }
+  }, []);
+  const toggleLang = useCallback(() => setLang(lang === "en" ? "bn" : "en"), [lang, setLang]);
+
   // ---- auth / profiles (real Supabase) ----
   const [sessionUserId, setSessionUserId] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -1148,6 +1167,17 @@ export function AppProvider({ children }) {
     // (or shows the recoverable profile-error screen). Don't fabricate a partial,
     // role-less user that would drive an initial wrong-dashboard redirect.
     return { ok: true, user: toUser(p) };
+  }
+
+  // Redirects out to Google, then back to /auth/callback — there's no user/session
+  // to return here, the page navigates away before this promise would resolve.
+  async function loginWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + "/#/auth/callback" },
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   }
 
   // ---- password reset via emailed 6-digit code (OTP) ----
@@ -3351,7 +3381,8 @@ export function AppProvider({ children }) {
     addClubPost, updateClubPost, deleteClubPost, toggleClubPin,
     createClub, updateClubDetails, setClubActive, assignClubPresident,
     currentUser, sessionUserId, loading, dataLoading, profileError, retryProfile, dataError, retryData,
-    login, register, logout, createUser,
+    lang, setLang, toggleLang,
+    login, loginWithGoogle, register, logout, createUser,
     requestPasswordReset, resetPasswordWithCode, verifySignupCode, resendSignupCode,
     userById, dashboardPath, staffList,
     createReport, updateReport, setReportStatus, assignReport, deleteReport,

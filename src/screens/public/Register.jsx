@@ -3,15 +3,29 @@ import { Info } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
 import { Button, Field, Input, Spinner, useToast } from "../../components/ui.jsx";
-import { AuthShell } from "./AuthShell.jsx";
+import { AuthShell, GoogleButton, OrDivider } from "./AuthShell.jsx";
 import { PENDING_VERIFY_KEY } from "./VerifyEmail.jsx";
+import { useT } from "../../i18n/index.js";
 
 export default function Register() {
-  const { register, dashboardPath } = useApp();
+  const { register, loginWithGoogle, dashboardPath } = useApp();
+  const t = useT();
   const toast = useToast();
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  async function submitGoogle() {
+    if (googleLoading || loading) return;
+    setGoogleLoading(true);
+    setErrors({});
+    const res = await loginWithGoogle();
+    if (!res.ok) {
+      setErrors({ email: res.error });
+      setGoogleLoading(false);
+    }
+  }
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -59,35 +73,37 @@ export default function Register() {
 
   return (
     <AuthShell
-      title="Create your account"
-      subtitle="Join FixIt to report issues and use Lost & Found."
+      title={t.auth.register.title}
+      subtitle={t.auth.register.subtitle}
       footer={
         <>
-          Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-brand hover:text-brand-700">Log in</Link>
+          {t.auth.register.haveAccount}{" "}
+          <Link to="/login" className="font-semibold text-brand hover:text-brand-700">{t.auth.register.logIn}</Link>
         </>
       }
     >
       <form onSubmit={submit} className="space-y-4" noValidate>
-        <Field label="Full name" htmlFor="reg-name" required error={errors.name}>
+        <Field label={t.auth.register.fullName} htmlFor="reg-name" required error={errors.name}>
           <Input id="reg-name" placeholder="e.g. Tahmid Rahman" value={form.name} error={!!errors.name} onChange={set("name")} />
         </Field>
-        <Field label="Email" htmlFor="reg-email" required error={errors.email}>
+        <Field label={t.auth.register.email} htmlFor="reg-email" required error={errors.email}>
           <Input id="reg-email" type="email" placeholder="you@bubt.edu.bd" value={form.email} error={!!errors.email} onChange={set("email")} />
         </Field>
-        <Field label="Password" htmlFor="reg-pw" required error={errors.password} hint="At least 8 characters.">
+        <Field label={t.auth.register.password} htmlFor="reg-pw" required error={errors.password} hint="At least 8 characters.">
           <Input id="reg-pw" type="password" placeholder="••••••••" value={form.password} error={!!errors.password} onChange={set("password")} />
         </Field>
-        <Field label="Confirm password" htmlFor="reg-confirm" required error={errors.confirm}>
+        <Field label={t.auth.register.confirmPassword} htmlFor="reg-confirm" required error={errors.confirm}>
           <Input id="reg-confirm" type="password" placeholder="••••••••" value={form.confirm} error={!!errors.confirm} onChange={set("confirm")} />
         </Field>
         <div className="flex items-center gap-2 rounded-md bg-surface-2 px-3 py-2.5 text-xs text-ink-3">
           <Info size={14} className="shrink-0" />
-          New accounts start with the <span className="font-semibold text-ink-2">Student</span> role. Staff &amp; Admin accounts are created by an administrator.
+          {t.auth.register.roleNotice} <span className="font-semibold text-ink-2">{t.auth.register.roleNoticeRole}</span> {t.auth.register.roleNoticeRest}
         </div>
-        <Button type="submit" full disabled={loading}>
-          {loading ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Create Account"}
+        <Button type="submit" full disabled={loading || googleLoading}>
+          {loading ? <Spinner size={16} className="border-white/40 border-t-white" /> : t.auth.register.submit}
         </Button>
+        <OrDivider />
+        <GoogleButton onClick={submitGoogle} loading={googleLoading} label={t.auth.register.googleSubmit} />
       </form>
     </AuthShell>
   );

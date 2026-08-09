@@ -3,16 +3,32 @@ import { AlertCircle } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
 import { Button, Field, Input, Spinner, useToast } from "../../components/ui.jsx";
-import { AuthShell } from "./AuthShell.jsx";
+import { AuthShell, GoogleButton, OrDivider } from "./AuthShell.jsx";
 import { PENDING_VERIFY_KEY } from "./VerifyEmail.jsx";
+import { useT } from "../../i18n/index.js";
 
 export default function Login() {
-  const { login, dashboardPath } = useApp();
+  const { login, loginWithGoogle, dashboardPath } = useApp();
+  const t = useT();
   const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  async function submitGoogle() {
+    if (googleLoading || loading) return;
+    setGoogleLoading(true);
+    setError("");
+    const res = await loginWithGoogle();
+    // On success the page is already navigating to Google — nothing left to do.
+    // Only an immediate rejection (e.g. provider not configured) lands here.
+    if (!res.ok) {
+      setError(res.error);
+      setGoogleLoading(false);
+    }
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -53,12 +69,12 @@ export default function Login() {
 
   return (
     <AuthShell
-      title="Log in to FixIt"
-      subtitle="Welcome back — pick up where you left off."
+      title={t.auth.login.title}
+      subtitle={t.auth.login.subtitle}
       footer={
         <>
-          Don&apos;t have an account?{" "}
-          <Link to="/register" className="font-semibold text-brand hover:text-brand-700">Create one</Link>
+          {t.auth.login.noAccount}{" "}
+          <Link to="/register" className="font-semibold text-brand hover:text-brand-700">{t.auth.login.createOne}</Link>
         </>
       }
     >
@@ -69,18 +85,20 @@ export default function Login() {
             <span>{error}</span>
           </div>
         )}
-        <Field label="Email" htmlFor="login-email">
+        <Field label={t.auth.login.email} htmlFor="login-email">
           <Input id="login-email" type="email" placeholder="you@bubt.edu.bd" value={email} autoComplete="username" error={!!error} onChange={(e) => setEmail(e.target.value)} />
         </Field>
-        <Field label="Password" htmlFor="login-pw">
+        <Field label={t.auth.login.password} htmlFor="login-pw">
           <Input id="login-pw" type="password" placeholder="••••••••" value={password} autoComplete="current-password" error={!!error} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         <div className="-mt-2 text-right">
-          <Link to="/forgot-password" className="text-sm font-semibold text-brand hover:text-brand-700">Forgot password?</Link>
+          <Link to="/forgot-password" className="text-sm font-semibold text-brand hover:text-brand-700">{t.auth.login.forgotPassword}</Link>
         </div>
-        <Button type="submit" full disabled={loading}>
-          {loading ? <Spinner size={16} className="border-white/40 border-t-white" /> : "Log In"}
+        <Button type="submit" full disabled={loading || googleLoading}>
+          {loading ? <Spinner size={16} className="border-white/40 border-t-white" /> : t.auth.login.submit}
         </Button>
+        <OrDivider />
+        <GoogleButton onClick={submitGoogle} loading={googleLoading} label={t.common.continueWithGoogle} />
       </form>
     </AuthShell>
   );

@@ -10,6 +10,7 @@ import Login from "./screens/public/Login.jsx";
 import Register from "./screens/public/Register.jsx";
 import ForgotPassword from "./screens/public/ForgotPassword.jsx";
 import VerifyEmail from "./screens/public/VerifyEmail.jsx";
+import AuthCallback from "./screens/public/AuthCallback.jsx";
 
 import StudentDashboard from "./screens/student/StudentDashboard.jsx";
 import StudentDirectory from "./screens/student/StudentDirectory.jsx";
@@ -50,6 +51,8 @@ import { ClubsHome, ClubHome, ClubMembers, ClubPostForm, ClubManage, AdminManage
 import { Jobs, JobDetail, JobForm, ModerateJobs, SavedJobs } from "./screens/jobs/Jobs.jsx";
 import { Notifications, NotifSettings } from "./screens/notifications/Notifications.jsx";
 import { MessagesHome, MessageThread } from "./screens/messages/Messages.jsx";
+import Chatbot from "./screens/chatbot/Chatbot.jsx";
+import ChatbotHistory from "./screens/chatbot/ChatbotHistory.jsx";
 import CoverPage from "./screens/coverpage/CoverPage.jsx";
 import Cgpa from "./screens/cgpa/Cgpa.jsx";
 import { AcademicCalendar } from "./screens/calendar/Calendar.jsx";
@@ -151,6 +154,9 @@ export default function App() {
   // (verifyOtp), and yanking the user away would interrupt them.
   if (path === "/forgot-password") return <ForgotPassword />;
   if (path === "/verify-email") return <VerifyEmail />;
+  // No signed-in redirect here either: this IS the screen that turns a fresh
+  // OAuth session into one, and it does its own routing once ready.
+  if (path === "/auth/callback") return <AuthCallback />;
 
   // Public explore pages — reference data readable without an account (RLS 0070–0073).
   if (path === "/explore/faculty") return <PublicFaculty />;
@@ -202,6 +208,12 @@ function AuthedRoutes({ path }) {
   if ((m = matchRoute("/messages/dm/:userId", path))) return <RequireRole role="Student"><MessageThread kind="dm" id={m.userId} /></RequireRole>;
   if ((m = matchRoute("/messages/club/:clubId", path))) return <RequireRole role="Student"><MessageThread kind="club" id={m.clubId} /></RequireRole>;
   if ((m = matchRoute("/messages/section/:sectionId", path))) return <RequireRole role="Student"><MessageThread kind="section" id={m.sectionId} /></RequireRole>;
+
+  // ---- AI Chatbot (students only, also enforced server-side by the edge
+  // function). Literal /chatbot/history before the :conversationId param. ----
+  if (path === "/chatbot") return <RequireRole role="Student"><Chatbot /></RequireRole>;
+  if (path === "/chatbot/history") return <RequireRole role="Student"><ChatbotHistory /></RequireRole>;
+  if ((m = matchRoute("/chatbot/:conversationId", path))) return <RequireRole role="Student"><Chatbot conversationId={m.conversationId} /></RequireRole>;
 
   // ---- Notifications (any signed-in user) ----
   if (path === "/notifications") return <RequireAuth><Notifications /></RequireAuth>;

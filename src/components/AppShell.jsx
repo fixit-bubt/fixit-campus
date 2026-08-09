@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { LogOut, Menu, X, Bell, ChevronDown } from "lucide-react";
+import { LogOut, Menu, X, Bell, ChevronDown, ExternalLink } from "lucide-react";
 import { useApp } from "../data/store.jsx";
 import { navigate, Link, useHashRoute } from "../lib/router.jsx";
 import { Avatar, Badge } from "./ui.jsx";
 import { Icon } from "./Icon.jsx";
 import { Logo } from "./Brand.jsx";
 import { ThemeToggle } from "./ThemeToggle.jsx";
+import { LanguageToggle } from "./LanguageToggle.jsx";
 
 // ============================================================================
 // AppShell — sidebar + top bar + content area for all logged-in screens.
@@ -63,6 +64,7 @@ const NAV_BY_ROLE = {
       // row highlighted on the sibling route (see activeKeyForPath).
       { key: "reports", label: "Reports", icon: "FileText", path: "/reports", match: ["/campus-issues"] },
       { key: "messages", label: "Messages", icon: "MessagesSquare", path: "/messages" },
+      { key: "chatbot", label: "AI Assistant", icon: "Sparkles", path: "/chatbot", match: ["/chatbot/history"] },
     ]},
     { section: "Academics", items: [STUDY_HUB, ...ACADEMICS, CGPA, COVER_PAGE, PDF_MAKER] },
     { section: "Campus Life", items: CAMPUS_LIFE },
@@ -460,6 +462,17 @@ export function AppLayout({ children }) {
             </nav>
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
+              <a
+                href="https://annex.bubt.edu.bd"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Annex Portal (results, routine, attendance)"
+                aria-label="Open Annex Portal in a new tab"
+                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink-2 transition-colors"
+              >
+                <ExternalLink size={18} />
+              </a>
+              <LanguageToggle />
               <ThemeToggle />
               <button
                 onClick={() => navigate("/notifications")}

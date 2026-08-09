@@ -14,4 +14,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Session persistence (localStorage) is left to the supabase-js SDK defaults by design.
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// flowType/detectSessionInUrl are spelled out (not just relying on v2 defaults) because
+// the app uses a hash router (#/path): PKCE puts its ?code= in the query string, which
+// the SDK strips on load before the router ever sees the URL, so the two never collide.
+// The implicit flow would instead land the token in the #fragment, which the hash
+// router would misread as a route — must never switch to that flow.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { flowType: "pkce", detectSessionInUrl: true },
+});
