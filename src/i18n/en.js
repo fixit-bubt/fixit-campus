@@ -17,7 +17,7 @@ export const en = {
     heroTitle2: "in one app.",
     heroBody: "FixIt is the single place for the BUBT community — report issues, browse faculty, catch the bus, buy and sell, find blood donors, and much more.",
     getStarted: "Get started",
-    browseFaculty: "or browse the faculty directory without an account →",
+    browseFaculty: "or explore campus pages without an account →",
   },
   auth: {
     login: {

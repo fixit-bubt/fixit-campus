@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Plus, Search, X, Trash2, FileText, Upload, ClipboardList, ExternalLink } from "lucide-react";
+import { Plus, Search, X, Trash2, FileText, Upload, ClipboardList, ExternalLink, Pin, PinOff } from "lucide-react";
 import { useApp } from "../../data/store.jsx";
 import { AppShell, PageHeader } from "../../components/AppShell.jsx";
 import { Card, Button, Field, Input, Modal, Badge, EmptyState, useToast } from "../../components/ui.jsx";
@@ -16,7 +16,7 @@ function relTime(iso) {
 }
 
 export function Routines() {
-  const { currentUser, routines, canPostRoutines, addRoutine, deleteRoutine } = useApp();
+  const { currentUser, routines, routinePins, toggleRoutinePin, canPostRoutines, addRoutine, deleteRoutine } = useApp();
   const toast = useToast();
   const [tab, setTab] = useState("class");
   const [search, setSearch] = useState("");
@@ -24,13 +24,28 @@ export function Routines() {
   const [form, setForm] = useState(EMPTY);
   const [posting, setPosting] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [pinning, setPinning] = useState(null); // routine id being toggled
   const fileRef = useRef(null);
 
   const q = search.toLowerCase();
   const list = routines
     .filter((r) => r.type === tab)
     .filter((r) => !q || r.title.toLowerCase().includes(q) || r.department.toLowerCase().includes(q) ||
-      r.semester.toLowerCase().includes(q) || r.intake.toLowerCase().includes(q));
+      r.semester.toLowerCase().includes(q) || r.intake.toLowerCase().includes(q))
+    // Pinned first (stable sort keeps newest-first order within each group) so
+    // "your" routine stays one glance away instead of buried in a search.
+    .sort((a, b) => Number(routinePins.includes(b.id)) - Number(routinePins.includes(a.id)));
+
+  async function pin(r) {
+    if (pinning) return;
+    setPinning(r.id);
+    try {
+      const res = await toggleRoutinePin(r.id);
+      if (!res.ok) toast({ type: "error", title: "Couldn't update pin", message: res.error });
+    } finally {
+      setPinning(null);
+    }
+  }
 
   function openPost() { setForm(EMPTY); setModal(true); }
 
@@ -90,15 +105,27 @@ export function Routines() {
           {list.map((r) => {
             const url = r.fileUrl || r.imageUrl;
             const canDelete = canPostRoutines && (r.publishedBy === currentUser?.id || currentUser?.role === "Admin");
+            const pinned = routinePins.includes(r.id);
             return (
-              <Card key={r.id} className="flex overflow-hidden">
+              <Card key={r.id} className={`flex overflow-hidden ${pinned ? "border-teal-300 dark:border-teal-500/40" : ""}`}>
                 {r.imageUrl ? (
                   <img src={r.imageUrl} alt="" className="h-20 w-20 shrink-0 object-cover" />
                 ) : (
                   <div className="flex h-20 w-20 shrink-0 items-center justify-center bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-300"><FileText size={26} /></div>
                 )}
                 <div className="min-w-0 flex-1 p-3">
-                  <p className="truncate text-base font-semibold text-ink">{r.title}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate text-base font-semibold text-ink">{r.title}</p>
+                    <button
+                      onClick={() => pin(r)}
+                      disabled={pinning === r.id}
+                      title={pinned ? "Unpin" : "Pin for quick access"}
+                      className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${pinned ? "text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-500/15" : "text-ink-3 hover:bg-surface-2 hover:text-ink-2"}`}
+                    >
+                      {pinned ? <PinOff size={13} /> : <Pin size={13} />}
+                      {pinned ? "Pinned" : "Pin"}
+                    </button>
+                  </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     {r.department && <Badge tone="teal">{r.department}</Badge>}
                     {r.semester && <span className="text-xs text-ink-3">{r.semester}</span>}

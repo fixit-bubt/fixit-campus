@@ -550,6 +550,7 @@ export function AppProvider({ children }) {
   // ---- academic calendar + routines ----
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [routines, setRoutines] = useState([]);
+  const [routinePins, setRoutinePins] = useState([]); // routine ids this user pinned
 
   // Latest signed-in user id — loaders compare against this after their await so a
   // slow response from a previous account can't overwrite the new account's data.
@@ -773,13 +774,18 @@ export function AppProvider({ children }) {
   }, [currentUser?.id]);
 
   const loadRoutines = useCallback(async () => {
-    if (!currentUser) { setRoutines([]); return; }
+    if (!currentUser) { setRoutines([]); setRoutinePins([]); return; }
     const uid = currentUser.id;
-    const { data, error } = await supabase
-      .from("routines").select("*").order("created_at", { ascending: false });
+    const [routinesRes, pinsRes] = await Promise.all([
+      supabase.from("routines").select("*").order("created_at", { ascending: false }),
+      supabase.from("routine_pins").select("routine_id"),
+    ]);
     if (!stillCurrent(uid)) return;
-    if (error) { setDataError(true); return; }
-    setRoutines((data || []).map(toRoutine));
+    if (routinesRes.error) { setDataError(true); return; }
+    setRoutines((routinesRes.data || []).map(toRoutine));
+    // Pins are non-critical: if migration 0084 isn't applied yet (table missing)
+    // or the read fails, just show no pins rather than breaking the page.
+    setRoutinePins(pinsRes.error ? [] : (pinsRes.data || []).map((r) => r.routine_id));
   }, [currentUser?.id]);
 
   // Events + RSVPs (aggregated into each event's `attendees` array) + the
@@ -1248,7 +1254,7 @@ export function AppProvider({ children }) {
       setStudyPins([]); setStudyCRSections([]); setStudySectionRequests([]); setStudyIntakeVotes([]);
       setStudyIntakeBallots([]); setClubs([]); setClubMembers([]); setClubPosts([]);
       setJobs([]); setJobReports([]); setJobBookmarks([]);
-      setNotifications([]); setNotifPrefs({}); setCalendarEvents([]); setRoutines([]);
+      setNotifications([]); setNotifPrefs({}); setCalendarEvents([]); setRoutines([]); setRoutinePins([]);
       setMessages([]); setMessageReads({}); setBlockedUsers([]); setDmPartners([]);
       navigate("/");
     }
@@ -1910,6 +1916,18 @@ export function AppProvider({ children }) {
     const { error } = await supabase.from("routines").delete().eq("id", id);
     if (error) return { ok: false, error: error.message };
     await loadRoutines();
+    return { ok: true };
+  }
+  // Pin/unpin a routine for quick access (migration 0084). Optimistic local
+  // update, same pattern as toggleJobBookmark — no full reload needed.
+  async function toggleRoutinePin(routineId) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const pinned = routinePins.includes(routineId);
+    const { error } = pinned
+      ? await supabase.from("routine_pins").delete().eq("user_id", currentUser.id).eq("routine_id", routineId)
+      : await supabase.from("routine_pins").insert({ user_id: currentUser.id, routine_id: routineId });
+    if (error) return { ok: false, error: error.message };
+    setRoutinePins((s) => (pinned ? s.filter((x) => x !== routineId) : [...s, routineId]));
     return { ok: true };
   }
 
@@ -3341,7 +3359,7 @@ export function AppProvider({ children }) {
     calendarEvents, canManageCalendar: currentUser?.role === "Admin",
     addCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
     routines, canPostRoutines: currentUser?.role === "Admin" || currentUser?.role === "Staff",
-    addRoutine, deleteRoutine,
+    addRoutine, deleteRoutine, routinePins, toggleRoutinePin,
     listings, addListing, updateListing, deleteListing, markListingSold, getListingContact,
     events, canCreateEvents, addEvent, toggleRSVP, deleteEvent,
     jobs, jobReports, jobBookmarks, canPostJobs, addJob, updateJob, withdrawJob, removeJob, restoreJob, reportJob, toggleJobBookmark,

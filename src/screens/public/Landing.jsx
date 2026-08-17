@@ -1,12 +1,26 @@
 import React from "react";
-import { ArrowRight, GraduationCap, ClipboardList, Search, CalendarDays, Store, Stethoscope } from "lucide-react";
+import { ArrowRight, GraduationCap, ClipboardList, Search, CalendarDays, Store, Stethoscope, Megaphone, CalendarRange, Bus, Moon, Clock, FileText, Calculator } from "lucide-react";
 import { navigate } from "../../lib/router.jsx";
 import { Button, Badge, Card } from "../../components/ui.jsx";
 import { Logo } from "../../components/Brand.jsx";
 import { ACCENT_TILE } from "../../components/featureKit.jsx";
-import { PublicNav } from "./Explore.jsx";
+import { PublicNav, EXPLORE_NAV } from "./Explore.jsx";
 import campusPhoto from "../../assets/bubt-campus.jpg";
 import { useT } from "../../i18n/index.js";
+
+// Icons for the "no account needed" grid — keyed by EXPLORE_NAV path so the
+// list can't drift out of sync with the actual public routes.
+const EXPLORE_ICONS = {
+  "/explore/faculty": GraduationCap,
+  "/explore/events": CalendarDays,
+  "/explore/announcements": Megaphone,
+  "/explore/calendar": CalendarRange,
+  "/explore/bus": Bus,
+  "/explore/prayer": Moon,
+  "/explore/routines": Clock,
+  "/explore/cover-page": FileText,
+  "/explore/cgpa": Calculator,
+};
 
 // Landing cards reuse the in-app sector accents so each feature keeps its
 // signature color from the first impression on.
@@ -63,7 +77,7 @@ export default function Landing() {
               </Button>
             </div>
             <button
-              onClick={() => navigate("/explore/faculty")}
+              onClick={() => document.getElementById("explore-without-account")?.scrollIntoView({ behavior: "smooth" })}
               className="mt-4 text-base font-semibold text-brand hover:underline"
             >
               {t.landing.browseFaculty}
@@ -76,6 +90,39 @@ export default function Landing() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* No-account grid — the top nav capsule already links every explore page,
+          but as a thin pill row it's easy to miss; this spells the offer out. */}
+      <section id="explore-without-account" className="scroll-mt-24 border-t border-brd bg-bg">
+        <div className="mx-auto max-w-7xl px-6 2xl:max-w-[96rem] py-16 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-bold uppercase tracking-[0.14em] text-brand">No account needed</p>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+              Try it before you sign up
+            </h2>
+            <p className="mt-3 text-lg leading-relaxed text-ink-2">
+              These pages are open to everyone — no login required.
+            </p>
+          </div>
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {EXPLORE_NAV.map((l) => {
+              const NavIcon = EXPLORE_ICONS[l.path];
+              return (
+                <button
+                  key={l.path}
+                  onClick={() => navigate(l.path)}
+                  className="flex flex-col items-center gap-2 rounded-xl border border-brd bg-surface p-5 text-center transition-all duration-200 hover:-translate-y-1 hover:border-brd-2 hover:shadow-lg"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-50 text-brand">
+                    <NavIcon size={20} />
+                  </span>
+                  <span className="text-sm font-bold text-ink">{l.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>

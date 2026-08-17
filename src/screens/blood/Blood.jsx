@@ -50,7 +50,10 @@ export function GroupBadge({ group, size = "md" }) {
 }
 
 // --- Request card -----------------------------------------------------------
-export function RequestCard({ req, requester, mine, pledged, onDonate, onManage }) {
+// canRespond = viewer is a registered donor whose blood group matches the
+// request. Already-pledged donors keep their Contact button even if they
+// later changed their registered group.
+export function RequestCard({ req, requester, mine, pledged, canRespond, onDonate, onManage }) {
   return (
     <Card className="p-5">
       <div className="flex items-start gap-4">
@@ -74,10 +77,12 @@ export function RequestCard({ req, requester, mine, pledged, onDonate, onManage 
             <Badge tone="slate">Your request</Badge>
             <Button size="sm" variant="secondary" icon="Users" onClick={onManage}>Manage</Button>
           </span>
+        ) : pledged ? (
+          <Button size="sm" variant="secondary" icon="MessageCircle" onClick={onDonate}>Contact</Button>
+        ) : canRespond ? (
+          <Button size="sm" variant="destructive" icon="HeartPulse" onClick={onDonate}>I can donate</Button>
         ) : (
-          <Button size="sm" variant={pledged ? "secondary" : "destructive"} icon={pledged ? "MessageCircle" : "HeartPulse"} onClick={onDonate}>
-            {pledged ? "Contact" : "I can donate"}
-          </Button>
+          <span className="text-xs text-ink-3">Needs {req.group} donors</span>
         )}
       </div>
     </Card>
@@ -290,10 +295,18 @@ export function BloodDonation() {
   const [askDonated, setAskDonated] = React.useState(false); // "I donated" confirm
   const [stamping, setStamping] = React.useState(false);
   const myDonor = donors.find((d) => d.userId === currentUser?.id);
+  const requestsGated = !isAdmin && !myDonor;
 
   const requests = [...bloodRequests]
     .filter((r) => groupFilter === "All" || r.group === groupFilter)
     .sort((a, b) => (URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency]) || b.createdAt.localeCompare(a.createdAt));
+  // Gated non-donors still see their OWN requests, and any request they'd
+  // already pledged to before this gate existed — only other students'
+  // requests are hidden until they join the donor registry.
+  const visibleRequests = requestsGated
+    ? requests.filter((r) => r.requesterId === currentUser?.id || r.pledges.includes(currentUser?.id))
+    : requests;
+  const hiddenCount = requestsGated ? requests.length - visibleRequests.length : 0;
 
   const donorList = donors
     .filter((d) => groupFilter === "All" || d.group === groupFilter)
@@ -317,7 +330,7 @@ export function BloodDonation() {
   return (
     <AppShell activeKey="blood" title="Blood Donation">
       <PageHeader title="Blood Donation"
-        subtitle={isAdmin ? "View all donors and active blood requests on campus." : "Find donors and respond to urgent blood requests on campus."}
+        subtitle={isAdmin ? "View all donors and active blood requests on campus." : requestsGated ? "Register as a donor to see who needs blood — you can still post a request anytime." : "Find donors and respond to urgent blood requests on campus."}
         action={isAdmin ? null : (
           <div className="flex gap-2">
             <Button variant="secondary" icon="UserPlus" onClick={() => navigate("/blood/register")}>{myDonor ? "Update donor info" : "Register as donor"}</Button>
@@ -336,14 +349,30 @@ export function BloodDonation() {
       {dataLoading ? (
         <Loading />
       ) : tab === "Requests" ? (
-        requests.length === 0 ? (
-          <EmptyState icon="Droplet" title="No requests right now" message="Urgent blood requests will appear here, most urgent first. Use “Request blood” at the top to post one." />
+        visibleRequests.length === 0 ? (
+          requestsGated ? (
+            <EmptyState icon="Lock" title="Register as a donor to see requests"
+              message={hiddenCount > 0
+                ? `${hiddenCount} request${hiddenCount === 1 ? "" : "s"} on campus right now — join the registry to see who needs your group.`
+                : "Join the registry so we can show you requests that need your group."}
+              action={<Button icon="UserPlus" onClick={() => navigate("/blood/register")}>Register as donor</Button>} />
+          ) : (
+            <EmptyState icon="Droplet" title="No requests right now" message="Urgent blood requests will appear here, most urgent first. Use “Request blood” at the top to post one." />
+          )
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {requests.map((r) => (
-              <RequestCard key={r.id} req={r} requester={userById(r.requesterId)} mine={r.requesterId === currentUser?.id} pledged={r.pledges.includes(currentUser?.id)} onDonate={() => donate(r)} onManage={() => setManage(r)} />
-            ))}
-          </div>
+          <>
+            {requestsGated && hiddenCount > 0 && (
+              <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+                <p className="text-xs text-ink-3"><Icon name="Lock" size={12} className="mr-1 inline" />{hiddenCount} other request{hiddenCount === 1 ? "" : "s"} hidden — register as a donor to see them.</p>
+                <Button size="sm" variant="secondary" icon="UserPlus" onClick={() => navigate("/blood/register")}>Register as donor</Button>
+              </Card>
+            )}
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {visibleRequests.map((r) => (
+                <RequestCard key={r.id} req={r} requester={userById(r.requesterId)} mine={r.requesterId === currentUser?.id} pledged={r.pledges.includes(currentUser?.id)} canRespond={!!myDonor && myDonor.group === r.group} onDonate={() => donate(r)} onManage={() => setManage(r)} />
+              ))}
+            </div>
+          </>
         )
       ) : (
         <>

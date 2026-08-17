@@ -1056,8 +1056,8 @@ function QuestionBankTab({ qb, canEdit, isManager, onUpload, onVerify, onDelete,
 
 export function StudyHubSection({ sectionId }) {
   const {
-    departments, studyIntakes, studySectionById, resolveMySection, studyPinsIn, studyCoursesIn,
-    deleteStudyPin, deleteStudyCourse, dataLoading,
+    currentUser, studyMembers, departments, studyIntakes, studySectionById, resolveMySection,
+    studyPinsIn, studyCoursesIn, deleteStudyPin, deleteStudyCourse, removeMember, dataLoading,
   } = useApp();
   const toast = useToast();
   const [tab, setTab] = React.useState("Courses");
@@ -1066,6 +1066,8 @@ export function StudyHubSection({ sectionId }) {
   const [confirm, setConfirm] = React.useState(null); // { item } — subject (course) delete
   const [confirmBusy, setConfirmBusy] = React.useState(false);
   const [unpinBusy, setUnpinBusy] = React.useState(false);
+  const [leaveOpen, setLeaveOpen] = React.useState(false);
+  const [leaving, setLeaving] = React.useState(false);
 
   const section = studySectionById(sectionId);
   const intake = section && studyIntakes.find((i) => i.id === section.intakeId);
@@ -1093,6 +1095,12 @@ export function StudyHubSection({ sectionId }) {
     (section.isPublic && sectionIntake?.isPublic && myDeptId != null && section.deptId === myDeptId);
   const canAddCourse = section.isMine && canContribute(myRole);
   const manager = section.isMine && isCR(myRole);
+  // The membership row for THIS section — not resolveMySection()'s, which is
+  // only the user's first approved membership and would delete the wrong row
+  // for anyone approved in more than one section.
+  const myMembership = studyMembers.find(
+    (m) => m.sectionId === section.id && m.userId === currentUser?.id && m.status === "approved"
+  );
   const back = () => navigate(section.isMine ? "/study-hub" : `/study-hub/intake/${section.intakeId}`);
 
   if (!canView) {
@@ -1149,13 +1157,25 @@ export function StudyHubSection({ sectionId }) {
       setConfirmBusy(false);
     }
   }
+  async function doLeave() {
+    if (leaving || !myMembership) return;
+    setLeaving(true);
+    try {
+      const r = await removeMember(myMembership.id);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't leave", message: r.error }); return; }
+      toast({ type: "success", title: "Left section", message: `${dept && deptCode(dept.name)} · Intake ${intake.number} · Section ${section.number}` });
+      navigate("/study-hub");
+    } finally {
+      setLeaving(false);
+    }
+  }
 
   return (
     <AppShell activeKey="study-hub" title="Study Hub">
       <button onClick={back} className="mb-4 inline-flex items-center gap-1.5 text-base font-semibold text-ink-3 hover:text-ink-2">
         <Icon name="ArrowLeft" size={16} /> {section.isMine ? "Study Hub" : `Intake ${intake.number}`}
       </button>
-      <SectionHeader section={section} dept={dept} intake={intake} manager={manager} />
+      <SectionHeader section={section} dept={dept} intake={intake} manager={manager} onLeave={myMembership ? () => setLeaveOpen(true) : null} />
 
       {section.isMine ? (
         <>
@@ -1177,12 +1197,22 @@ export function StudyHubSection({ sectionId }) {
         description={confirm ? `"${confirm.item.code} — ${confirm.item.name}" and all its notes, questions, and books will be removed for the section.` : ""}
         footer={<><Button variant="secondary" onClick={() => setConfirm(null)} disabled={confirmBusy}>Cancel</Button><Button variant="destructive" onClick={doConfirm} disabled={confirmBusy}>Remove</Button></>}
       />
+      <Modal
+        open={leaveOpen} onClose={() => setLeaveOpen(false)} icon="LogOut" tone="red"
+        title="Leave this section?"
+        description={
+          manager
+            ? "You're this section's Class Rep — leaving removes your CR status and the section will have no CR until an admin reassigns one. You'll lose access to its private materials and can rejoin later by requesting or with a join code."
+            : "You'll lose access to this section's private materials and pinned notices. You can rejoin later by requesting or with a join code."
+        }
+        footer={<><Button variant="secondary" onClick={() => setLeaveOpen(false)} disabled={leaving}>Cancel</Button><Button variant="destructive" loading={leaving} onClick={doLeave}>Leave section</Button></>}
+      />
     </AppShell>
   );
 }
 
 // Section header with a CR-name subtitle (needs studyPersonName).
-function SectionHeader({ section, dept, intake, manager }) {
+function SectionHeader({ section, dept, intake, manager, onLeave }) {
   const { studyPersonName } = useApp();
   const crName = section.crIds[0] ? studyPersonName(section.crIds[0]) : null;
   const editors = (section.editorIds || []).length;
@@ -1195,7 +1225,12 @@ function SectionHeader({ section, dept, intake, manager }) {
     <PageHeader
       title={`${deptCode(dept.name)} · Intake ${intake.number} · Section ${section.number}`}
       subtitle={subtitle}
-      action={manager ? <Button icon="Settings" onClick={() => navigate(`/study-hub/section/${section.id}/manage`)}>Manage section</Button> : null}
+      action={onLeave ? (
+        <div className="flex gap-2">
+          {manager && <Button icon="Settings" onClick={() => navigate(`/study-hub/section/${section.id}/manage`)}>Manage section</Button>}
+          <Button variant="secondary" icon="LogOut" onClick={onLeave}>Leave section</Button>
+        </div>
+      ) : null}
     />
   );
 }

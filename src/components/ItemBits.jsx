@@ -35,6 +35,9 @@ export function ItemCard({ item, onOpen }) {
       <div className="relative h-40 w-full overflow-hidden">
         <ItemPhoto item={item} className="h-full w-full transition-transform group-hover:scale-105" />
         <div className="absolute left-3 top-3"><ItemTypeBadge type={item.type} /></div>
+        {item.status === "Resolved" && (
+          <div className="absolute right-3 top-3"><Badge tone="slate">Resolved</Badge></div>
+        )}
       </div>
       <div className="flex flex-1 flex-col p-4">
         <p className="text-xs font-semibold text-ink-3">{item.category}</p>
