@@ -167,7 +167,7 @@ export function MessagesHome() {
 export function MessageThread({ kind, id }) {
   const {
     currentUser, userById, clubById, clubMembersIn, userRoleIn, studySectionById, studyIntakes, studyMembers,
-    dmPartners, messageThread, messageConvKey, sendMessage, editMessage, removeMessage,
+    dmPartners, messages, messageThread, messageConvKey, sendMessage, editMessage, removeMessage,
     markConversationRead, blockUser, unblockUser, isBlocked, fetchOlderMessages, searchConversation,
     loadConversation, dataLoading,
   } = useApp();
@@ -178,7 +178,15 @@ export function MessageThread({ kind, id }) {
   const access = useMemo(() => {
     if (kind === "dm") {
       const u = userById(id);
-      return { ok: dmPartners.includes(id), title: u?.name || "Student", avatar: u?.avatar, name: u?.name || "Student" };
+      // dmPartners covers connections + context grants (0085), but the RECIPIENT
+      // of a grant-opened DM only learns about the grant on their next load — so
+      // a thread reached from a notification could otherwise read as "no access"
+      // while its messages sit right there. Existing messages are proof enough:
+      // RLS only returns DM rows to their two peers.
+      const hasThread = messages.some(
+        (m) => m.kind === "dm" && (m.peerLow === id || m.peerHigh === id)
+      );
+      return { ok: dmPartners.includes(id) || hasThread, title: u?.name || "Student", avatar: u?.avatar, name: u?.name || "Student" };
     }
     if (kind === "club") {
       const club = clubById(id);
@@ -189,7 +197,7 @@ export function MessageThread({ kind, id }) {
     const member = studyMembers.some((m) => m.sectionId === id && m.userId === me && m.status === "approved");
     const intake = sec ? studyIntakes.find((i) => i.id === sec.intakeId) : null;
     return { ok: !!sec && member, title: sec ? `Intake ${intake?.number ?? "?"} · Section ${sec.number}` : "Section" };
-  }, [kind, id, me, userById, dmPartners, clubById, clubMembersIn, studySectionById, studyMembers, studyIntakes]);
+  }, [kind, id, me, userById, dmPartners, messages, clubById, clubMembersIn, studySectionById, studyMembers, studyIntakes]);
 
   const canModerate = useMemo(() => {
     if (kind === "club") return ["president", "vp", "editor"].includes(userRoleIn(id));

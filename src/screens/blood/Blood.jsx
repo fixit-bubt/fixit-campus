@@ -9,7 +9,7 @@ import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
   AccentTile, CountdownBanner, SegmentToggle,
   taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
-  nowDhakaMinutes, dhakaParts, useTick, waHref,
+  nowDhakaMinutes, dhakaParts, useTick, waHref, MessageButton,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
@@ -152,7 +152,10 @@ export function DonorCard({ donor, isSelf = false, onMarkDonated }) {
 
 // The requester's contact, shown in the pledge modal. The donor has just
 // pledged, so the blood_requester_contact RPC will return it — fetched on open.
-function BloodRequesterContact({ code, fallbackName }) {
+// Unlike marketplace/rides, WhatsApp stays the PRIMARY action here: blood is
+// urgent and often life-critical, so the fastest, most-notified channel wins.
+// The in-app DM sits underneath for anyone who'd rather not hand out a number.
+function BloodRequesterContact({ code, requesterId, fallbackName }) {
   const { getBloodRequesterContact } = useApp();
   const [phase, setPhase] = React.useState("loading"); // loading | done
   const [contact, setContact] = React.useState(null);
@@ -170,10 +173,15 @@ function BloodRequesterContact({ code, fallbackName }) {
       {phase === "loading" ? (
         <p className="mt-2 text-xs text-ink-3">Getting contact…</p>
       ) : (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface p-3">
-          <div className="min-w-0"><p className="truncate text-base font-semibold text-ink">{contact?.name || fallbackName || "Requester"}</p><p className="truncate text-xs text-ink-3">{contact?.whatsapp || "No number shared"}</p></div>
-          {wa && <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95"><Icon name="MessageCircle" size={16} /> WhatsApp</a>}
-        </div>
+        <>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface p-3">
+            <div className="min-w-0"><p className="truncate text-base font-semibold text-ink">{contact?.name || fallbackName || "Requester"}</p><p className="truncate text-xs text-ink-3">{contact?.whatsapp || "No number shared"}</p></div>
+            {wa && <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95"><Icon name="MessageCircle" size={16} /> WhatsApp</a>}
+          </div>
+          <div className="mt-2">
+            <MessageButton context="blood" code={code} targetId={requesterId} label="Message in app" variant="secondary" />
+          </div>
+        </>
       )}
     </div>
   );
@@ -404,7 +412,7 @@ export function BloodDonation() {
       <Modal open={!!active} onClose={() => setActive(null)} icon="HeartPulse" tone="red"
         title="Thank you for donating" description={active ? `You've responded to the ${active.group} request. Contact the requester to coordinate.` : ""}
         footer={<Button onClick={() => setActive(null)}>Done</Button>}>
-        {active && <BloodRequesterContact code={active.id} fallbackName={userById(active.requesterId)?.name} />}
+        {active && <BloodRequesterContact code={active.id} requesterId={active.requesterId} fallbackName={userById(active.requesterId)?.name} />}
       </Modal>
 
       {/* requester manages responders + closes the request */}

@@ -9,7 +9,7 @@ import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
   AccentTile, CountdownBanner, SegmentToggle,
   taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
-  nowDhakaMinutes, dhakaParts, useTick, waHref,
+  nowDhakaMinutes, dhakaParts, useTick, waHref, MessageButton,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
@@ -163,9 +163,11 @@ export function Marketplace() {
   );
 }
 
-// Seller contact — fetched on click. Shows WhatsApp only if the seller opted in
-// (the listing_contact RPC returns a null number otherwise).
-function SellerContact({ code, sellerName }) {
+// Seller contact. In-app DM is the primary action (0085 context grants — no
+// connection request needed); the WhatsApp reveal stays underneath as the
+// fallback, and shows a number only if the seller opted in (the
+// listing_contact RPC returns null otherwise).
+function SellerContact({ code, sellerId, sellerName }) {
   const { getListingContact } = useApp();
   const toast = useToast();
   const [phase, setPhase] = React.useState("idle"); // idle | loading | done
@@ -184,30 +186,32 @@ function SellerContact({ code, sellerName }) {
     setPhase("done");
   }
 
-  if (phase !== "done") {
-    return (
-      <button onClick={reveal} disabled={phase === "loading"}
-        className="flex w-full items-center justify-center gap-2 rounded-md border border-success-bg bg-success-bg px-4 py-2.5 text-base font-semibold text-success transition-colors hover:bg-success-bg disabled:opacity-60">
-        <Icon name="MessageCircle" size={16} /> {phase === "loading" ? "Getting contact…" : "Contact on WhatsApp"}
-      </button>
-    );
-  }
-
   const wa = waHref(contact?.whatsapp);
   return (
-    <div className="rounded-md border border-success-bg bg-success-bg p-4">
-      <div className="flex items-center gap-1.5 text-base font-semibold text-success">
-        <Icon name="CircleCheck" size={16} /> {contact?.name || sellerName || "Seller"}
-      </div>
-      {wa ? (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface p-3">
-          <p className="truncate text-base text-ink-2">{contact.whatsapp}</p>
-          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95">
-            <Icon name="MessageCircle" size={16} /> WhatsApp
-          </a>
-        </div>
+    <div className="space-y-2">
+      <MessageButton context="listing" code={code} targetId={sellerId} label="Message seller" size="md" full />
+
+      {phase !== "done" ? (
+        <button onClick={reveal} disabled={phase === "loading"}
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-success-bg bg-success-bg px-4 py-2.5 text-base font-semibold text-success transition-colors hover:bg-success-bg disabled:opacity-60">
+          <Icon name="MessageCircle" size={16} /> {phase === "loading" ? "Getting contact…" : "Contact on WhatsApp"}
+        </button>
       ) : (
-        <p className="mt-1 text-xs text-ink-3">This seller hasn't shared a WhatsApp number. They can enable it in their profile.</p>
+        <div className="rounded-md border border-success-bg bg-success-bg p-4">
+          <div className="flex items-center gap-1.5 text-base font-semibold text-success">
+            <Icon name="CircleCheck" size={16} /> {contact?.name || sellerName || "Seller"}
+          </div>
+          {wa ? (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface p-3">
+              <p className="truncate text-base text-ink-2">{contact.whatsapp}</p>
+              <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95">
+                <Icon name="MessageCircle" size={16} /> WhatsApp
+              </a>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs text-ink-3">This seller hasn't shared a WhatsApp number. They can enable it in their profile.</p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -279,7 +283,7 @@ export function ListingDetail({ id }) {
                   <Icon name="BadgeCheck" size={16} className="text-ink-3" /> This item has been sold.
                 </div>
               ) : (
-                <SellerContact code={id} sellerName={seller?.name} />
+                <SellerContact code={id} sellerId={listing.sellerId} sellerName={seller?.name} />
               )}
             </div>
           </div>

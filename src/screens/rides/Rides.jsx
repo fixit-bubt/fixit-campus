@@ -9,7 +9,7 @@ import { FilterTabs } from "../../components/FilterTabs.jsx";
 import {
   AccentTile, CountdownBanner, SegmentToggle,
   taka, fmtTime, fmtCountdown, nextDeparture, toMinutes, minutesToHHMM,
-  nowDhakaMinutes, dhakaParts, useTick, waHref,
+  nowDhakaMinutes, dhakaParts, useTick, waHref, MessageButton,
 } from "../../components/featureKit.jsx";
 import { useApp } from "../../data/store.jsx";
 import { navigate, Link } from "../../lib/router.jsx";
@@ -172,32 +172,34 @@ function DriverContact({ code, driverId, driverName }) {
     setPhase("done");
   }
 
-  if (phase !== "done") {
-    return (
-      <button onClick={reveal} disabled={phase === "loading"}
-        className="flex w-full items-center justify-center gap-2 rounded-md border border-success-bg bg-success-bg px-4 py-2.5 text-base font-semibold text-success transition-colors hover:bg-success-bg disabled:opacity-60">
-        <Icon name="MessageCircle" size={16} /> {phase === "loading" ? "Getting contact…" : "Show driver's WhatsApp"}
-      </button>
-    );
-  }
-
   const wa = waHref(contact?.whatsapp);
   return (
-    <div className="rounded-md border border-success-bg bg-success-bg p-4">
-      <div className="flex items-center gap-1.5 text-base font-semibold text-success">
-        <Icon name="CircleCheck" size={16} /> {contact?.name || driverName || "Driver"}
-      </div>
-      {wa ? (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface p-3">
-          <p className="truncate text-base text-ink-2">{contact.whatsapp}</p>
-          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95">
-            <Icon name="MessageCircle" size={16} /> WhatsApp
-          </a>
-        </div>
+    <div className="space-y-2">
+      <MessageButton context="ride" code={code} targetId={driverId} label="Message driver" size="md" full />
+
+      {phase !== "done" ? (
+        <button onClick={reveal} disabled={phase === "loading"}
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-success-bg bg-success-bg px-4 py-2.5 text-base font-semibold text-success transition-colors hover:bg-success-bg disabled:opacity-60">
+          <Icon name="MessageCircle" size={16} /> {phase === "loading" ? "Getting contact…" : "Show driver's WhatsApp"}
+        </button>
       ) : (
-        <p className="mt-1 text-xs text-ink-3">This driver hasn't shared a WhatsApp number yet.</p>
+        <div className="rounded-md border border-success-bg bg-success-bg p-4">
+          <div className="flex items-center gap-1.5 text-base font-semibold text-success">
+            <Icon name="CircleCheck" size={16} /> {contact?.name || driverName || "Driver"}
+          </div>
+          {wa ? (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-brd bg-surface p-3">
+              <p className="truncate text-base text-ink-2">{contact.whatsapp}</p>
+              <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-success px-3 text-base font-semibold text-white hover:brightness-95">
+                <Icon name="MessageCircle" size={16} /> WhatsApp
+              </a>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs text-ink-3">This driver hasn't shared a WhatsApp number yet.</p>
+          )}
+          <p className="mt-2 text-xs text-ink-3">Coordinate pickup and fare with the driver on WhatsApp.</p>
+        </div>
       )}
-      <p className="mt-2 text-xs text-ink-3">Coordinate pickup and fare with the driver on WhatsApp.</p>
     </div>
   );
 }
@@ -218,21 +220,25 @@ function RequesterContact({ code, requesterId }) {
     setPhase("done");
   }
 
-  if (phase === "done") {
-    const wa = waHref(contact?.whatsapp);
-    return wa ? (
-      <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-success px-2.5 text-xs font-semibold text-white hover:brightness-95">
-        <Icon name="MessageCircle" size={14} /> Chat
-      </a>
-    ) : (
-      <span className="shrink-0 text-xs text-ink-3">No number shared</span>
-    );
-  }
+  const wa = phase === "done" ? waHref(contact?.whatsapp) : null;
   return (
-    <button onClick={reveal} disabled={phase === "loading"}
-      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-success-bg bg-success-bg px-2.5 text-xs font-semibold text-success hover:bg-success-bg disabled:opacity-60">
-      <Icon name="MessageCircle" size={14} /> {phase === "loading" ? "…" : "Contact"}
-    </button>
+    <span className="flex shrink-0 items-center gap-1.5">
+      <MessageButton context="ride" code={code} targetId={requesterId} label="Message" variant="secondary" />
+      {phase === "done" ? (
+        wa ? (
+          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-success px-2.5 text-xs font-semibold text-white hover:brightness-95">
+            <Icon name="MessageCircle" size={14} /> Chat
+          </a>
+        ) : (
+          <span className="shrink-0 text-xs text-ink-3">No number shared</span>
+        )
+      ) : (
+        <button onClick={reveal} disabled={phase === "loading"}
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-success-bg bg-success-bg px-2.5 text-xs font-semibold text-success hover:bg-success-bg disabled:opacity-60">
+          <Icon name="MessageCircle" size={14} /> {phase === "loading" ? "…" : "WhatsApp"}
+        </button>
+      )}
+    </span>
   );
 }
 

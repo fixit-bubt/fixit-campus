@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   ArrowLeft, MapPin, Calendar, Pencil, Trash2, Lock, CircleCheck, CircleX,
   Clock, Hand, PackageCheck, PackageX, Send, Check, X, Inbox, Mail, MessageCircle,
@@ -9,7 +9,7 @@ import { Card, Button, Field, Textarea, FileUpload, Modal, Avatar, Badge, EmptyS
 import { AppShell } from "../../components/AppShell.jsx";
 import { ItemPhoto, ItemTypeBadge } from "../../components/ItemBits.jsx";
 import { ITEM_CATEGORY_ICON, fmtDate, findItemMatches } from "../../lib/helpers.js";
-import { waHref, mailHref } from "../../components/featureKit.jsx";
+import { waHref, mailHref, MessageButton } from "../../components/featureKit.jsx";
 
 function ClaimModal({ open, item, onClose, onSubmitted }) {
   const { addClaim } = useApp();
@@ -118,7 +118,7 @@ function ClaimModal({ open, item, onClose, onSubmitted }) {
   );
 }
 
-function ContactCard({ user, label }) {
+function ContactCard({ user, label, itemCode, targetId }) {
   const wa = waHref(user.whatsapp);
   return (
     <Card className="p-5">
@@ -144,6 +144,9 @@ function ContactCard({ user, label }) {
             <MessageCircle size={13} className="shrink-0" /> <span className="truncate">{user.whatsapp}</span>
           </a>
         )}
+      </div>
+      <div className="mt-3">
+        <MessageButton context="item" code={itemCode} targetId={targetId} label="Message in app" />
       </div>
     </Card>
   );
@@ -190,19 +193,24 @@ export default function ItemDetail({ id }) {
   const [proofUrls, setProofUrls] = useState({}); // claim id -> short-lived signed proof URL
 
   // Reveal the counterpart's contact once a claim is approved (either side).
+  // The other party on an approved claim — whose contact is unlocked, and who
+  // the in-app DM would go to. Hoisted out of the effect below so the render
+  // can address them too.
+  const contactTargetId = useMemo(() => {
+    if (!item) return null;
+    const approvedClaim = claims.find((c) => c.itemId === item.id && c.status === "Approved");
+    if (!approvedClaim) return null;
+    if (item.posterId === currentUser?.id) return approvedClaim.claimantId;
+    if (approvedClaim.claimantId === currentUser?.id) return item.posterId;
+    return null;
+  }, [item?.id, item?.posterId, claims, currentUser?.id]);
+
   useEffect(() => {
     let active = true;
-    if (!item) { setContact(null); return; }
-    const approvedClaim = claims.find((c) => c.itemId === item.id && c.status === "Approved");
-    let targetId = null;
-    if (approvedClaim) {
-      if (item.posterId === currentUser?.id) targetId = approvedClaim.claimantId;
-      else if (approvedClaim.claimantId === currentUser?.id) targetId = item.posterId;
-    }
-    if (targetId) getContact(targetId).then((c) => { if (active) setContact(c); });
-    else setContact(null);
+    if (!contactTargetId) { setContact(null); return; }
+    getContact(contactTargetId).then((c) => { if (active) setContact(c); });
     return () => { active = false; };
-  }, [item?.id, claims, currentUser?.id]);
+  }, [contactTargetId]);
 
   // Poster only: resolve each claim's private proof path to a signed view URL.
   useEffect(() => {
@@ -360,7 +368,7 @@ export default function ItemDetail({ id }) {
             {/* Contact */}
             <div className="mt-5">
               {contact ? (
-                <ContactCard user={contact} label={revealLabel} />
+                <ContactCard user={contact} label={revealLabel} itemCode={item.id} targetId={contactTargetId} />
               ) : (
                 <div className="flex items-center gap-3 rounded-md border border-dashed border-brd-2 bg-surface-2 px-4 py-3 text-base text-ink-3">
                   <Lock size={16} className="text-ink-3" />

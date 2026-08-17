@@ -1,5 +1,8 @@
 import React from "react";
 import { Icon } from "./Icon.jsx";
+import { Button, useToast } from "./ui.jsx";
+import { useApp } from "../data/store.jsx";
+import { navigate } from "../lib/router.jsx";
 
 // ============================================================================
 // Feature kit — shared building blocks for the campus features.
@@ -154,6 +157,41 @@ export function mailHref(email) {
   // view=cm opens the normal Gmail inbox with a compose popup (no fs=1, which
   // would be the bare full-screen compose window).
   return `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(e)}`;
+}
+
+// MessageButton — opens an in-app DM from a transactional context instead of
+// handing out a phone number (migration 0085). The server re-checks the
+// relationship for `context`/`code` and issues a grant, so this works without
+// the two students being connected first.
+//
+// Deliberately sits NEXT TO the WhatsApp link rather than replacing it: this is
+// Bangladesh, plenty of students will still prefer WhatsApp, and only they know
+// which is faster for them. Renders nothing for non-students (Staff/Admin have
+// no conversations) or when the target is the viewer.
+export function MessageButton({ context, code, targetId, label = "Message", variant = "primary", size = "sm", full = false }) {
+  const { currentUser, openDmThread } = useApp();
+  const toast = useToast();
+  const [busy, setBusy] = React.useState(false);
+
+  if (!targetId || currentUser?.role !== "Student" || targetId === currentUser?.id) return null;
+
+  async function go() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await openDmThread(context, code, targetId);
+      if (!r.ok) { toast({ type: "error", title: "Couldn't open chat", message: r.error }); return; }
+      navigate(`/messages/dm/${targetId}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Button size={size} variant={variant} full={full} icon="MessagesSquare" loading={busy} onClick={go}>
+      {label}
+    </Button>
+  );
 }
 
 // ---------------------------------------------------------------------------

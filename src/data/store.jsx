@@ -746,11 +746,15 @@ export function AppProvider({ children }) {
     // roster would otherwise derive every club's topic). Matches loadStudyHub.
     if (!currentUser || currentUser.role !== "Student") { clear(); return; }
     const uid = currentUser.id;
-    const [msgs, reads, blocks, conns] = await Promise.all([
+    const [msgs, reads, blocks, conns, grants] = await Promise.all([
       supabase.from("messages").select("*").order("created_at", { ascending: false }).limit(300),
       supabase.from("message_reads").select("*"),
       supabase.from("user_blocks").select("blocked_id").eq("blocker_id", uid),
       supabase.from("connections").select("requester_id, addressee_id").eq("status", "accepted"),
+      // Context grants (0085) — DMs opened from a listing/ride/claim/blood
+      // request rather than a social connection. Non-critical: if the migration
+      // isn't applied yet, fall back to connections only.
+      supabase.from("dm_grants").select("peer_low, peer_high").gt("expires_at", new Date().toISOString()),
     ]);
     if (!stillCurrent(uid)) return;
     if (msgs.error || reads.error || blocks.error || conns.error) { setDataError(true); return; }
@@ -759,7 +763,17 @@ export function AppProvider({ children }) {
     (reads.data || []).forEach((r) => { rmap[r.conv_key] = r.last_read_at; });
     setMessageReads(rmap);
     setBlockedUsers((blocks.data || []).map((b) => b.blocked_id));
-    setDmPartners((conns.data || []).map((c) => (c.requester_id === uid ? c.addressee_id : c.requester_id)));
+    // dmPartners = everyone I may DM, from EITHER source. It drives the realtime
+    // topic list, the unread-badge reachability set and MessageThread's access
+    // check, so a grant partner missing here would mean an invisible, non-live
+    // thread the user can't open.
+    const partners = new Set(
+      (conns.data || []).map((c) => (c.requester_id === uid ? c.addressee_id : c.requester_id))
+    );
+    if (!grants.error) {
+      for (const g of grants.data || []) partners.add(g.peer_low === uid ? g.peer_high : g.peer_low);
+    }
+    setDmPartners(Array.from(partners));
   }, [currentUser?.id, currentUser?.role]);
 
   // Academic calendar (read by all; admin curates) + class/exam routines.
@@ -1644,6 +1658,24 @@ export function AppProvider({ children }) {
       email: r.email,
       whatsapp: r.whatsapp,
     }));
+  }
+
+  // Open a DM from a transactional context (marketplace listing, ride, an
+  // approved lost & found claim, a blood request) WITHOUT needing a social
+  // connection first — migration 0085. The server re-checks the relationship
+  // for that context; we never write the grant from the client.
+  // Reloads messages so the new partner lands in dmPartners, which is what
+  // subscribes the realtime topic and lets MessageThread open.
+  async function openDmThread(contextType, code, targetId) {
+    if (!currentUser) return { ok: false, error: "Not signed in." };
+    const { error } = await supabase.rpc("open_dm_thread", {
+      p_context_type: contextType,
+      p_code: code,
+      p_target: targetId,
+    });
+    if (error) return { ok: false, error: error.message };
+    await loadMessages();
+    return { ok: true };
   }
 
   // Send a connection request to another student.
@@ -3352,7 +3384,7 @@ export function AppProvider({ children }) {
     // messaging (migration 0081)
     messages, dmPartners, blockedUsers, unreadByConv, totalUnreadMessages,
     messageThread, messageConvKey, isBlocked,
-    sendMessage, editMessage, removeMessage, markConversationRead,
+    sendMessage, editMessage, removeMessage, markConversationRead, openDmThread,
     blockUser, unblockUser, fetchOlderMessages, searchConversation, loadConversation,
     reloadMessages: loadMessages,
     // academic calendar + routines
