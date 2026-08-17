@@ -37,6 +37,9 @@ function toUser(p) {
     avatar: p.avatar_url ?? null,
     directoryVisible: p.directory_visible ?? true,
     showWhatsapp: p.show_whatsapp ?? false,
+    // Opt out of context-grant DMs (0086). Defaults true — and stays true if the
+    // migration hasn't been applied yet, matching the server's column default.
+    allowDms: p.allow_dms ?? true,
     joined: day(p.created_at),
   };
 }
@@ -763,15 +766,23 @@ export function AppProvider({ children }) {
     (reads.data || []).forEach((r) => { rmap[r.conv_key] = r.last_read_at; });
     setMessageReads(rmap);
     setBlockedUsers((blocks.data || []).map((b) => b.blocked_id));
-    // dmPartners = everyone I may DM, from EITHER source. It drives the realtime
+    // dmPartners = everyone I may DM, from EVERY source. It drives the realtime
     // topic list, the unread-badge reachability set and MessageThread's access
-    // check, so a grant partner missing here would mean an invisible, non-live
-    // thread the user can't open.
+    // check, so a partner missing here would mean an invisible, non-live thread
+    // the user can't open.
     const partners = new Set(
       (conns.data || []).map((c) => (c.requester_id === uid ? c.addressee_id : c.requester_id))
     );
     if (!grants.error) {
       for (const g of grants.data || []) partners.add(g.peer_low === uid ? g.peer_high : g.peer_low);
+    }
+    // Anyone I've actually exchanged DMs with. RLS only returns DM rows to their
+    // two peers, so this is safe — and it makes the list immune to browser-clock
+    // skew on the grant expiry filter above, and to a grant that has outlived its
+    // window but stays sendable because the conversation started (0086).
+    for (const m of msgs.data || []) {
+      if (m.kind !== "dm") continue;
+      partners.add(m.peer_low === uid ? m.peer_high : m.peer_low);
     }
     setDmPartners(Array.from(partners));
   }, [currentUser?.id, currentUser?.role]);
@@ -1382,6 +1393,7 @@ export function AppProvider({ children }) {
       patch.program = form.program?.trim() || null;
       patch.directory_visible = form.directoryVisible !== false;
       patch.show_whatsapp = form.showWhatsapp === true;
+      patch.allow_dms = form.allowDms !== false;
     }
     const { error } = await supabase.from("profiles").update(patch).eq("id", currentUser.id);
     if (error) return { ok: false, error: error.message };

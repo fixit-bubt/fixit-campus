@@ -63,6 +63,7 @@ export default function Profile() {
     avatarFile: null,
     directoryVisible: currentUser?.directoryVisible !== false,
     showWhatsapp: currentUser?.showWhatsapp === true,
+    allowDms: currentUser?.allowDms !== false,
   });
   async function shareApp() {
     const shareData = { title: "FixIt", text: "FixIt — the BUBT campus app.", url: window.location.origin };
@@ -211,6 +212,12 @@ export default function Profile() {
                   onChange={setToggle("showWhatsapp")}
                   label={t.profile.showWhatsapp}
                   hint={t.profile.showWhatsappHint}
+                />
+                <Toggle
+                  checked={form.allowDms}
+                  onChange={setToggle("allowDms")}
+                  label={t.profile.allowDms}
+                  hint={t.profile.allowDmsHint}
                 />
               </div>
             )}

@@ -273,6 +273,9 @@ function ManageRequestModal({ req, onClose }) {
                   {p.last_donated ? ` · last donated ${fmtDate(p.last_donated)}` : ""}
                 </p>
               </div>
+              {/* The requester's side of the blood DM grant — donors could
+                  already message the requester from the pledge modal. */}
+              <MessageButton context="blood" code={req.id} targetId={p.donor_id} variant="secondary" />
               {p.fulfilled_at ? (
                 <Badge tone="emerald"><Icon name="Check" size={12} />Donated</Badge>
               ) : (

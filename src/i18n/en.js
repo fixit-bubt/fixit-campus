@@ -65,6 +65,8 @@ export const en = {
     directoryVisibleHint: "Let other students find you. If you turn this off you're hidden — and you won't be able to browse others either.",
     showWhatsapp: "Show my WhatsApp to other students",
     showWhatsappHint: "Lets classmates message you on WhatsApp from your directory profile.",
+    allowDms: "Let students message me in the app",
+    allowDmsHint: "Allows a chat from your marketplace listings, rides, claims and blood requests. Your connections can always message you.",
     saveChanges: "Save changes",
     saved: "Saved",
     changesSaved: "Changes saved",
