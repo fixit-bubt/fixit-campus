@@ -53,6 +53,7 @@ import { Notifications, NotifSettings } from "./screens/notifications/Notificati
 import { MessagesHome, MessageThread } from "./screens/messages/Messages.jsx";
 import Chatbot from "./screens/chatbot/Chatbot.jsx";
 import ChatbotHistory from "./screens/chatbot/ChatbotHistory.jsx";
+import ChatWidget from "./screens/chatbot/ChatWidget.jsx";
 import Annex from "./screens/annex/Annex.jsx";
 import CoverPage from "./screens/coverpage/CoverPage.jsx";
 import Cgpa from "./screens/cgpa/Cgpa.jsx";
@@ -173,7 +174,14 @@ export default function App() {
 
   // ---- Authenticated app: everything below shares ONE persistent sidebar,
   // so the sidebar (and its scroll position) survives navigation. ----
-  return <AppLayout><AuthedRoutes path={path} /></AppLayout>;
+  // ChatWidget is a sibling of the routed content, not inside it, so the
+  // assistant's conversation survives navigation between screens.
+  return (
+    <AppLayout>
+      <AuthedRoutes path={path} />
+      <ChatWidget />
+    </AppLayout>
+  );
 }
 
 // The signed-in route table. Rendered inside the persistent <AppLayout>, so

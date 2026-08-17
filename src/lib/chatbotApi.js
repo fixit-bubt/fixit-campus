@@ -14,9 +14,13 @@ import { supabase } from "./supabase.js";
 //                            tool instead — the preamble text was never real)
 //   {type:'done', text}   - final, complete reply
 //   {type:'error', message} - mid-stream failure
-export async function streamChat({ message, history, imageBase64, imageMimeType, onChunk, onRetract, onDone, onError }) {
+// `signal` (optional) aborts an in-flight reply — the composer's Stop button.
+// An abort is user-intent, not a failure, so it never reaches onError; the
+// caller keeps whatever text streamed up to that point.
+export async function streamChat({ message, history, imageBase64, imageMimeType, signal, onChunk, onRetract, onDone, onError }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) { onError("Not signed in."); return; }
+  if (signal?.aborted) return;
 
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
   let res;
@@ -32,8 +36,10 @@ export async function streamChat({ message, history, imageBase64, imageMimeType,
       // aren't re-fetched and re-attached on later messages (matches the
       // server's own doc comment on this, keeps request size bounded).
       body: JSON.stringify({ message, history, imageBase64, imageMimeType }),
+      signal,
     });
-  } catch {
+  } catch (e) {
+    if (e?.name === "AbortError" || signal?.aborted) return;
     onError("Couldn't reach the assistant. Check your connection.");
     return;
   }
@@ -49,7 +55,14 @@ export async function streamChat({ message, history, imageBase64, imageMimeType,
   const decoder = new TextDecoder();
   let buf = "";
   while (true) {
-    const { done, value } = await reader.read();
+    let done, value;
+    try {
+      ({ done, value } = await reader.read());
+    } catch (e) {
+      // Aborting mid-read rejects the pending read() — expected, not an error.
+      if (e?.name === "AbortError" || signal?.aborted) return;
+      throw e;
+    }
     if (done) break;
     buf += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
     let idx;
